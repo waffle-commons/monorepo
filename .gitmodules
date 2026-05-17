@@ -1,0 +1,63 @@
+[submodule ".github"]
+	path = .github
+	url = git@github.com:waffle-commons/.github.git
+[submodule ".github-private"]
+	path = .github-private
+	url = git@github.com:waffle-commons/.github-private.git
+[submodule "component-template"]
+	path = component-template
+	url = git@github.com:waffle-commons/component-template.git
+[submodule "documentation"]
+	path = documentation
+	url = git@github.com:waffle-commons/documentation.git
+[submodule "cache"]
+	path = cache
+	url = git@github.com:waffle-commons/cache.git
+[submodule "config"]
+	path = config
+	url = git@github.com:waffle-commons/config.git
+[submodule "console"]
+	path = console
+	url = git@github.com:waffle-commons/console.git
+[submodule "container"]
+	path = container
+	url = git@github.com:waffle-commons/container.git
+[submodule "contracts"]
+	path = contracts
+	url = git@github.com:waffle-commons/contracts.git
+[submodule "error-handler"]
+	path = error-handler
+	url = git@github.com:waffle-commons/error-handler.git
+[submodule "event-dispatcher"]
+	path = event-dispatcher
+	url = git@github.com:waffle-commons/event-dispatcher.git
+[submodule "http"]
+	path = http
+	url = git@github.com:waffle-commons/http.git
+[submodule "log"]
+	path = log
+	url = git@github.com:waffle-commons/log.git
+[submodule "pipeline"]
+	path = pipeline
+	url = git@github.com:waffle-commons/pipeline.git
+[submodule "routing"]
+	path = routing
+	url = git@github.com:waffle-commons/routing.git
+[submodule "runtime"]
+	path = runtime
+	url = git@github.com:waffle-commons/runtime.git
+[submodule "security"]
+	path = security
+	url = git@github.com:waffle-commons/security.git
+[submodule "skeleton"]
+	path = skeleton
+	url = git@github.com:waffle-commons/skeleton.git
+[submodule "utils"]
+	path = utils
+	url = git@github.com:waffle-commons/utils.git
+[submodule "waffle"]
+	path = waffle
+	url = git@github.com:waffle-commons/waffle.git
+[submodule "workspace"]
+	path = workspace
+	url = git@github.com:waffle-commons/workspace.git
