@@ -1,0 +1,22 @@
+# IDE
+.idea/
+.vscode/
+.idx/
+
+# Tools
+.claude/
+.devtool/
+.opencode/
+.project-memory/
+.tooling-venv/
+build/
+graphify-out/
+project_system/
+scripts/
+CLAUDE.md
+install-git-hooks.sh
+opencode.json
+
+# Mono repository
+
+# waffle-commons
