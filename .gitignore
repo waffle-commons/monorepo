@@ -7,6 +7,7 @@
 .claude/
 .devtool/
 .tooling-venv/
+.venv/
 build/
 graphify-out/
 project_system/
@@ -15,6 +16,7 @@ CLAUDE.md
 install-git-hooks.sh
 
 # Mono repository
+TODO.md
 
 # waffle-commons
 
