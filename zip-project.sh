@@ -10,6 +10,7 @@ COMPONENTS=(
     "error-handler"
     "event-dispatcher"
     "http"
+    "http-client"
     "log"
     "pipeline"
     "routing"
