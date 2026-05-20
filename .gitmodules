@@ -61,3 +61,6 @@
 [submodule "workspace"]
 	path = workspace
 	url = git@github.com:waffle-commons/workspace.git
+[submodule "http-client"]
+	path = http-client
+	url = git@github.com:waffle-commons/http-client.git

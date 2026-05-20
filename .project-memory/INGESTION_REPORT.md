@@ -1,6 +1,6 @@
 # Knowledge Ingestion Report
 
-**Generated:** 2026-05-19 19:44:31Z
+**Generated:** 2026-05-20 16:29:39Z
 
 ## Components Ingested
 
@@ -14,6 +14,7 @@
 | contracts | ✅ Success | graphify-out/contracts/graph.json |
 | error-handler | ✅ Success | graphify-out/error-handler/graph.json |
 | event-dispatcher | ✅ Success | graphify-out/event-dispatcher/graph.json |
+| http-client | ✅ Success | graphify-out/http-client/graph.json |
 | http | ✅ Success | graphify-out/http/graph.json |
 | log | ✅ Success | graphify-out/log/graph.json |
 | pipeline | ✅ Success | graphify-out/pipeline/graph.json |
@@ -38,7 +39,7 @@
 
 ## Ingestion Metrics
 
-- **Total Components:** 18
+- **Total Components:** 19
 - **Failed Ingestions:** 0
 - **Output Directory:** graphify-out
 - **Project Memory:** /Users/lesliepetrimaux/Git/Perso/waffle-commons/.project-memory
