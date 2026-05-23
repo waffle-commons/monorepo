@@ -4,6 +4,7 @@
 .idx/
 
 # Tools
+.antigravitycli/
 .claude/
 .devtool/
 .tooling-venv/
@@ -11,10 +12,8 @@
 build/
 graphify-out/
 project_system/
-scripts/
 tmp/
 CLAUDE.md
-install-git-hooks.sh
 
 # Mono repository
 TODO.md
