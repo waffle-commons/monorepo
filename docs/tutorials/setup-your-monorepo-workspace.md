@@ -125,10 +125,10 @@ This reads each component's `var/data/phpunit-coverage/index.html` and compares 
 If you'll be authoring commits, install the Project Graphify hooks so they trigger automatically:
 
 ```bash
-./install-git-hooks.sh
+./scripts/install-git-hooks.sh
 ```
 
-Hooks land in **each submodule's** `.git/hooks/` directory (`pre-commit`, `post-checkout`, `post-merge`, `post-rewrite`). See [`install-git-hooks.sh` reference](../reference/scripts/install-git-hooks.md).
+Hooks land in **each submodule's** `.git/hooks/` directory (`pre-commit`, `pre-push`, `post-checkout`, `post-merge`, `post-rewrite`). See [`scripts/install-git-hooks.sh` reference](../reference/scripts/install-git-hooks.md).
 
 ## What you've accomplished
 

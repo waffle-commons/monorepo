@@ -7,7 +7,7 @@
 ## The one-liner
 
 ```bash
-./install-git-hooks.sh
+./scripts/install-git-hooks.sh
 ```
 
 The script walks every submodule (any directory whose `.git` exists at depth 2-3), creates the four hooks, and chmod-+x's them. See the [reference](../reference/scripts/install-git-hooks.md) for the exact script.

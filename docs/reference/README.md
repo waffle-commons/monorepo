@@ -20,7 +20,7 @@
 
 - [**`run-all.sh`**](scripts/run-all.md) — fan a command across every component.
 - [**`check-coverage.sh`**](scripts/check-coverage.md) — read PHPUnit coverage and enforce the 95% bar.
-- [**`install-git-hooks.sh`**](scripts/install-git-hooks.md) — install Project Graphify hooks in every submodule.
+- [**`scripts/install-git-hooks.sh`**](scripts/install-git-hooks.md) — install pre-commit Mago + pre-push sanity hooks (and Project Graphify hooks) in every submodule.
 - [**`zip-project.sh`**](scripts/zip-project.md) — package the umbrella for distribution.
 
 ## How reference pages are structured

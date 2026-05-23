@@ -140,9 +140,9 @@ waffle-commons/
 ├── opencode.json          ← OpenCode IDE config
 ├── run-all.sh             ← fan a command out across every component
 ├── check-coverage.sh      ← read PHPUnit coverage reports, enforce ≥95%
-├── install-git-hooks.sh   ← install Project Graphify hooks in every submodule
 ├── zip-project.sh         ← package the umbrella for distribution
-├── scripts/               ← TypeScript helpers (build-graph, query-graph, update-project-graphify)
+├── bin/wfl                ← unified host-side developer CLI (docker / mago / phpunit wrapper)
+├── scripts/               ← hook installer + hook payloads (pre-commit-mago, pre-push-sanity)
 ├── docs/                  ← MONOREPO contributor documentation (Diátaxis)
 ├── documentation/         ← FRAMEWORK user documentation (Diátaxis, submodule)
 ├── component-template/    ← scaffold for new components (submodule)

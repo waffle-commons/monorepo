@@ -3,6 +3,9 @@
 .vscode/
 .idx/
 
+# OS
+**/.DS_Store
+
 # Tools
 .antigravitycli/
 .claude/
