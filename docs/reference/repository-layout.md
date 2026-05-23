@@ -7,7 +7,7 @@
 
 | Path | Type | Tracked? | Purpose |
 | :--- | :--- | :--- | :--- |
-| `.github/` | submodule | yes | Org-wide GitHub config (issue templates, PR templates). |
+| `.github/` | dir | yes | Umbrella GitHub config (issue/PR templates, `workflows/umbrella-ci.yml`, `workflows/release-wave.yml`). |
 | `.github-private/` | submodule | yes | Private org config (mirror, not always present). |
 | `.opencode/` | dir | yes | OpenCode IDE config + `skills/` AI prompt library. |
 | `build/` | dir | gitignored | Output of `zip-project.sh` (audit archives, dated). |
@@ -17,7 +17,7 @@
 | `documentation/` | submodule | yes | Framework user documentation (separate Diátaxis tree). |
 | `graphify-out/` | dir | gitignored | Project Graphify generated graph artifacts. |
 | `project_system/` | dir | gitignored | Working area for in-progress system-level artifacts. |
-| `scripts/` | dir | yes | TypeScript helpers (`build-graph.ts`, `query-graph.ts`, `update-project-graphify.sh`). |
+| `scripts/` | dir | yes | Git hook installer (`install-git-hooks.sh`) plus hook payloads in `scripts/hooks/` (`pre-commit-mago.sh`, `pre-push-sanity.sh`). |
 | `skeleton/` | submodule | yes | `composer create-project` template (FrankenPHP + Docker + sample). |
 | `tmp/` | dir | gitignored | Local scratch space. |
 | `workspace/` | submodule | yes | Contributor dev environment: Docker, path repos, integration tests. |
@@ -41,7 +41,7 @@
 | `scripts/hooks/pre-push-sanity.sh` | Full `composer mago` + `composer tests` gate fired by `git push` when the ref is ahead of remote. |
 | `keystore.jks` | Java keystore used by signing tooling (rare; see your team's release docs). |
 | `TODO.md` | Working notes. Not authoritative. |
-| `.gitmodules` | The canonical list of submodule paths + remote URLs. 19 entries. |
+| `.gitmodules` | The canonical list of submodule paths + remote URLs. 21 entries. |
 
 ## Per-submodule layout
 

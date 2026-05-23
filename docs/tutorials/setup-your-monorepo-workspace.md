@@ -132,7 +132,7 @@ Hooks land in **each submodule's** `.git/hooks/` directory (`pre-commit`, `pre-p
 
 ## What you've accomplished
 
-- 19 submodules cloned and initialised;
+- 21 submodules cloned and initialised;
 - `waffle-dev` container running;
 - one component (`contracts`) installed, lint-clean, and test-green;
 - familiarity with the canonical `docker exec -it -w /waffle-commons/<comp> waffle-dev <cmd>` invocation;

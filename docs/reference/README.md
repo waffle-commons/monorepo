@@ -23,6 +23,10 @@
 - [**`scripts/install-git-hooks.sh`**](scripts/install-git-hooks.md) — install pre-commit Mago + pre-push sanity hooks (and Project Graphify hooks) in every submodule.
 - [**`zip-project.sh`**](scripts/zip-project.md) — package the umbrella for distribution.
 
+### CI / release workflows
+
+- [**`release-wave.yml`**](workflows/release-wave.md) — propagates umbrella tag → every component repo (tag + GitHub Release with auto-generated notes).
+
 ## How reference pages are structured
 
 Every reference page in this tree starts with:
