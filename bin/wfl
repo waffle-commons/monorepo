@@ -134,6 +134,7 @@ ${C_DIM}PHP PROFILE${C_RST}
 
 ${C_DIM}MAINTENANCE${C_RST}
   logs clear            truncate /tmp/xdebug.log and /var/log/caddy/*.log
+  cache clear [comp]    clear the PSR-16 framework cache (var/cache/psr16) for a component
   components            list known submodule components
   help                  show this help
 
@@ -256,6 +257,14 @@ cmd_logs_clear() {
   ok "logs cleared"
 }
 
+cmd_cache_clear() {
+  local comp; comp="$(_resolve_component "${1:-}")"
+  _ensure_running
+  info "clearing PSR-16 framework cache for '$comp'..."
+  docker exec -w "/waffle-commons/$comp" "$CONTAINER" sh -c 'rm -rf var/cache/psr16 2>/dev/null || true'
+  ok "cache cleared (var/cache/psr16)"
+}
+
 cmd_components() { _list_components; }
 
 # ---------------------------------------------------------------------------
@@ -281,6 +290,14 @@ main() {
         clear) cmd_logs_clear "$@" ;;
         ""   ) die "usage: wfl logs clear" ;;
         *    ) die "unknown 'logs' subcommand: $logsub" ;;
+      esac
+      ;;
+    cache)
+      local cachesub="${1:-}"; shift || true
+      case "$cachesub" in
+        clear) cmd_cache_clear "$@" ;;
+        ""   ) die "usage: wfl cache clear [component]" ;;
+        *    ) die "unknown 'cache' subcommand: $cachesub" ;;
       esac
       ;;
     help|-h|--help) cmd_help ;;
