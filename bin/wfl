@@ -151,6 +151,8 @@ ${C_DIM}MAINTENANCE${C_RST}
 ${C_DIM}DEVELOPMENT${C_RST}
   link <consumer> <provider>   link a local provider component into a consumer composer.json
   unlink <consumer> <provider>  unlink a local provider component from a consumer composer.json
+  csrf-init [token-id]          generate matching WAFFLE_SID & CSRF token for testing (defaults to '_default')
+  secret-gen                    generate a fresh 32-byte cryptographically secure application secret
 
 ${C_DIM}ENV${C_RST}
   Containers : $CONTAINER, $CONTAINER_LEGACY, $CONTAINER_REDIS
@@ -306,6 +308,147 @@ cmd_cache_clear() {
   ok "cache cleared (var/cache/psr16)"
 }
 
+cmd_csrf_init() {
+  local token_id="${1:-_default}"
+  local secret=""
+
+  # Try to read WAFFLE_CSRF_SECRET from environment or .env files
+  if [ -n "${WAFFLE_CSRF_SECRET:-}" ]; then
+    secret="$WAFFLE_CSRF_SECRET"
+  elif [ -f "$REPO_ROOT/.env" ] && grep -q '^WAFFLE_CSRF_SECRET=' "$REPO_ROOT/.env"; then
+    secret="$(grep '^WAFFLE_CSRF_SECRET=' "$REPO_ROOT/.env" | cut -d'=' -f2- || true)"
+  elif [ -f "$REPO_ROOT/workspace/.env" ] && grep -q '^WAFFLE_CSRF_SECRET=' "$REPO_ROOT/workspace/.env"; then
+    secret="$(grep '^WAFFLE_CSRF_SECRET=' "$REPO_ROOT/workspace/.env" | cut -d'=' -f2- || true)"
+  fi
+
+  # Run PHP execution
+  local php_code
+  php_code="
+\$secret = getenv('WAFFLE_CSRF_SECRET');
+if (!\$secret) {
+    \$envFiles = [
+        getenv('REPO_ROOT') . '/workspace/.env',
+        getenv('REPO_ROOT') . '/.env',
+        '/waffle-commons/workspace/.env',
+        '/waffle-commons/.env'
+    ];
+    foreach (\$envFiles as \$envFile) {
+        if (\$envFile && file_exists(\$envFile)) {
+            \$lines = file(\$envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            foreach (\$lines as \$line) {
+                if (str_starts_with(trim(\$line), 'WAFFLE_CSRF_SECRET=')) {
+                    \$parts = explode('=', \$line, 2);
+                    \$secret = trim(\$parts[1], \" \t\n\r\0\x0B'\\\"\");
+                    break 2;
+                }
+            }
+        }
+    }
+}
+
+\$isGenerated = false;
+if (!\$secret || strlen(\$secret) < 32) {
+    \$secret = bin2hex(random_bytes(32));
+    \$isGenerated = true;
+}
+
+\$rawSid = random_bytes(32);
+\$sid = rtrim(strtr(base64_encode(\$rawSid), '+/', '-_'), '=');
+\$tokenId = getenv('TOKEN_ID') ?: '_default';
+\$nonce = random_bytes(16);
+\$expiresAtTimestamp = time() + 3600;
+\$timestampBytes = pack('J', \$expiresAtTimestamp);
+\$hmac = hash_hmac('sha256', \$nonce . \$timestampBytes . \$tokenId . \$sid, \$secret, true);
+\$token = rtrim(strtr(base64_encode(\$nonce . \$timestampBytes . \$hmac), '+/', '-_'), '=');
+
+echo 'SECRET:' . \$secret . \"\n\";
+echo 'GENERATED:' . (\$isGenerated ? 'true' : 'false') . \"\n\";
+echo 'SID:' . \$sid . \"\n\";
+echo 'TOKEN:' . \$token . \"\n\";
+echo 'ID:' . \$tokenId . \"\n\";
+"
+
+  local php_out=""
+  local container_state; container_state="$(_container_state)"
+  if [ "$container_state" = "running" ]; then
+    php_out="$(docker exec -e REPO_ROOT="$REPO_ROOT" -e WAFFLE_CSRF_SECRET="$secret" -e TOKEN_ID="$token_id" "$CONTAINER" php -r "$php_code" 2>/dev/null || true)"
+  fi
+
+  # Fallback to local host php if docker exec is empty or not running
+  if [ -z "$php_out" ]; then
+    if command -v php >/dev/null 2>&1; then
+      php_out="$(REPO_ROOT="$REPO_ROOT" WAFFLE_CSRF_SECRET="$secret" TOKEN_ID="$token_id" php -r "$php_code" 2>/dev/null || true)"
+    fi
+  fi
+
+  if [ -z "$php_out" ]; then
+    die "PHP is not available on host and container '$CONTAINER' is not running. Run 'wfl up' first."
+  fi
+
+  # Parse output variables
+  local out_secret="" out_gen="" out_sid="" out_token="" out_id=""
+  while IFS= read -r line; do
+    case "$line" in
+      SECRET:*)    out_secret="${line#SECRET:}" ;;
+      GENERATED:*) out_gen="${line#GENERATED:}" ;;
+      SID:*)       out_sid="${line#SID:}" ;;
+      TOKEN:*)     out_token="${line#TOKEN:}" ;;
+      ID:*)        out_id="${line#ID:}" ;;
+    esac
+  done <<< "$php_out"
+
+  # Display beautifully
+  info "Generating CSRF test credentials..."
+  echo ""
+  if [ "$out_gen" = "true" ]; then
+    warn "WAFFLE_CSRF_SECRET was not found in environment or .env file."
+    info "Generated a fresh secret for this session (add this to your .env file):"
+    printf "  %s%s%s\n\n" "$C_YEL" "$out_secret" "$C_RST"
+  else
+    ok "Using existing WAFFLE_CSRF_SECRET loaded from environment/.env"
+    printf "  %s%s%s\n\n" "$C_DIM" "$out_secret" "$C_RST"
+  fi
+
+  ok "CSRF credentials generated successfully (Token ID: '$out_id')"
+  echo "------------------------------------------------------------"
+  printf "%sWAFFLE_SID Cookie Value (valid for 30 days):%s\n" "$C_CYA" "$C_RST"
+  printf "  %s%s%s\n\n" "$C_GRN" "$out_sid" "$C_RST"
+
+  printf "%sX-CSRF-Token / _csrf_token value (valid for 1 hour):%s\n" "$C_CYA" "$C_RST"
+  printf "  %s%s%s\n" "$C_GRN" "$out_token" "$C_RST"
+  echo "------------------------------------------------------------"
+  echo ""
+  info "To use these in Postman:"
+  echo "  1. Add a cookie named 'WAFFLE_SID' with value '$out_sid' for your local domain."
+  echo "  2. Add a request header 'X-CSRF-Token' with value '$out_token'."
+}
+
+cmd_secret_gen() {
+  local secret=""
+
+  if command -v php >/dev/null 2>&1; then
+    secret="$(php -r 'echo bin2hex(random_bytes(32));' || true)"
+  elif command -v openssl >/dev/null 2>&1; then
+    secret="$(openssl rand -hex 32 || true)"
+  elif [ "$(_container_state)" = "running" ]; then
+    secret="$(docker exec "$CONTAINER" php -r 'echo bin2hex(random_bytes(32));' || true)"
+  fi
+
+  if [ -z "$secret" ]; then
+    die "Neither PHP, openssl, nor the running container '$CONTAINER' could be used to generate a secure secret."
+  fi
+
+  info "Generating a fresh 32-byte (256-bit) cryptographically secure application secret..."
+  echo ""
+  ok "Generated successfully!"
+  echo "------------------------------------------------------------"
+  printf "  %s%s%s\n" "$C_GRN" "$secret" "$C_RST"
+  echo "------------------------------------------------------------"
+  echo ""
+  info "To use this in your application, add or replace it in your .env file:"
+  printf "  %sAPP_SECRET=%s%s\n" "$C_YEL" "$secret" "$C_RST"
+}
+
 cmd_components() { _list_components; }
 
 cmd_link() {
@@ -448,6 +591,8 @@ main() {
     components)  cmd_components  "$@" ;;
     link)        cmd_link        "$@" ;;
     unlink)      cmd_unlink      "$@" ;;
+    csrf-init)   cmd_csrf_init   "$@" ;;
+    secret-gen)  cmd_secret_gen  "$@" ;;
     logs)
       local logsub="${1:-}"; shift || true
       case "$logsub" in
