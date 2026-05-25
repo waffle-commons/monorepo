@@ -111,9 +111,14 @@ EOF
 
 # BEGIN PROJECT GRAPHIFY PRE-COMMIT HOOK
 # Go to the umbrella root to run the global update script
-if [ -x "../../scripts/update-project-graphify.sh" ]; then
-  (cd ../../ && ./scripts/update-project-graphify.sh)
-fi
+CUR_DIR="$(pwd)"
+while [ "$CUR_DIR" != "/" ]; do
+  if [ -x "$CUR_DIR/scripts/update-project-graphify.sh" ]; then
+    (cd "$CUR_DIR" && ./scripts/update-project-graphify.sh)
+    break
+  fi
+  CUR_DIR="$(dirname "$CUR_DIR")"
+done
 # END PROJECT GRAPHIFY PRE-COMMIT HOOK
 EOF
   fi
@@ -148,9 +153,14 @@ EOF
       cat >> "$SUB_HOOK_FILE" <<'EOF'
 
 # BEGIN PROJECT GRAPHIFY REFRESH HOOK
-if [ -x "../../scripts/update-project-graphify.sh" ]; then
-  (cd ../../ && ./scripts/update-project-graphify.sh)
-fi
+CUR_DIR="$(pwd)"
+while [ "$CUR_DIR" != "/" ]; do
+  if [ -x "$CUR_DIR/scripts/update-project-graphify.sh" ]; then
+    (cd "$CUR_DIR" && ./scripts/update-project-graphify.sh)
+    break
+  fi
+  CUR_DIR="$(dirname "$CUR_DIR")"
+done
 # END PROJECT GRAPHIFY REFRESH HOOK
 EOF
     fi

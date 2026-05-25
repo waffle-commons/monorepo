@@ -1,0 +1,27 @@
+Traceback (most recent call last):
+  File "/Users/lesliepetrimaux/Git/Perso/waffle-commons/.tooling-venv/bin/graphify", line 6, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/Users/lesliepetrimaux/Git/Perso/waffle-commons/.tooling-venv/lib/python3.12/site-packages/graphify/__main__.py", line 2435, in main
+    merged = _nx.compose(merged, prefixed)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lesliepetrimaux/Git/Perso/waffle-commons/.tooling-venv/lib/python3.12/site-packages/networkx/utils/decorators.py", line 784, in func
+    return argmap._lazy_compile(__wrapper)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<class 'networkx.utils.decorators.argmap'> compilation 20", line 3, in argmap_compose_17
+  File "/Users/lesliepetrimaux/Git/Perso/waffle-commons/.tooling-venv/lib/python3.12/site-packages/networkx/utils/backends.py", line 551, in _call_if_no_backends_installed
+    return self.orig_func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lesliepetrimaux/Git/Perso/waffle-commons/.tooling-venv/lib/python3.12/site-packages/networkx/algorithms/operators/binary.py", line 379, in compose
+    return nx.compose_all([G, H])
+           ^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lesliepetrimaux/Git/Perso/waffle-commons/.tooling-venv/lib/python3.12/site-packages/networkx/utils/decorators.py", line 784, in func
+    return argmap._lazy_compile(__wrapper)(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<class 'networkx.utils.decorators.argmap'> compilation 24", line 3, in argmap_compose_all_21
+  File "/Users/lesliepetrimaux/Git/Perso/waffle-commons/.tooling-venv/lib/python3.12/site-packages/networkx/utils/backends.py", line 551, in _call_if_no_backends_installed
+    return self.orig_func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lesliepetrimaux/Git/Perso/waffle-commons/.tooling-venv/lib/python3.12/site-packages/networkx/algorithms/operators/all.py", line 219, in compose_all
+    raise nx.NetworkXError("All graphs must be graphs or multigraphs.")
+networkx.exception.NetworkXError: All graphs must be graphs or multigraphs.

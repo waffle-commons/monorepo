@@ -27,6 +27,8 @@ REPO_ROOT="$(cd -P -- "$BIN_DIR/.." && pwd)"
 COMPOSE_FILE="$REPO_ROOT/workspace/docker-compose.yml"
 COMPOSE_SVC="waffle"
 CONTAINER="waffle-dev"
+CONTAINER_LEGACY="legacy-backend"
+CONTAINER_REDIS="waffle-redis"
 PHP_INI_DIR="$REPO_ROOT/workspace/docker/php"
 ACTIVE_INI="$PHP_INI_DIR/mode-active.ini"
 GITMODULES="$REPO_ROOT/.gitmodules"
@@ -55,6 +57,14 @@ _ensure_compose() {
 
 _container_state() {
   docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || printf 'absent'
+}
+
+_legacy_state() {
+  docker inspect -f '{{.State.Status}}' "$CONTAINER_LEGACY" 2>/dev/null || printf 'absent'
+}
+
+_redis_state() {
+  docker inspect -f '{{.State.Status}}' "$CONTAINER_REDIS" 2>/dev/null || printf 'absent'
 }
 
 _ensure_running() {
@@ -137,6 +147,10 @@ ${C_DIM}MAINTENANCE${C_RST}
   cache clear [comp]    clear the PSR-16 framework cache (var/cache/psr16) for a component
   components            list known submodule components
   help                  show this help
+
+${C_DIM}DEVELOPMENT${C_RST}
+  link <consumer> <provider>   link a local provider component into a consumer composer.json
+  unlink <consumer> <provider>  unlink a local provider component from a consumer composer.json
 
 ${C_DIM}ENV${C_RST}
   Container : $CONTAINER
@@ -262,9 +276,13 @@ cmd_status() {
     profile="✗ missing: $ACTIVE_INI"
   fi
 
-  local state; state="$(_container_state)"
-  printf 'PHP profile : %s\n' "$profile"
-  printf 'Container   : %s (%s)\n' "$CONTAINER" "$state"
+  local container_state; container_state="$(_container_state)"
+  local legacy_state; legacy_state="$(_legacy_state)"
+  local redis_state; redis_state="$(_redis_state)"
+  printf 'PHP profile : %s\n---\n' "$profile"
+  printf 'Container   : %s (%s)\n' "$CONTAINER" "$container_state"
+  printf 'Legacy      : %s (%s)\n' "$CONTAINER_LEGACY" "$legacy_state"
+  printf 'Redis       : %s (%s)\n---\n' "$CONTAINER_REDIS" "$redis_state"
   printf 'Compose     : %s\n' "$COMPOSE_FILE"
   printf 'Repo root   : %s\n' "$REPO_ROOT"
 }
@@ -290,6 +308,127 @@ cmd_cache_clear() {
 
 cmd_components() { _list_components; }
 
+cmd_link() {
+  local consumer="${1:-}"
+  local provider="${2:-}"
+  if [ -z "$consumer" ] || [ -z "$provider" ]; then
+    die "Usage: wfl link <consumer> <provider>"
+  fi
+
+  local UMBRELLA_DIR="${REPO_ROOT}"
+  local consumer_dir="${UMBRELLA_DIR}/${consumer}"
+  local provider_dir="${UMBRELLA_DIR}/${provider}"
+
+  # Validate that directories and composer.json exist
+  [ -d "$consumer_dir" ] || die "[ERROR] Component '$consumer' not found."
+  [ -d "$provider_dir" ] || die "[ERROR] Component '$provider' not found."
+  [ -f "$consumer_dir/composer.json" ] || die "[ERROR] composer.json for component '$consumer' not found."
+  [ -f "$provider_dir/composer.json" ] || die "[ERROR] composer.json for component '$provider' not found."
+
+  _ensure_running
+
+  info "Local linking: modifying $consumer/composer.json to point to $provider..."
+
+  # Zero-Magic inline PHP execution inside the Docker container
+  docker exec -w "/waffle-commons/$consumer" -e PROVIDER="$provider" "$CONTAINER" php -r '
+    $provider = getenv("PROVIDER");
+    $file = "composer.json";
+    if (!file_exists($file)) {
+        fwrite(STDERR, "[ERROR] File $file not found.\n");
+        exit(1);
+    }
+    $data = json_decode(file_get_contents($file), true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        fwrite(STDERR, "[ERROR] Failed to decode composer.json.\n");
+        exit(1);
+    }
+    if (!isset($data["repositories"])) {
+        $data["repositories"] = [];
+    } else if (!is_array($data["repositories"])) {
+        $data["repositories"] = array_values((array)$data["repositories"]);
+    }
+    $url = "../" . $provider;
+    $exists = false;
+    foreach ($data["repositories"] as $repo) {
+        if (isset($repo["type"]) && $repo["type"] === "path" && isset($repo["url"]) && $repo["url"] === $url) {
+            $exists = true;
+            break;
+        }
+    }
+    if (!$exists) {
+        array_unshift($data["repositories"], [
+            "type" => "path",
+            "url" => $url,
+            "canonical" => false,
+            "options" => [
+                "symlink" => false
+            ]
+        ]);
+    }
+    file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+  '
+
+  info "Updating Composer packages in container..."
+  docker exec -w "/waffle-commons/$consumer" "$CONTAINER" composer update "waffle-commons/$provider" --no-interaction
+
+  ok "[SUCCESS] Component \"$provider\" linked to \"$consumer\" successfully."
+}
+
+cmd_unlink() {
+  local consumer="${1:-}"
+  local provider="${2:-}"
+  if [ -z "$consumer" ] || [ -z "$provider" ]; then
+    die "Usage: wfl unlink <consumer> <provider>"
+  fi
+
+  local UMBRELLA_DIR="${REPO_ROOT}"
+  local consumer_dir="${UMBRELLA_DIR}/${consumer}"
+
+  # Validate directories
+  [ -d "$consumer_dir" ] || die "[ERROR] Component '$consumer' not found."
+  [ -f "$consumer_dir/composer.json" ] || die "[ERROR] composer.json for component '$consumer' not found."
+
+  _ensure_running
+
+  info "Local unlinking: restoring $consumer/composer.json for $provider..."
+
+  # Zero-Magic inline PHP execution to revert modifications
+  docker exec -w "/waffle-commons/$consumer" -e PROVIDER="$provider" "$CONTAINER" php -r '
+    $provider = getenv("PROVIDER");
+    $file = "composer.json";
+    if (!file_exists($file)) {
+        fwrite(STDERR, "[ERROR] File $file not found.\n");
+        exit(1);
+    }
+    $data = json_decode(file_get_contents($file), true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        fwrite(STDERR, "[ERROR] Failed to decode composer.json.\n");
+        exit(1);
+    }
+    if (isset($data["repositories"]) && is_array($data["repositories"])) {
+        $url = "../" . $provider;
+        $newRepos = [];
+        foreach ($data["repositories"] as $repo) {
+            if (isset($repo["type"]) && $repo["type"] === "path" && isset($repo["url"]) && $repo["url"] === $url) {
+                continue;
+            }
+            $newRepos[] = $repo;
+        }
+        if (empty($newRepos)) {
+            unset($data["repositories"]);
+        } else {
+            $data["repositories"] = $newRepos;
+        }
+        file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+    }
+  '
+
+  info "Restoring standard Composer packages in container..."
+  docker exec -w "/waffle-commons/$consumer" "$CONTAINER" composer update "waffle-commons/$provider" --no-interaction
+
+  ok "[SUCCESS] Component \"$provider\" unlinked from \"$consumer\" successfully."
+}
+
 # ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
@@ -307,6 +446,8 @@ main() {
     bench)       cmd_bench       "$@" ;;
     status)      cmd_status      "$@" ;;
     components)  cmd_components  "$@" ;;
+    link)        cmd_link        "$@" ;;
+    unlink)      cmd_unlink      "$@" ;;
     logs)
       local logsub="${1:-}"; shift || true
       case "$logsub" in
