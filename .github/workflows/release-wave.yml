@@ -26,10 +26,10 @@
 
 name: release-wave
 
-on:
-  push:
-    tags:
-      - '*'
+on: workflow_dispatch
+#  push:
+#    tags:
+#      - '*'
 
 permissions:
   contents: read
@@ -46,7 +46,7 @@ jobs:
       UMBRELLA_TAG:       ${{ github.ref_name }}
       RELEASE_TOKEN:      ${{ secrets.WAFFLE_RELEASE_TOKEN }}
       # Comma-separated submodule paths to skip entirely (no tag, no release).
-      EXCLUDE_SUBMODULES: 'component-name'
+      EXCLUDE_SUBMODULES: 'component-template'
       # POSIX ERE matched with `grep -E`; matches umbrella-style tags like
       # '0.1.0-beta0' or '1.2.3-rc.4'. Non-matching tags are treated as stable.
       PRERELEASE_REGEX:   '^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc|dev|pre)([0-9.]*)?$'
