@@ -1,6 +1,3 @@
-[submodule ".github-private"]
-	path = .github-private
-	url = git@github.com:waffle-commons/.github-private.git
 [submodule "component-template"]
 	path = component-template
 	url = git@github.com:waffle-commons/component-template.git
