@@ -62,7 +62,7 @@ Documentation is split by audience, deliberately.
 | Audience | Tree | Contents |
 | :--- | :--- | :--- |
 | **You're building an app on Waffle** | [`/documentation`](documentation/) | Framework usage. Tutorials (write a controller), how-tos (secure a controller, configure routing), reference (every component's public surface), explanation (architecture, lifecycle, CSRF design). |
-| **You're contributing to Waffle itself** | [`/docs`](docs/) | Monorepo usage. Tutorials (set up the workspace), how-tos (add a component, release a version), reference (`run-all.sh`, Docker container, `CLAUDE.md`), explanation (why submodules, the Mago Purge Protocol). |
+| **You're contributing to Waffle itself** | [`/docs`](docs/) | Monorepo usage. Tutorials (set up the workspace), how-tos (add a component, release a version), reference (`loop.sh`, Docker container, `CLAUDE.md`), explanation (why submodules, the Mago Purge Protocol). |
 
 If you're not sure which tree to read: are you `composer require`-ing Waffle? → `/documentation`. Are you `git clone`-ing this repo? → `/docs`.
 
@@ -96,8 +96,8 @@ docker exec -it -w /waffle-commons/security waffle-dev composer tests
 Or fan a command out across **all** components:
 
 ```bash
-./run-all.sh composer mago
-./check-coverage.sh
+./loop.sh composer mago
+./coverage.sh
 ```
 
 See [`docs/tutorials/setup-your-monorepo-workspace.md`](docs/tutorials/setup-your-monorepo-workspace.md) for the full setup walkthrough.
@@ -122,7 +122,7 @@ Each box is a standalone PSR-15 middleware; the order is wired by `AppKernelFact
 Every component on every PR:
 
 - `vendor/bin/mago fmt`, `vendor/bin/mago lint`, `vendor/bin/mago analyze`, `vendor/bin/mago guard` — **zero errors, zero warnings, zero notices, zero baseline files**;
-- `vendor/bin/phpunit` — **≥95% coverage** on modified code (enforced by [`check-coverage.sh`](check-coverage.sh));
+- `vendor/bin/phpunit` — **≥95% coverage** on modified code (enforced by [`coverage.sh`](coverage.sh));
 - Strict PHP 8.5: `declare(strict_types=1)`, no `mixed`, typed constants, Property Hooks for DTO validation, Asymmetric Visibility for safe mutation;
 - All work performed inside Docker (`waffle-dev`); native PHP on the host machine is intentionally untested.
 
@@ -138,8 +138,8 @@ waffle-commons/
 ├── CODEOWNERS             ← @waffle-commons/waffle-core
 ├── component-ruleset.json ← GitHub branch protection ruleset (the canonical version)
 ├── opencode.json          ← OpenCode IDE config
-├── run-all.sh             ← fan a command out across every component
-├── check-coverage.sh      ← read PHPUnit coverage reports, enforce ≥95%
+├── loop.sh             ← fan a command out across every component
+├── coverage.sh      ← read PHPUnit coverage reports, enforce ≥95%
 ├── zip-project.sh         ← package the umbrella for distribution
 ├── bin/wfl                ← unified host-side developer CLI (docker / mago / phpunit wrapper)
 ├── scripts/               ← hook installer + hook payloads (pre-commit-mago, pre-push-sanity)

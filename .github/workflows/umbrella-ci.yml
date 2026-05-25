@@ -56,10 +56,8 @@ jobs:
             routing:          'routing/**'
             runtime:          'runtime/**'
             security:         'security/**'
-            skeleton:         'skeleton/**'
             utils:            'utils/**'
             waffle:           'waffle/**'
-            workspace:        'workspace/**'
 
       - name: Build matrix
         id: matrix

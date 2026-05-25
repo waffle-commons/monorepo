@@ -59,9 +59,9 @@ vendor/bin/phpunit --filter MyTest      # fast
 vendor/bin/phpunit --filter OtherTest   # also fast
 ```
 
-## "But the `run-all.sh` script runs on the host, not in the container"
+## "But the `loop.sh` script runs on the host, not in the container"
 
-True. `run-all.sh` is host-side — it iterates over component directories with shell `cd`. It doesn't wrap commands in `docker exec` because:
+True. `loop.sh` is host-side — it iterates over component directories with shell `cd`. It doesn't wrap commands in `docker exec` because:
 
 - many of its uses are pure shell (`git status`, `ls`);
 - for PHP commands, contributors generally already have a shell open in the container and don't want the overhead of nested wrappers.
@@ -69,10 +69,10 @@ True. `run-all.sh` is host-side — it iterates over component directories with 
 If you need a PHP command run across all components from the host, wrap explicitly:
 
 ```bash
-./run-all.sh bash -c 'docker exec -w "/waffle-commons/$(basename "$PWD")" waffle-dev composer mago'
+./loop.sh bash -c 'docker exec -w "/waffle-commons/$(basename "$PWD")" waffle-dev composer mago'
 ```
 
-See [`run-all.sh` reference](../reference/scripts/run-all.md).
+See [`loop.sh` reference](../reference/scripts/run-all.md).
 
 ## When this rule will probably loosen
 

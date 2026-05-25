@@ -14,7 +14,7 @@ A single line. The `@waffle-commons/waffle-core` GitHub team is the global code-
 
 ## Why one team for the whole repo
 
-The umbrella's content is small and tightly coupled — submodule pointer bumps, `run-all.sh`, `CLAUDE.md`. Per-path ownership would add complexity for ~no benefit. Component-specific review concentrates in each component's *own* repository, where that repo's `CODEOWNERS` (often the same `@waffle-commons/waffle-core` team) takes over.
+The umbrella's content is small and tightly coupled — submodule pointer bumps, `loop.sh`, `CLAUDE.md`. Per-path ownership would add complexity for ~no benefit. Component-specific review concentrates in each component's *own* repository, where that repo's `CODEOWNERS` (often the same `@waffle-commons/waffle-core` team) takes over.
 
 ## Adding per-path ownership
 
@@ -29,8 +29,8 @@ If you ever need to scope reviews more tightly:
 /documentation/    @waffle-commons/waffle-core @waffle-commons/docs
 
 # Release-flow files require release managers.
-/run-all.sh             @waffle-commons/waffle-core @waffle-commons/release
-/check-coverage.sh      @waffle-commons/waffle-core @waffle-commons/release
+/loop.sh             @waffle-commons/waffle-core @waffle-commons/release
+/coverage.sh      @waffle-commons/waffle-core @waffle-commons/release
 /component-ruleset.json @waffle-commons/waffle-core @waffle-commons/release
 ```
 

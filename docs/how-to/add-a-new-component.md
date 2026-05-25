@@ -81,10 +81,10 @@ The umbrella now tracks `my-thing` at its initial commit.
 
 ## 5. Register it in the cross-component scripts
 
-Both `run-all.sh` and `check-coverage.sh` carry a hardcoded `COMPONENTS=( … )` array. Append your component:
+Both `loop.sh` and `coverage.sh` carry a hardcoded `COMPONENTS=( … )` array. Append your component:
 
 ```bash
-# run-all.sh + check-coverage.sh, alphabetical insertion
+# loop.sh + coverage.sh, alphabetical insertion
 COMPONENTS=(
     "cache"
     "config"
@@ -97,7 +97,7 @@ COMPONENTS=(
 Verify:
 
 ```bash
-./run-all.sh ls composer.json
+./loop.sh ls composer.json
 # my-thing should appear with a ✅
 ```
 
@@ -118,10 +118,10 @@ Per-PR checklist:
 
 - [ ] New submodule exists on GitHub at `waffle-commons/<thing>` with the canonical ruleset applied.
 - [ ] `.gitmodules` and the submodule pointer committed in the umbrella.
-- [ ] `run-all.sh` + `check-coverage.sh` arrays updated.
+- [ ] `loop.sh` + `coverage.sh` arrays updated.
 - [ ] `README.md` matrix and `documentation/reference/index.md` updated.
 - [ ] New `documentation/reference/<thing>.md` reference page.
-- [ ] `./run-all.sh composer mago` and `./run-all.sh composer tests` still green.
+- [ ] `./loop.sh composer mago` and `./loop.sh composer tests` still green.
 
 ## Related
 

@@ -18,7 +18,6 @@ COMPONENTS=(
     "security"
     "utils"
     "waffle"
-    "workspace"
 )
 
 CONTAINER_NAME="waffle-dev"
@@ -38,9 +37,9 @@ fi
 CMD_ARGS=("$@")
 
 if [ ${#CMD_ARGS[@]} -eq 0 ]; then
-    echo "💡 Usage: ./run-all.sh [--silent|-s | --verbose|-v] <command>"
-    echo "   Example (Silent, default): ./run-all.sh composer mago"
-    echo "   Example (Verbose):         ./run-all.sh --verbose ls -la"
+    echo "💡 Usage: ./loop.sh [--silent|-s | --verbose|-v] <command>"
+    echo "   Example (Silent, default): ./loop.sh composer mago"
+    echo "   Example (Verbose):         ./loop.sh --verbose ls -la"
     exit 1
 fi
 

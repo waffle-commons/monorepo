@@ -17,7 +17,6 @@ build/
 graphify-out/
 project_system/
 tmp/
-CLAUDE.md
 
 # Mono repository
 TODO.md

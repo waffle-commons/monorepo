@@ -13,7 +13,7 @@ This tutorial walks you through getting from zero to a working contributor envir
 | :--- | :--- | :--- |
 | **Git** | ≥ 2.30 | Submodule mechanics (`--recurse-submodules`). |
 | **Docker** with **Docker Compose** | Recent | All development happens inside the `waffle-dev` container — never natively on the host. See [Why Docker-first](../explanation/docker-first-development.md). |
-| **A shell** | Bash, Zsh, Fish — anything POSIX-ish | For the `run-all.sh` / `check-coverage.sh` helpers. |
+| **A shell** | Bash, Zsh, Fish — anything POSIX-ish | For the `loop.sh` / `coverage.sh` helpers. |
 
 You do **not** need a local PHP install. The container ships PHP 8.5 + Xdebug + Composer.
 
@@ -96,29 +96,29 @@ If either command fails on a fresh clone, **that is a bug** — open an issue ag
 
 ## 5. Fan a command out across every component
 
-The `run-all.sh` script wraps `cd $COMP && <command>` over every component. Try a read-only ping first:
+The `loop.sh` script wraps `cd $COMP && <command>` over every component. Try a read-only ping first:
 
 ```bash
-./run-all.sh ls composer.json
+./loop.sh ls composer.json
 ```
 
 That should print 18 ✅ lines (one per component). Now the real one:
 
 ```bash
-./run-all.sh composer mago
+./loop.sh composer mago
 ```
 
 This takes 1–3 minutes the first time (composer installs hit the network for every component). The summary at the bottom should say `🎉 Final state: SUCCESS`.
 
-> **If a component fails**, run `./run-all.sh --verbose composer mago` to see per-component output. See the [`run-all.sh` reference](../reference/scripts/run-all.md) for flags.
+> **If a component fails**, run `./loop.sh --verbose composer mago` to see per-component output. See the [`loop.sh` reference](../reference/scripts/run-all.md) for flags.
 
 ## 6. Verify coverage
 
 ```bash
-./check-coverage.sh
+./coverage.sh
 ```
 
-This reads each component's `var/data/phpunit-coverage/index.html` and compares against the 95% threshold. Components without a coverage report show as `❓ N/A` — that just means you haven't run their tests yet. Re-run after `./run-all.sh composer tests` if you want a complete picture.
+This reads each component's `var/data/phpunit-coverage/index.html` and compares against the 95% threshold. Components without a coverage report show as `❓ N/A` — that just means you haven't run their tests yet. Re-run after `./loop.sh composer tests` if you want a complete picture.
 
 ## 7. (Optional) Install Git hooks
 
@@ -136,7 +136,7 @@ Hooks land in **each submodule's** `.git/hooks/` directory (`pre-commit`, `pre-p
 - `waffle-dev` container running;
 - one component (`contracts`) installed, lint-clean, and test-green;
 - familiarity with the canonical `docker exec -it -w /waffle-commons/<comp> waffle-dev <cmd>` invocation;
-- the cross-component scripts (`run-all.sh`, `check-coverage.sh`) working.
+- the cross-component scripts (`loop.sh`, `coverage.sh`) working.
 
 ## Where next
 

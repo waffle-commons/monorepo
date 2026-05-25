@@ -24,19 +24,19 @@ Documentation is organised by what you're trying to do, following the [Diátaxis
 - [**Make your first cross-component change**](tutorials/make-your-first-cross-component-change.md) — submodule mechanics in practice.
 
 ### Doing a specific task?
-- [**Run checks across all components**](how-to/run-checks-across-components.md) — `run-all.sh`.
+- [**Run checks across all components**](how-to/run-checks-across-components.md) — `loop.sh`.
 - [**Add a new component**](how-to/add-a-new-component.md) — from `component-template`.
 - [**Update a submodule pointer**](how-to/update-a-submodule.md) — when a downstream change has merged.
 - [**Release a component**](how-to/release-a-component.md) — tag, push, Packagist.
 - [**Work on multiple components locally**](how-to/work-on-multiple-components-locally.md) — Composer path repositories.
 - [**Install Git hooks**](how-to/install-git-hooks.md) — `scripts/install-git-hooks.sh` + Project Graphify.
 - [**Bump submodule pointers in the umbrella**](how-to/bump-submodule-pointers.md).
-- [**Check coverage across components**](how-to/check-coverage-across-components.md) — `check-coverage.sh`.
+- [**Check coverage across components**](how-to/check-coverage-across-components.md) — `coverage.sh`.
 
 ### Looking up a specific tool?
 - [**Repository layout**](reference/repository-layout.md) — every directory explained.
 - [**Docker dev environment**](reference/docker-environment.md) — `waffle-dev` container.
-- [**`run-all.sh`**](reference/scripts/run-all.md), [**`check-coverage.sh`**](reference/scripts/check-coverage.md), [**`scripts/install-git-hooks.sh`**](reference/scripts/install-git-hooks.md), [**`zip-project.sh`**](reference/scripts/zip-project.md).
+- [**`loop.sh`**](reference/scripts/run-all.md), [**`coverage.sh`**](reference/scripts/check-coverage.md), [**`scripts/install-git-hooks.sh`**](reference/scripts/install-git-hooks.md), [**`zip-project.sh`**](reference/scripts/zip-project.md).
 - [**`CLAUDE.md` conventions**](reference/claude-md.md) — the canonical project rules.
 - [**OpenCode skills**](reference/opencode-skills.md) — `.opencode/skills/*` AI prompts.
 - [**`component-ruleset.json`**](reference/component-ruleset.md) — GitHub branch protection ruleset.

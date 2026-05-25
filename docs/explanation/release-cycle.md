@@ -46,10 +46,10 @@ A coordinated wave (e.g. `v0.1.0-beta1` → `v0.1.0-beta2`):
 
 1. **Pre-release sanity** — every component is green on its `main`:
    ```bash
-   ./run-all.sh composer mago
-   ./run-all.sh composer tests
-   ./run-all.sh composer audit
-   ./check-coverage.sh
+   ./loop.sh composer mago
+   ./loop.sh composer tests
+   ./loop.sh composer audit
+   ./coverage.sh
    ```
 2. **Topological release order.** Releases cascade upward:
    1. `contracts` (no internal deps).

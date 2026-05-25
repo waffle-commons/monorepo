@@ -22,7 +22,7 @@ These guides assume you've already set up the workspace — if not, start with t
 | Symptom | Read |
 | :--- | :--- |
 | "I cloned the umbrella but the component dirs are empty." | [Update a submodule](update-a-submodule.md). |
-| "Mago is unhappy in five components at once." | [Run checks across components](run-checks-across-components.md) (`./run-all.sh composer mago`). |
+| "Mago is unhappy in five components at once." | [Run checks across components](run-checks-across-components.md) (`./loop.sh composer mago`). |
 | "Coverage in CI dropped to 91%." | [Check coverage across components](check-coverage-across-components.md). |
 | "I want to test my `contracts` patch from inside `security` before pushing." | [Work on multiple components locally](work-on-multiple-components-locally.md). |
 | "We're ready to tag v0.1.0-beta2." | [Release a component](release-a-component.md) → [Bump submodule pointers](bump-submodule-pointers.md). |

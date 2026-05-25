@@ -32,8 +32,8 @@
 | `LICENSE` | MIT. |
 | `component-ruleset.json` | Canonical GitHub branch-protection ruleset shipped with this repo. See [component-ruleset reference](component-ruleset.md). |
 | `opencode.json` | OpenCode IDE / project configuration. |
-| `run-all.sh` | Fan a command across every component. See [scripts/run-all reference](scripts/run-all.md). |
-| `check-coverage.sh` | Read coverage HTML reports, enforce ≥95%. See [scripts/check-coverage reference](scripts/check-coverage.md). |
+| `loop.sh` | Fan a command across every component. See [scripts/run-all reference](scripts/run-all.md). |
+| `coverage.sh` | Read coverage HTML reports, enforce ≥95%. See [scripts/check-coverage reference](scripts/check-coverage.md). |
 | `zip-project.sh` | Package the umbrella as a date-stamped zip in `build/`. See [scripts/zip-project reference](scripts/zip-project.md). |
 | `bin/wfl` | Host-side developer CLI wrapping docker / mago / phpunit. See [scripts/wfl reference](scripts/wfl.md). |
 | `scripts/install-git-hooks.sh` | Install pre-commit Mago + pre-push sanity hooks (and Project Graphify hooks) in every submodule. See [scripts/install-git-hooks reference](scripts/install-git-hooks.md). |
@@ -63,7 +63,7 @@ security/
 └── var/                 ← gitignored
     └── data/
         └── phpunit-coverage/
-            └── index.html  ← coverage report (read by check-coverage.sh)
+            └── index.html  ← coverage report (read by coverage.sh)
 ```
 
 The framework-side `composer.json` of every component declares **at most**:

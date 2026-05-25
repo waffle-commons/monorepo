@@ -22,10 +22,10 @@ The umbrella will now show the submodule as "modified" — that's expected; it j
 git submodule foreach 'git fetch origin && git switch main && git pull --ff-only'
 ```
 
-Or, equivalently, with `run-all.sh`:
+Or, equivalently, with `loop.sh`:
 
 ```bash
-./run-all.sh --verbose git pull --ff-only origin main
+./loop.sh --verbose git pull --ff-only origin main
 ```
 
 (`--verbose` because you want to see merge conflicts the moment they happen.)

@@ -7,7 +7,7 @@
 ## The one-liner
 
 ```bash
-./check-coverage.sh
+./coverage.sh
 ```
 
 The script reads `<component>/var/data/phpunit-coverage/index.html` for every registered component and extracts the top-level percentage from the HTML's `aria-valuenow="…"` attribute. It then prints a colour-coded table:
@@ -20,14 +20,14 @@ The script reads `<component>/var/data/phpunit-coverage/index.html` for every re
 | ❌ | <85% — critical. |
 | ❓ | No coverage report on disk — tests haven't been run. |
 
-See the [`check-coverage.sh` reference](../reference/scripts/check-coverage.md) for the exact output format and exit codes.
+See the [`coverage.sh` reference](../reference/scripts/check-coverage.md) for the exact output format and exit codes.
 
 ## Generate the reports first
 
 The script reads HTML reports — it does not run tests. Generate the reports:
 
 ```bash
-./run-all.sh composer tests
+./loop.sh composer tests
 ```
 
 Each component's `composer tests` script runs `vendor/bin/phpunit --log-junit … --coverage-html var/data/phpunit-coverage`, so the HTML lands in the expected place.
@@ -35,7 +35,7 @@ Each component's `composer tests` script runs `vendor/bin/phpunit --log-junit �
 Then:
 
 ```bash
-./check-coverage.sh
+./coverage.sh
 ```
 
 ## Exit codes
@@ -43,7 +43,7 @@ Then:
 - `0` — every component ≥95%.
 - non-zero (the script does not `exit 1` but the summary header reports `FAIL`) — at least one component is below threshold or has no report.
 
-If you want CI to gate on coverage, wire `./check-coverage.sh` after the test run and grep for `Final state: SUCCESS`.
+If you want CI to gate on coverage, wire `./coverage.sh` after the test run and grep for `Final state: SUCCESS`.
 
 ## Drill into a single component
 
@@ -67,6 +67,6 @@ If a component genuinely cannot reach it (for instance, a class doing low-level 
 
 ## Related
 
-- [`check-coverage.sh` reference](../reference/scripts/check-coverage.md) — exact output and tier boundaries.
+- [`coverage.sh` reference](../reference/scripts/check-coverage.md) — exact output and tier boundaries.
 - [Run checks across components](run-checks-across-components.md) — the general-purpose multiplexer.
 - [The Mago Purge Protocol](../explanation/mago-purge-protocol.md) — why 95% is the bar.

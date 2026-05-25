@@ -124,7 +124,7 @@ ${C_DIM}LIFECYCLE${C_RST}
 
 ${C_DIM}EXECUTION${C_RST}
   shell [comp]          open a bash shell inside the container (optionally cd into a component)
-  run <comp> <cmd...>   run an arbitrary command inside a component dir
+  run [comp] <cmd...>   run an arbitrary command inside a component or monorepo root
   mago [comp]           run 'composer mago' for a component (defaults to cwd)
   test [comp]           run 'composer tests' for a component (defaults to cwd)
 
@@ -187,10 +187,33 @@ cmd_shell() {
 }
 
 cmd_run() {
-  [ $# -ge 2 ] || die "usage: wfl run <component> <cmd> [args...]"
-  local comp; comp="$(_resolve_component "$1")"; shift
   _ensure_running
-  exec docker exec -it -w "/waffle-commons/$comp" "$CONTAINER" "$@"
+  local UMBRELLA_DIR="${REPO_ROOT}"
+  local target_dir
+
+  # Vérifier si le premier argument après run ($2) correspond à un dossier existant à la racine du monorepo (via ${UMBRELLA_DIR}/$2).
+  if [ -n "${2:-}" ] && [ -d "${UMBRELLA_DIR}/${2}" ]; then
+    # Si le dossier existe ET que $2 n'est pas vide :
+    # Définir le dossier cible sur /waffle-commons/$2.
+    target_dir="/waffle-commons/$2"
+    # shift 2 pour retirer le mot-clé 'run' et le dossier du composant de la liste des arguments.
+    shift 2
+  else
+    # Si le dossier n'existe pas :
+    # Définir le dossier cible sur /waffle-commons (la racine du monorepo).
+    target_dir="/waffle-commons"
+    # shift 1 pour retirer uniquement le mot-clé 'run'.
+    shift 1
+  fi
+
+  # S'assurer qu'une commande a bien été passée (nombre d'arguments restant supérieur à 0),
+  # sinon afficher un message d'erreur clair en français et quitter avec le code 1.
+  if [ $# -eq 0 ]; then
+    die "[ERREUR] Aucune commande n'a été spécifiée."
+  fi
+
+  # Exécuter les arguments restants dynamiquement dans le conteneur.
+  exec docker exec -it -w "${target_dir}" "$CONTAINER" "$@"
 }
 
 cmd_mago() {
@@ -277,7 +300,7 @@ main() {
     up)          cmd_up          "$@" ;;
     down)        cmd_down        "$@" ;;
     shell)       cmd_shell       "$@" ;;
-    run)         cmd_run         "$@" ;;
+    run)         cmd_run "run" "$@" ;;
     mago)        cmd_mago        "$@" ;;
     test)        cmd_test        "$@" ;;
     debug)       cmd_debug       "$@" ;;
