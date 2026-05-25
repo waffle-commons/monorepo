@@ -16,7 +16,6 @@ COMPONENTS=(
     "routing"
     "runtime"
     "security"
-    "skeleton"
     "utils"
     "waffle"
     "workspace"
