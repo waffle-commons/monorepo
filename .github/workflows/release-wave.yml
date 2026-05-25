@@ -26,10 +26,10 @@
 
 name: release-wave
 
-on: workflow_dispatch
-#  push:
-#    tags:
-#      - '*'
+on:
+  push:
+    tags:
+      - '*'
 
 permissions:
   contents: read
@@ -57,6 +57,14 @@ jobs:
         with:
           submodules: false
           fetch-depth: 1
+
+      - name: Assert workflow is run on a tag
+        run: |
+          if [ "${{ github.ref_type }}" != "tag" ]; then
+            echo "::error::This workflow must be run on a tag, not a branch."
+            echo "Please push the tag to the umbrella repository first, then run this workflow selecting that tag."
+            exit 1
+          fi
 
       - name: Validate release token
         run: |
@@ -176,6 +184,7 @@ jobs:
             wd="$tmpdir/$path"
             mkdir -p "$wd"
             (
+              set -euo pipefail
               cd "$wd"
               git init -q
               git remote add origin "$origin_url"
@@ -209,7 +218,7 @@ jobs:
 
               # 5. Idempotent tag check on remote — set tag_state without exiting
               tag_state=""
-              if git ls-remote --tags origin "refs/tags/$UMBRELLA_TAG" | grep -q "refs/tags/$UMBRELLA_TAG"; then
+              if git ls-remote --tags origin "refs/tags/$UMBRELLA_TAG" | grep -q -E "refs/tags/${UMBRELLA_TAG}(\^{})?$"; then
                 git fetch -q origin "refs/tags/$UMBRELLA_TAG:refs/tags/$UMBRELLA_TAG" 2>/dev/null || true
                 resolved="$(git rev-parse "refs/tags/$UMBRELLA_TAG^{commit}" 2>/dev/null || echo "")"
                 if [ "$resolved" = "$sha" ]; then

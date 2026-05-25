@@ -153,9 +153,9 @@ ${C_DIM}DEVELOPMENT${C_RST}
   unlink <consumer> <provider>  unlink a local provider component from a consumer composer.json
 
 ${C_DIM}ENV${C_RST}
-  Container : $CONTAINER
-  Compose   : $COMPOSE_FILE
-  Repo root : $REPO_ROOT
+  Containers : $CONTAINER, $CONTAINER_LEGACY, $CONTAINER_REDIS
+  Compose    : $COMPOSE_FILE
+  Repo root  : $REPO_ROOT
 EOF
 }
 
