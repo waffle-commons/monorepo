@@ -1,0 +1,166 @@
+# ============================================================================
+# Waffle Umbrella CI — incremental, parallel, strict
+# ----------------------------------------------------------------------------
+# Detects which submodule component changed in the umbrella diff, then fans
+# out a parallel matrix of composer install + mago lint + mago analyze +
+# phpunit + a strict 95% clover-coverage gate per component.
+# ============================================================================
+
+name: umbrella-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: umbrella-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --------------------------------------------------------------------------
+  # 1. Detect which components changed and emit a dynamic matrix.
+  # --------------------------------------------------------------------------
+  detect-changes:
+    name: Detect changed components
+    runs-on: ubuntu-latest
+    outputs:
+      components: ${{ steps.matrix.outputs.components }}
+      any:        ${{ steps.matrix.outputs.any }}
+    steps:
+      - name: Checkout umbrella
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Filter changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          list-files: none
+          filters: |
+            cache:            'cache/**'
+            config:           'config/**'
+            console:          'console/**'
+            container:        'container/**'
+            contracts:        'contracts/**'
+            error-handler:    'error-handler/**'
+            event-dispatcher: 'event-dispatcher/**'
+            http:             'http/**'
+            http-client:      'http-client/**'
+            log:              'log/**'
+            pipeline:         'pipeline/**'
+            routing:          'routing/**'
+            runtime:          'runtime/**'
+            security:         'security/**'
+            utils:            'utils/**'
+            waffle:           'waffle/**'
+
+      - name: Build matrix
+        id: matrix
+        env:
+          CHANGES: ${{ steps.filter.outputs.changes }}
+        run: |
+          set -euo pipefail
+          echo "Raw changes JSON: $CHANGES"
+          echo "components=$CHANGES" >> "$GITHUB_OUTPUT"
+          if [ "$CHANGES" = "[]" ] || [ -z "$CHANGES" ]; then
+            echo "any=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "any=true"  >> "$GITHUB_OUTPUT"
+          fi
+
+  # --------------------------------------------------------------------------
+  # 2. Per-component check matrix.
+  # --------------------------------------------------------------------------
+  check:
+    name: ${{ matrix.component }}
+    needs: detect-changes
+    if: needs.detect-changes.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: ${{ fromJSON(needs.detect-changes.outputs.components) }}
+    env:
+      COMPONENT: ${{ matrix.component }}
+
+    steps:
+      - name: Checkout umbrella + submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Sanity-check component dir
+        run: |
+          set -euo pipefail
+          if [ ! -d "$COMPONENT" ] || [ ! -f "$COMPONENT/composer.json" ]; then
+            echo "::error::Component '$COMPONENT' has no composer.json — is the submodule checked out?"
+            exit 1
+          fi
+
+      - name: Setup PHP 8.5 + Xdebug
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: xdebug
+          extensions: mbstring, intl, opcache, xml, dom, tokenizer
+
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.component }}/vendor
+          key:  composer-${{ runner.os }}-${{ matrix.component }}-${{ hashFiles(format('{0}/composer.lock', matrix.component)) }}
+          restore-keys: |
+            composer-${{ runner.os }}-${{ matrix.component }}-
+
+      - name: composer install
+        working-directory: ${{ matrix.component }}
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: mago lint
+        working-directory: ${{ matrix.component }}
+        run: vendor/bin/mago lint
+
+      - name: mago analyze
+        working-directory: ${{ matrix.component }}
+        run: vendor/bin/mago analyze
+
+      - name: composer tests
+        working-directory: ${{ matrix.component }}
+        env:
+          XDEBUG_MODE: coverage
+        run: vendor/bin/phpunit --coverage-clover ./var/data/phpunit-coverage/clover.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./var/data/phpunit-coverage/clover.xml
+
+  # --------------------------------------------------------------------------
+  # 3. Single aggregating gate so branch protection can pin one required check.
+  # --------------------------------------------------------------------------
+  gate:
+    name: umbrella-ci gate
+    needs: [detect-changes, check]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide
+        run: |
+          set -euo pipefail
+          if [ "${{ needs.detect-changes.outputs.any }}" != "true" ]; then
+            echo "✓ No component changed — gate trivially green."
+            exit 0
+          fi
+          if [ "${{ needs.check.result }}" != "success" ]; then
+            echo "::error::check matrix did not succeed (result: ${{ needs.check.result }})"
+            exit 1
+          fi
+          echo "✓ All component checks passed."

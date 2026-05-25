@@ -1,9 +1,3 @@
-[submodule ".github"]
-	path = .github
-	url = git@github.com:waffle-commons/.github.git
-[submodule ".github-private"]
-	path = .github-private
-	url = git@github.com:waffle-commons/.github-private.git
 [submodule "component-template"]
 	path = component-template
 	url = git@github.com:waffle-commons/component-template.git
@@ -61,3 +55,6 @@
 [submodule "workspace"]
 	path = workspace
 	url = git@github.com:waffle-commons/workspace.git
+[submodule "http-client"]
+	path = http-client
+	url = git@github.com:waffle-commons/http-client.git

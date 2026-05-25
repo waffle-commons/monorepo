@@ -1,0 +1,23 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "@slkiser/opencode-quota",
+    "opencode-fast-apply",
+    "openslimedit@latest",
+    "caveman-opencode-plugin",
+    "@tarquinen/opencode-dcp@latest"
+  ],
+  "provider": {
+    "anthropic": {
+      "api": "https://api.anthropic.com/v1"
+    }
+  },
+  "mode": {
+    "plan": {
+      "model": "opencode/nemotron-3-super-free"
+    },
+    "build": {
+      "model": "opencode/nemotron-3-super-free"
+    }
+  }
+}
