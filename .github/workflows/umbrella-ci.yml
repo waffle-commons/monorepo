@@ -135,7 +135,7 @@ jobs:
         working-directory: ${{ matrix.component }}
         env:
           XDEBUG_MODE: coverage
-        run: composer tests
+        run: vendor/bin/phpunit --coverage-clover ./var/data/phpunit-coverage/clover.xml
 
       - name: Coverage gate (>= 95.0%)
         working-directory: ${{ matrix.component }}
