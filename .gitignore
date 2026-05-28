@@ -7,9 +7,8 @@
 **/.DS_Store
 
 # Tools
-.agents/
 .antigravitycli/
-.claude/
+.claude/settings.local.json
 .devtool/
 .tooling-venv/
 .venv/

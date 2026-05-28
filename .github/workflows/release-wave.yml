@@ -1,27 +1,33 @@
 # ============================================================================
-# Waffle Release Wave — propagates umbrella tag → every component repo
+# Waffle Release Wave — propagates the umbrella tag → every component repo.
 # ----------------------------------------------------------------------------
-# Triggered on any tag push to the umbrella (matches naming like 0.1.0-beta0).
-# For each entry in .gitmodules (minus EXCLUDE_SUBMODULES): pulls the
-# umbrella-pinned SHA, asserts it is reachable from the component's
-# origin/main (or origin/master), creates + pushes the same tag in the
-# component's repo, then creates a GitHub Release on that tag with
-# auto-generated notes (PR-based via gh's --generate-notes). Existing
-# Packagist webhooks pick up the new tags automatically — no Packagist API
-# call needed.
+# Fan-out: for each releasable submodule (RELEASE_INCLUDE allowlist), pull the
+# umbrella-pinned SHA, assert it is reachable from the component's default
+# branch, create + push the same tag in the component repo, then create a
+# GitHub Release with auto-generated notes. Packagist webhooks pick up the tags.
 #
-# Pre-release detection: tags matching PRERELEASE_REGEX become GitHub
-# pre-releases (defaults: -alpha/-beta/-rc/-dev/-pre suffixes).
+# Hardened after the v0.1.0-beta1 post-mortem (failed on component 1/20 with a
+# swallowed `exit 128`). Key changes vs. the failed run:
+#   R1  Per-component work is now `( … ) || rc=$?` and the log is ALWAYS printed.
+#       A failing component no longer aborts the wave or hides its error — the
+#       loop processes all components and reports failures in the summary.
+#   R2  Fail-closed ALLOWLIST (RELEASE_INCLUDE) instead of a denylist, so a
+#       non-library repo (component-template / documentation / skeleton /
+#       workspace) can never be tagged by accident.
+#   R3  Token pre-flight (`gh api user`) fails fast with a clear message if the
+#       PAT is invalid/expired or lacks org access.
+#   --  workflow_dispatch + DRY_RUN: validate and show exactly what WOULD happen
+#       (git push --dry-run, no release creation) without touching any remote.
+#   --  Auth via `http.extraheader` (masked Basic), not token-in-URL.
+#   --  Default-branch detection (origin/HEAD), not hardcoded main/master.
+#   --  Sequential back-off between live components (secondary-rate-limit safe).
 #
-# Idempotent on re-run: if a prior wave pushed the tag but failed before the
-# release was created, re-running this workflow on the same tag will create
-# the missing release without touching the tag. If both already exist with
-# the correct SHA, the component is skipped.
+# Idempotent: re-running on the same tag keeps existing correct tags, creates
+# only missing releases, and skips components already fully released.
 #
-# Required secret: WAFFLE_RELEASE_TOKEN  — a fine-grained PAT (or GitHub App
-# installation token) with `Contents: read & write` on every waffle-commons/*
-# component repo (covers both tag push and Release creation). The default
-# GITHUB_TOKEN cannot push to other repositories.
+# Required secret: WAFFLE_RELEASE_TOKEN — fine-grained PAT (or GitHub App
+# installation token) with `Contents: read & write` on every repo in
+# RELEASE_INCLUDE. The default GITHUB_TOKEN cannot push to other repositories.
 # ============================================================================
 
 name: release-wave
@@ -30,58 +36,50 @@ on:
   push:
     tags:
       - '*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Umbrella tag to fan out (must already exist on the umbrella repo).'
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry run — validate + show what would happen; push nothing, create no releases.'
+        required: true
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-wave-${{ github.ref }}
+  group: release-wave-${{ github.event.inputs.tag || github.ref }}
   cancel-in-progress: false
 
 jobs:
   fan-out:
-    name: Tag every component @ ${{ github.ref_name }}
+    name: Tag every component @ ${{ github.event.inputs.tag || github.ref_name }}
     runs-on: ubuntu-latest
     env:
-      UMBRELLA_TAG:       ${{ github.ref_name }}
-      RELEASE_TOKEN:      ${{ secrets.WAFFLE_RELEASE_TOKEN }}
-      # Comma-separated submodule paths to skip entirely (no tag, no release).
-      EXCLUDE_SUBMODULES: 'component-template'
-      # POSIX ERE matched with `grep -E`; matches umbrella-style tags like
-      # '0.1.0-beta0' or '1.2.3-rc.4'. Non-matching tags are treated as stable.
-      PRERELEASE_REGEX:   '^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc|dev|pre)([0-9.]*)?$'
+      UMBRELLA_TAG:  ${{ github.event.inputs.tag || github.ref_name }}
+      RELEASE_TOKEN: ${{ secrets.WAFFLE_RELEASE_TOKEN }}
+      # 'true' only for a manual workflow_dispatch with dry_run=true; tag pushes are always live.
+      DRY_RUN:       ${{ (github.event_name == 'workflow_dispatch' && inputs.dry_run) && 'true' || 'false' }}
+      # Fail-closed ALLOWLIST — ONLY these submodule paths are tagged/released.
+      # Anything in .gitmodules but not listed here is reported as "skipped (not releasable)".
+      # Verify the set with a DRY_RUN before a live wave; add/remove entries as the org evolves.
+      RELEASE_INCLUDE: 'cache,config,console,container,contracts,error-handler,event-dispatcher,http,http-client,log,pipeline,routing,runtime,security,skeleton,utils,waffle'
+      # POSIX ERE (grep -E): umbrella-style pre-release tags like '0.1.0-beta1.0' or '1.2.3-rc.4'.
+      PRERELEASE_REGEX: '^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc|dev|pre)([0-9.]*)?$'
+      # Seconds to wait between LIVE components (abuse/secondary-rate-limit guard). 0 to disable.
+      BACKOFF_SECONDS: '2'
 
     steps:
-      - name: Checkout umbrella (no submodule content needed)
+      - name: Checkout umbrella at the target tag (no submodule content needed)
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
           submodules: false
           fetch-depth: 1
-
-      - name: Assert workflow is run on a tag
-        run: |
-          if [ "${{ github.ref_type }}" != "tag" ]; then
-            echo "::error::This workflow must be run on a tag, not a branch."
-            echo "Please push the tag to the umbrella repository first, then run this workflow selecting that tag."
-            exit 1
-          fi
-
-      - name: Validate release token
-        run: |
-          set -euo pipefail
-          if [ -z "${RELEASE_TOKEN:-}" ]; then
-            cat <<'MSG'
-          ::error::secrets.WAFFLE_RELEASE_TOKEN is not set.
-          This workflow tags every waffle-commons/* component repo with the umbrella tag.
-          That requires write access across the org — the default GITHUB_TOKEN cannot do this.
-          Provision a fine-grained PAT (or GitHub App installation token) with
-          'Contents: read & write' on every waffle-commons/* component repo, then add it
-          to this repository's secrets as WAFFLE_RELEASE_TOKEN.
-          MSG
-            exit 1
-          fi
-          # Mask early so any accidental echo is redacted.
-          echo "::add-mask::$RELEASE_TOKEN"
 
       - name: Configure git identity
         run: |
@@ -89,16 +87,46 @@ jobs:
           git config --global user.email "release-bot@users.noreply.github.com"
           git config --global core.pager cat
 
-      - name: Fan out tag to every submodule
+      - name: Fan out tag to every releasable submodule
         run: |
           set -euo pipefail
-          echo "::add-mask::$RELEASE_TOKEN"
 
+          # ---- token + maskable Basic-auth header (no token-in-URL) ----------
+          if [ -z "${RELEASE_TOKEN:-}" ]; then
+            cat <<'MSG'
+          ::error::secrets.WAFFLE_RELEASE_TOKEN is not set.
+          This workflow tags every releasable waffle-commons/* repo with the umbrella tag,
+          which requires org-wide write access — the default GITHUB_TOKEN cannot do this.
+          Provision a fine-grained PAT (or GitHub App installation token) with
+          'Contents: read & write' on every repo in RELEASE_INCLUDE, then add it as
+          the WAFFLE_RELEASE_TOKEN secret.
+          MSG
+            exit 1
+          fi
+          echo "::add-mask::$RELEASE_TOKEN"
+          AUTH_B64="$(printf 'x-access-token:%s' "$RELEASE_TOKEN" | base64 | tr -d '\n')"
+          echo "::add-mask::$AUTH_B64"
+          # Scoped to github.com so the auth header never leaks to a redirected host.
+          GIT_AUTH=(-c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH_B64}")
+
+          if [ "${DRY_RUN}" = "true" ]; then
+            echo "🌵 DRY-RUN: no tags will be pushed, no releases created."
+          else
+            echo "🚀 LIVE: tags will be pushed and releases created."
+          fi
+
+          # ---- token pre-flight: fail fast with a clear message (R3) ---------
+          if ! GH_TOKEN="$RELEASE_TOKEN" gh api user -q .login >/dev/null 2>&1; then
+            echo "::error::WAFFLE_RELEASE_TOKEN failed authentication (gh api user). The PAT is invalid, expired, or lacks access. Aborting before any tagging."
+            exit 1
+          fi
+          echo "token pre-flight OK"
+
+          # ---- parse .gitmodules → path<TAB>url manifest ---------------------
           if [ ! -f .gitmodules ]; then
             echo "::error file=.gitmodules::.gitmodules not found in umbrella"
             exit 1
           fi
-
           MANIFEST="${RUNNER_TEMP}/manifest.tsv"
           python3 - <<'PY' > "$MANIFEST"
           import configparser
@@ -110,21 +138,18 @@ jobs:
               if path and url:
                   print(f"{path}\t{url}")
           PY
-
-          n=$(wc -l < "$MANIFEST" | tr -d ' ')
-          echo "Discovered $n submodule(s) to process with tag '$UMBRELLA_TAG'"
+          echo "Discovered $(wc -l < "$MANIFEST" | tr -d ' ') submodule(s); tag '$UMBRELLA_TAG'"
 
           tmpdir="$(mktemp -d)"
           trap 'rm -rf "$tmpdir"' EXIT
 
-          # Pre-compute the EXCLUDE set + pre-release flag once.
-          IFS=',' read -r -a _EXCLUDE_ARR <<<"$EXCLUDE_SUBMODULES"
-          is_excluded() {
+          # ---- fail-closed allowlist membership (R2) -------------------------
+          IFS=',' read -r -a _INCLUDE_ARR <<<"$RELEASE_INCLUDE"
+          is_releasable() {
             local needle="$1" item
-            for item in "${_EXCLUDE_ARR[@]:-}"; do
-              # Trim whitespace.
-              item="${item#"${item%%[![:space:]]*}"}"
-              item="${item%"${item##*[![:space:]]}"}"
+            for item in "${_INCLUDE_ARR[@]:-}"; do
+              item="${item#"${item%%[![:space:]]*}"}"   # ltrim
+              item="${item%"${item##*[![:space:]]}"}"   # rtrim
               [ -z "$item" ] && continue
               [ "$item" = "$needle" ] && return 0
             done
@@ -134,157 +159,142 @@ jobs:
           PRERELEASE_FLAG=""
           if printf '%s' "$UMBRELLA_TAG" | grep -qE "$PRERELEASE_REGEX"; then
             PRERELEASE_FLAG="--prerelease"
-            echo "Tag '$UMBRELLA_TAG' matches PRERELEASE_REGEX → releases will be marked as pre-release"
+            echo "Tag '$UMBRELLA_TAG' matches PRERELEASE_REGEX → releases marked pre-release"
           else
             echo "Tag '$UMBRELLA_TAG' is a stable release"
           fi
 
-          declare -a released=()
-          declare -a tagged=()
-          declare -a skipped=()
-          declare -a excluded=()
-          declare -a failed=()
+          declare -a released=() tagged=() skipped=() excluded=() failed=()
 
           while IFS=$'\t' read -r path url; do
             echo "::group::$path  ($url)"
 
-            # 0. Early opt-out via EXCLUDE_SUBMODULES (no network, no clone)
-            if is_excluded "$path"; then
-              echo "excluded by EXCLUDE_SUBMODULES — skipping tag + release"
-              excluded+=("$path")
-              echo "::endgroup::"; continue
+            # 0. Fail-closed allowlist gate
+            if ! is_releasable "$path"; then
+              echo "not in RELEASE_INCLUDE → skipping (non-library / not a release target)"
+              excluded+=("$path"); echo "::endgroup::"; continue
             fi
 
             # 1. SHA the umbrella pins for this submodule
             sha="$(git ls-tree HEAD -- "$path" | awk '$2=="commit"{print $3}')"
             if [ -z "$sha" ]; then
               echo "::error::no commit SHA pinned for '$path' in umbrella HEAD"
-              failed+=("$path:no-pinned-sha")
-              echo "::endgroup::"; continue
+              failed+=("$path:no-pinned-sha"); echo "::endgroup::"; continue
             fi
             echo "umbrella pins: $sha"
 
-            # 2. Token-authenticated origin URL + derive owner/name for gh CLI
+            # 2. Plain HTTPS origin (auth supplied per-command via GIT_AUTH) + gh repo slug
             case "$url" in
-              git@*:*)
-                origin_url="$(printf '%s' "$url" | sed -E 's#^git@([^:]+):#https://x-access-token:'"$RELEASE_TOKEN"'@\1/#')"
-                ;;
-              https://*)
-                origin_url="$(printf '%s' "$url" | sed -E 's#^https://#https://x-access-token:'"$RELEASE_TOKEN"'@#')"
-                ;;
+              git@*:*)   origin_url="https://github.com/$(printf '%s' "$url" | sed -E 's#^git@[^:]+:##')" ;;
+              https://*) origin_url="$url" ;;
               *)
                 echo "::warning::unsupported remote URL scheme for '$path': $url — skipping"
-                skipped+=("$path:unsupported-url")
-                echo "::endgroup::"; continue
-                ;;
+                skipped+=("$path:unsupported-url"); echo "::endgroup::"; continue ;;
             esac
             gh_repo="$(printf '%s' "$url" | sed -E 's#^(git@[^:]+:|https://[^/]+/)##; s#\.git$##')"
 
-            # 3. Bare-ish clone in a temp dir, fetch all branches + the pinned SHA
-            wd="$tmpdir/$path"
-            mkdir -p "$wd"
+            # 3..7 — all per-component work in a subshell. The `|| rc=$?` keeps the
+            # outer `set -e` from aborting the wave (R1), and out.log is ALWAYS printed.
+            wd="$tmpdir/$path"; mkdir -p "$wd"
+            rc=0
             (
               set -euo pipefail
               cd "$wd"
               git init -q
               git remote add origin "$origin_url"
-              if ! git fetch -q --no-tags origin '+refs/heads/*:refs/remotes/origin/*'; then
-                echo "::error::fetch failed for $path"
-                exit 1
-              fi
-              # Also try to fetch the pinned SHA explicitly (works if uploadpack.allowReachableSHA1InWant is on; GitHub: yes).
-              git fetch -q origin "$sha" 2>/dev/null || true
+              git "${GIT_AUTH[@]}" fetch -q --no-tags origin '+refs/heads/*:refs/remotes/origin/*'
+              git "${GIT_AUTH[@]}" fetch -q origin "$sha" 2>/dev/null || true
 
-              # 4. Verify SHA is reachable from origin/main or origin/master
+              # 4. Reachability — detect the remote default branch, then main/master.
+              def_ref=""
+              db="$(git "${GIT_AUTH[@]}" ls-remote --symref origin HEAD 2>/dev/null \
+                    | awk '/^ref:/{sub(/refs\/heads\//,"",$2); print $2; exit}')"
+              [ -n "$db" ] && def_ref="origin/$db"
               reachable=""
-              for ref in origin/main origin/master; do
-                if git rev-parse --verify "$ref" >/dev/null 2>&1; then
-                  if git merge-base --is-ancestor "$sha" "$ref" 2>/dev/null; then
-                    reachable="$ref"
-                    break
-                  fi
+              for ref in "$def_ref" origin/main origin/master; do
+                [ -z "$ref" ] && continue
+                if git rev-parse --verify "$ref" >/dev/null 2>&1 \
+                   && git merge-base --is-ancestor "$sha" "$ref" 2>/dev/null; then
+                  reachable="$ref"; break
                 fi
               done
-
               if [ -z "$reachable" ]; then
-                cat <<MSG
-          ::error::SHA $sha is NOT on origin/main or origin/master for '$path'.
-          ::error::The contributor likely forgot to push the submodule branch, or the
-          ::error::bump landed on a feature branch that was never merged. Refusing to tag.
-          MSG
-                exit 1
+                echo "::error::SHA $sha is NOT on the default branch (${db:-?}), main, or master for '$path'."
+                echo "::error::The submodule bump was likely never pushed/merged. Refusing to tag."
+                exit 3
               fi
               echo "reachable from: $reachable"
 
-              # 5. Idempotent tag check on remote — set tag_state without exiting
+              # 5. Idempotent remote tag check
               tag_state=""
-              if git ls-remote --tags origin "refs/tags/$UMBRELLA_TAG" | grep -q -E "refs/tags/${UMBRELLA_TAG}(\^{})?$"; then
-                git fetch -q origin "refs/tags/$UMBRELLA_TAG:refs/tags/$UMBRELLA_TAG" 2>/dev/null || true
+              if git "${GIT_AUTH[@]}" ls-remote --tags origin "refs/tags/$UMBRELLA_TAG" \
+                   | grep -qE "refs/tags/${UMBRELLA_TAG}(\^\{\})?$"; then
+                git "${GIT_AUTH[@]}" fetch -q origin "refs/tags/$UMBRELLA_TAG:refs/tags/$UMBRELLA_TAG" 2>/dev/null || true
                 resolved="$(git rev-parse "refs/tags/$UMBRELLA_TAG^{commit}" 2>/dev/null || echo "")"
                 if [ "$resolved" = "$sha" ]; then
-                  echo "tag '$UMBRELLA_TAG' already at $sha → keep, proceed to release check"
+                  echo "tag '$UMBRELLA_TAG' already at $sha → keep"
                   tag_state="existed"
                 else
                   echo "::error::tag '$UMBRELLA_TAG' already exists on '$path' at $resolved (umbrella pins $sha). Refusing to overwrite."
-                  exit 1
+                  exit 4
                 fi
               fi
 
-              # 6. Create + push lightweight tag at the pinned SHA (if needed)
+              # 6. Create + push the tag at the pinned SHA (dry-run aware)
               if [ -z "$tag_state" ]; then
                 git tag "$UMBRELLA_TAG" "$sha"
-                git push origin "refs/tags/$UMBRELLA_TAG"
-                echo "tagged $path @ $sha → $UMBRELLA_TAG"
+                if [ "${DRY_RUN}" = "true" ]; then
+                  git "${GIT_AUTH[@]}" push --dry-run origin "refs/tags/$UMBRELLA_TAG"
+                  echo "[DRY-RUN] would push tag $UMBRELLA_TAG @ $sha"
+                else
+                  git "${GIT_AUTH[@]}" push origin "refs/tags/$UMBRELLA_TAG"
+                  echo "tagged $path @ $sha → $UMBRELLA_TAG"
+                fi
                 tag_state="new"
               fi
               echo "__TAG__:$tag_state"
 
-              # 7. GitHub Release with auto-generated notes (idempotent)
+              # 7. Idempotent GitHub Release (dry-run aware)
               release_state=""
               if GH_TOKEN="$RELEASE_TOKEN" GH_REPO="$gh_repo" \
-                   gh release view "$UMBRELLA_TAG" --json tagName >/dev/null 2>&1
-              then
-                echo "release '$UMBRELLA_TAG' already exists on $gh_repo → skipping creation"
+                   gh release view "$UMBRELLA_TAG" --json tagName >/dev/null 2>&1; then
+                echo "release '$UMBRELLA_TAG' already exists on $gh_repo → skipping"
                 release_state="existed"
+              elif [ "${DRY_RUN}" = "true" ]; then
+                echo "[DRY-RUN] would create release '$UMBRELLA_TAG' on $gh_repo (prerelease=${PRERELEASE_FLAG:-no})"
+                release_state="dry-run"
               else
-                echo "creating release '$UMBRELLA_TAG' on $gh_repo (prerelease=${PRERELEASE_FLAG:-no})..."
                 # shellcheck disable=SC2086  # PRERELEASE_FLAG is intentionally word-split (empty or '--prerelease')
-                if ! GH_TOKEN="$RELEASE_TOKEN" GH_REPO="$gh_repo" \
-                       gh release create "$UMBRELLA_TAG" \
-                         --target "$sha" \
-                         --title  "$UMBRELLA_TAG" \
-                         --generate-notes \
-                         $PRERELEASE_FLAG
-                then
-                  echo "::error::gh release create failed for $gh_repo (tag $UMBRELLA_TAG)"
-                  exit 1
-                fi
+                GH_TOKEN="$RELEASE_TOKEN" GH_REPO="$gh_repo" \
+                  gh release create "$UMBRELLA_TAG" \
+                    --target "$sha" --title "$UMBRELLA_TAG" --generate-notes $PRERELEASE_FLAG
                 release_state="new"
               fi
               echo "__RELEASE__:$release_state"
-            ) > "$wd/out.log" 2>&1
-            rc=$?
-            cat "$wd/out.log"
+            ) > "$wd/out.log" 2>&1 || rc=$?
+            cat "$wd/out.log"   # ALWAYS surface diagnostics — never swallow (R1)
 
             if [ "$rc" -ne 0 ]; then
-              failed+=("$path")
+              echo "::error::'$path' failed (rc=$rc) — see its log above"
+              failed+=("$path:rc$rc")
             else
-              tag_st="$(grep -E '^__TAG__:'     "$wd/out.log" | tail -1 | cut -d: -f2)"
-              rel_st="$(grep -E '^__RELEASE__:' "$wd/out.log" | tail -1 | cut -d: -f2)"
-              if [ "$tag_st" = "new" ] && [ "$rel_st" = "new" ]; then
-                released+=("$path")
-              elif [ "$tag_st" = "existed" ] && [ "$rel_st" = "existed" ]; then
-                skipped+=("$path")
-              else
-                tagged+=("$path")
-              fi
+              tag_st="$(grep -E '^__TAG__:'     "$wd/out.log" | tail -1 | cut -d: -f2 || true)"
+              rel_st="$(grep -E '^__RELEASE__:' "$wd/out.log" | tail -1 | cut -d: -f2 || true)"
+              if   [ "$tag_st" = "existed" ] && [ "$rel_st" = "existed" ]; then skipped+=("$path")
+              elif [ "$rel_st" = "new" ] || [ "$rel_st" = "dry-run" ];      then released+=("$path")
+              else tagged+=("$path"); fi
             fi
             echo "::endgroup::"
+
+            # Sequential back-off between LIVE components (skip on the last/dry-run).
+            if [ "${DRY_RUN}" != "true" ] && [ "${BACKOFF_SECONDS:-0}" -gt 0 ]; then
+              sleep "$BACKOFF_SECONDS"
+            fi
           done < "$MANIFEST"
 
           echo ""
           echo "=========================================="
-          echo " Release wave summary — $UMBRELLA_TAG"
+          echo " Release wave summary — $UMBRELLA_TAG  (DRY_RUN=$DRY_RUN)"
           echo "=========================================="
           printf '  released : %d  %s\n' "${#released[@]}" "${released[*]:-}"
           printf '  tagged   : %d  %s\n' "${#tagged[@]}"   "${tagged[*]:-}"
@@ -293,7 +303,7 @@ jobs:
           printf '  failed   : %d  %s\n' "${#failed[@]}"   "${failed[*]:-}"
 
           if [ "${#failed[@]}" -gt 0 ]; then
-            echo "::error::release-wave failed for ${#failed[@]} submodule(s): ${failed[*]}"
+            echo "::error::release-wave finished with ${#failed[@]} failed submodule(s): ${failed[*]}"
             exit 1
           fi
           echo "✓ release-wave completed cleanly"
