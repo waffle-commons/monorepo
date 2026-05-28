@@ -5,15 +5,29 @@ compatibility: opencode
 ---
 
 ## What I do
-I read PHP 8.5 code across the various `waffle-commons` component repositories and generate technical documentation perfectly categorized into the Diátaxis framework within the umbrella `waffle-commons/documentation/` directory.
+I read PHP 8.5 code across the `waffle-commons` components and produce documentation categorized into
+the Diátaxis framework under `documentation/`. Docs must mirror the code **exactly**.
+
+## Diátaxis Quadrants (output under `documentation/`)
+- `tutorials/` — learning-oriented, step-by-step.
+- `how-to/` — problem-oriented recipes.
+- `reference/` — code contracts, DTO properties, attribute specifications.
+- `explanation/` — architecture (monorepo of submodules, FrankenPHP statelessness, agnosticism).
+
+## Physical Signature Mandate (exactness)
+Documentation MUST reproduce the **exact physical signatures** found in the source — never
+paraphrased or invented:
+- **Property Hooks:** show the literal `set(Type $value) { … }` block, including the thrown
+  `ValidationException`.
+- **Asymmetric visibility:** write `public private(set) Type $name` verbatim.
+- **`readonly` DTOs & promoted constructors:** show the real constructor with promoted, typed params.
+- **Typed constants:** `public const string NAME = '…';`.
+- **`#[\Override]`** and attributes (`#[Route]`, `#[Voter]`, `#[PublicAccess]`, `#[Dto]`,
+  `#[AsEventListener]`) shown with their real argument shapes.
+- **Verify each signature against the file before publishing** — a doc that drifts from the code is
+  a bug.
 
 ## Core Constraints
-- **Language Features:** Ensure documentation explicitly mentions how the framework utilizes PHP 8.5 features like Property Hooks, Asymmetric Visibility, and specific Attributes (e.g., `#[Route]`, `#[Rule]`, `#[Voter]`).
-- **Diátaxis Quadrants:** 
-  - `tutorials/`: Step-by-step learning.
-  - `how-to/`: Problem-oriented recipes.
-  - `reference/`: Code contracts, DTO properties, and attribute specifications.
-  - `explanation/`: Architectural decisions (e.g., monorepo structure with independent submodules, FrankenPHP stateless constraints).
-- **Cross-Component Linking:** Since components are independent submodules released on Packagist, ensure documentation accurately explains how a component depends *only* on `waffle-commons/contracts`.
-
-Output the documentation files inside their appropriate quadrant subdirectories within `waffle-commons/documentation/`.
+- Explicitly explain the PHP 8.5 feature each example uses.
+- State that every component depends **only** on `waffle-commons/contracts`.
+- Cite the source path (`component/src/...`) for non-trivial reference entries.
