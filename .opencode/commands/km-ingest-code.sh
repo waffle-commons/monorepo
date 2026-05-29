@@ -124,8 +124,8 @@ for i in "${!COMPONENTS[@]}"; do
     
     # Run graphify AST extraction on the component (no LLM required)
     # Use 'update' command to generate graph.json from source code via AST only
-    if "$GRAPHIFY_BIN" update "$COMPONENT_DIR" \
-        --no-cluster 2>/tmp/graphify-error.log >/dev/null; then
+    if "$GRAPHIFY_BIN" update --force --no-cluster "$COMPONENT_DIR" \
+        2>.project-memory/project/logs/graphify-error.log >/dev/null; then
         
         # Verify graph.json was created in component's graphify-out
         COMPONENT_GRAPH_SRC="$COMPONENT_DIR/graphify-out/graph.json"
@@ -139,7 +139,7 @@ for i in "${!COMPONENTS[@]}"; do
             ((INGESTION_ERRORS++))
         fi
     else
-        INGESTION_ERROR=$(cat /tmp/graphify-error.log 2>/dev/null || echo "Unknown error")
+        INGESTION_ERROR=$(cat .project-memory/project/logs/graphify-error.log 2>/dev/null || echo "Unknown error")
         echo -e "${RED}✗${NC}"
         echo "    Error: $INGESTION_ERROR"
         ((INGESTION_ERRORS++))
@@ -171,10 +171,10 @@ MERGED_GRAPH="$GRAPHIFY_OUT/merged-graph.json"
 if [ ${#COMPONENT_GRAPHS[@]} -gt 0 ]; then
     echo -n "  Merging ${#COMPONENT_GRAPHS[@]} component graphs... "
     
-    if "$GRAPHIFY_BIN" merge-graphs "${COMPONENT_GRAPHS[@]}" --out "$MERGED_GRAPH" 2>/tmp/merge-error.log >/dev/null; then
+    if "$GRAPHIFY_BIN" merge-graphs "${COMPONENT_GRAPHS[@]}" --out "$MERGED_GRAPH" 2>.project-memory/project/logs/merge-error.log >/dev/null; then
         echo -e "${GREEN}✓${NC}"
     else
-        MERGE_ERROR=$(cat /tmp/merge-error.log 2>/dev/null || echo "Unknown error")
+        MERGE_ERROR=$(cat .project-memory/project/logs/merge-error.log 2>/dev/null || echo "Unknown error")
         echo -e "${YELLOW}~${NC} (fallback to manual merge)"
         
         # Fallback: Create merged graph manually
@@ -219,13 +219,15 @@ if [ -d "$DOCS_DIR" ]; then
     
     # Index documentation files
     DOC_REFS="[]"
+    find "$DOCS_DIR" -type f -name "*.md" 2>/dev/null | head -50 > .project-memory/project/logs/doc-files.txt
     while IFS= read -r DOC_FILE; do
         DOC_REL_PATH="${DOC_FILE#$DOCS_DIR/}"
         DOC_REFS=$(echo "$DOC_REFS" | jq \
             --arg path "$DOC_REL_PATH" \
             --arg type "diataxis" \
             '. += [{"path": $path, "type": $type}]' 2>/dev/null || echo "$DOC_REFS")
-    done < <(find "$DOCS_DIR" -type f -name "*.md" 2>/dev/null | head -50)
+    done < .project-memory/project/logs/doc-files.txt
+    rm -f .project-memory/project/logs/doc-files.txt
     
     # Update merged graph with documentation references
     TEMP_GRAPH=$(mktemp)

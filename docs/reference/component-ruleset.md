@@ -1,6 +1,6 @@
 # Reference — `component-ruleset.json`
 
-> **Release:** `v0.1.0-beta1`.
+> **Release:** `v0.1.0-beta2`.
 > **Scope:** `<umbrella>/component-ruleset.json`.
 > **Purpose:** the canonical GitHub branch-protection ruleset applied to every `waffle-commons/*` component repository.
 

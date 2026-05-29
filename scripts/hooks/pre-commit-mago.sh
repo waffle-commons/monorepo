@@ -20,6 +20,43 @@ GITMODULES="$UMBRELLA_ROOT/.gitmodules"
 
 [ -f "$GITMODULES" ] || { printf '\033[0;31m✗ .gitmodules not found at %s\033[0m\n' "$GITMODULES" >&2; exit 1; }
 
+# Detect context: umbrella commit vs submodule commit (git sets GIT_DIR for hooks).
+GIT_TOP="$(cd -P -- "$(git rev-parse --show-toplevel)" && pwd)"
+IN_SUBMODULE=0
+SUB_COMP=""
+if [ "$GIT_TOP" != "$UMBRELLA_ROOT" ]; then
+  IN_SUBMODULE=1
+  SUB_COMP="${GIT_TOP#$UMBRELLA_ROOT/}"
+fi
+
+# ---------------------------------------------------------------------------
+# Guard: Block commits carrying local path repositories in composer.json
+# ---------------------------------------------------------------------------
+STAGED_COMPOSER_FILES=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null | grep -E '(^|/)composer\.json$' || true)
+
+if [ -n "$STAGED_COMPOSER_FILES" ]; then
+  for file in $STAGED_COMPOSER_FILES; do
+    if git show :"$file" | grep -qE '"type"[[:space:]]*:[[:space:]]*"path"|"url"[[:space:]]*:[[:space:]]*"\.\./' ; then
+      printf '\033[0;31m[ERROR] Local linkage detected in file %s!\033[0m\n' "$file" >&2
+      printf '\033[0;31mCommitting "path"-type repositories pointing to local paths is forbidden.\033[0m\n' >&2
+      
+      provider_name=$(git show :"$file" | awk -F'"url"[[:space:]]*:[[:space:]]*"\\.\\./' 'NF>1 {split($2, a, "\""); print a[1]}')
+      consumer_name=$(dirname "$file")
+      if [ "$consumer_name" = "." ] && [ "${IN_SUBMODULE:-0}" -eq 1 ]; then
+        consumer_name="$SUB_COMP"
+      fi
+      if [ -n "$consumer_name" ] && [ "$consumer_name" != "." ] && [ -n "$provider_name" ]; then
+        printf '\033[0;33mPlease unlink the components first by running:\033[0m\n' >&2
+        printf '\033[0;33m  bin/wfl unlink %s %s\033[0m\n' "$consumer_name" "$provider_name" >&2
+      else
+        printf '\033[0;33mPlease unlink the components first by running bin/wfl unlink <consumer> <provider>\033[0m\n' >&2
+      fi
+      exit 1
+    fi
+  done
+fi
+
+
 is_known_component() {
   awk -v needle="$1" '
     /^[[:space:]]*path[[:space:]]*=/ {
@@ -30,14 +67,7 @@ is_known_component() {
   ' "$GITMODULES"
 }
 
-# Detect context: umbrella commit vs submodule commit (git sets GIT_DIR for hooks).
-GIT_TOP="$(cd -P -- "$(git rev-parse --show-toplevel)" && pwd)"
-IN_SUBMODULE=0
-SUB_COMP=""
-if [ "$GIT_TOP" != "$UMBRELLA_ROOT" ]; then
-  IN_SUBMODULE=1
-  SUB_COMP="${GIT_TOP#$UMBRELLA_ROOT/}"
-fi
+
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT INT TERM HUP

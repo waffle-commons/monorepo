@@ -1,7 +1,7 @@
 # Explanation — The release cycle
 
 > **Diátaxis quadrant:** Explanation.
-> **Release:** `v0.1.0-beta1`.
+> **Release:** `v0.1.0-beta2`.
 
 ## The cadence
 

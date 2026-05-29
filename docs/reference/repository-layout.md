@@ -1,6 +1,6 @@
 # Reference — Repository layout
 
-> **Release:** `v0.1.0-beta1`.
+> **Release:** `v0.1.0-beta2`.
 > **Scope:** the umbrella's directory tree.
 
 ## Top-level directories
@@ -49,7 +49,8 @@ Every framework component follows the same shape. Take `security` as the example
 
 ```
 security/
-├── README.md            ← short component overview + Beta-1 highlights
+├── README.md            ← short component overview + release highlights
+├── CHANGELOG.md         ← per-component Keep-a-Changelog (Beta-2 wave)
 ├── LICENSE.md           ← MIT
 ├── CODE_OF_CONDUCT.md
 ├── CONTRIBUTING.md

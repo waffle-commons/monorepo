@@ -1,7 +1,7 @@
 # Tutorial — Set up your monorepo workspace
 
 > **Diátaxis quadrant:** Tutorial (learning-oriented).
-> **Release:** `v0.1.0-beta1`.
+> **Release:** `v0.1.0-beta2`.
 > **You'll end with:** a fully cloned monorepo, a running `waffle-dev` Docker container, and one component's tests passing.
 > **Time:** ~15 minutes if Docker is already installed.
 

@@ -1,7 +1,7 @@
 # How-To: Check coverage across components
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `v0.1.0-beta1`.
+> **Release:** `v0.1.0-beta2`.
 > **Answers:** How do I see which components are below the 95% coverage threshold?
 
 ## The one-liner

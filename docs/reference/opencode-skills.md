@@ -1,6 +1,6 @@
 # Reference — `.opencode/skills/`
 
-> **Release:** `v0.1.0-beta1`.
+> **Release:** `v0.1.0-beta2`.
 > **Scope:** `<umbrella>/.opencode/skills/`.
 > **Purpose:** the project-specific AI prompt library. Each subdirectory contains a single `SKILL.md` that an AI assistant must consult before performing a matching task.
 
