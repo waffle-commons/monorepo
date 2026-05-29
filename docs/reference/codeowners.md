@@ -1,6 +1,6 @@
 # Reference — `CODEOWNERS`
 
-> **Release:** `v0.1.0-beta1`.
+> **Release:** `v0.1.0-beta2`.
 > **Scope:** `<umbrella>/CODEOWNERS`.
 > **Purpose:** GitHub review routing — who must approve a PR before it can merge.
 

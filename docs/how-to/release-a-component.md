@@ -1,7 +1,7 @@
 # How-To: Release a component
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `v0.1.0-beta1`.
+> **Release:** `v0.1.0-beta2`.
 > **Answers:** I'm ready to ship `waffle-commons/<component>@vX.Y.Z`. What's the process?
 
 ## Pre-flight

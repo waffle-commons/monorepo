@@ -1,7 +1,7 @@
 # How-To: Bump submodule pointers in the umbrella
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `v0.1.0-beta1`.
+> **Release:** `v0.1.0-beta2`.
 > **Answers:** A component released a new version. How do I make the umbrella point at it?
 
 ## The umbrella's job

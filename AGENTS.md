@@ -38,9 +38,12 @@ monorepo (PHP 8.5, FrankenPHP resident-worker, independent submodules each relea
 - **Fail-secure errors:** never silence with `@`; never catch generic exceptions needlessly. Throw
   specific domain exceptions (`ValidationException`, `SecurityException`) — `ErrorHandlerMiddleware`
   transforms them.
-- **Language:** all comments, identifiers, and emitted logs/exceptions are **English**. The **only**
-  exception is the `skeleton` component (French-localized). Even where an RFC requests French
-  elsewhere (e.g. RFC-021 §6.3, RFC-022 §7.4), project policy is English outside `skeleton`.
+- **Language:** all comments, identifiers, and emitted logs/exceptions in framework
+  components are **English**. The **only** exceptions are the two template-app
+  directories — **`skeleton/` AND `workspace/`** — where every comment, docblock,
+  YAML/TOML/compose comment, and user-facing string is **French**. Even where an
+  RFC requests French in a framework component (e.g. RFC-021 §6.3, RFC-022 §7.4),
+  project policy is English outside those two template dirs.
 
 ## 2. FrankenPHP Statelessness Mandate
 

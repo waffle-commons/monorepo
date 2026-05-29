@@ -15,7 +15,7 @@
 
 ---
 
-> **Release:** `v0.1.0-beta1`
+> **Release:** `v0.1.0-beta2` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
 > **Status:** beta software — production use requires an independent security audit.
 
 ## 🧠 Mission
@@ -102,7 +102,7 @@ Or fan a command out across **all** components:
 
 See [`docs/tutorials/setup-your-monorepo-workspace.md`](docs/tutorials/setup-your-monorepo-workspace.md) for the full setup walkthrough.
 
-## 🏗️ Pipeline at a glance (Beta-1)
+## 🏗️ Pipeline at a glance (Beta-2)
 
 Every request through a Waffle application traverses this canonical PSR-15 middleware order:
 

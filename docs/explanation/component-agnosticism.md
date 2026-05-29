@@ -1,7 +1,7 @@
 # Explanation — The Component Agnosticism rule
 
 > **Diátaxis quadrant:** Explanation.
-> **Release:** `v0.1.0-beta1`.
+> **Release:** `v0.1.0-beta2`.
 
 ## The rule, in one sentence
 

@@ -11,11 +11,18 @@
 #   R1  Per-component work is now `( … ) || rc=$?` and the log is ALWAYS printed.
 #       A failing component no longer aborts the wave or hides its error — the
 #       loop processes all components and reports failures in the summary.
-#   R2  Fail-closed ALLOWLIST (RELEASE_INCLUDE) instead of a denylist, so a
-#       non-library repo (component-template / documentation / skeleton /
-#       workspace) can never be tagged by accident.
-#   R3  Token pre-flight (`gh api user`) fails fast with a clear message if the
-#       PAT is invalid/expired or lacks org access.
+#   R2  Fail-closed ALLOWLIST (RELEASE_INCLUDE) instead of a denylist: ONLY the
+#       paths listed there are tagged. The 16 framework components plus
+#       'documentation' and 'skeleton' (the create-project target) are released;
+#       'component-template' and 'workspace' are intentionally excluded and can
+#       never be tagged by accident.
+#   R3  Token pre-flight fails fast with a clear message if the token is
+#       invalid/expired or lacks org access.
+#   R4  Canonical tag-format gate: a non-conforming umbrella tag (e.g. a 'v'
+#       prefix, or junk like 'tmp') aborts before any network call, so it can
+#       never be pushed or mis-classified as a stable "Latest" release.
+#   R5  Token pre-flight is token-type-agnostic (`gh api rate_limit`), so a
+#       GitHub App installation token (which has no `user`) is not rejected.
 #   --  workflow_dispatch + DRY_RUN: validate and show exactly what WOULD happen
 #       (git push --dry-run, no release creation) without touching any remote.
 #   --  Auth via `http.extraheader` (masked Basic), not token-in-URL.
@@ -35,7 +42,12 @@ name: release-wave
 on:
   push:
     tags:
-      - '*'
+      # Canonical release tags ONLY (no 'v' prefix): 0.1.0 / 0.1.0-beta2 / 1.2.3-rc.4.
+      # A stray/test tag (e.g. 'tmp') no longer triggers a live fan-out. The
+      # workflow_dispatch path below still accepts any pre-existing tag for dry runs,
+      # and the R4 tag-format gate re-validates it before any network call.
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - '[0-9]+.[0-9]+.[0-9]+-*'
   workflow_dispatch:
     inputs:
       tag:
@@ -52,13 +64,18 @@ permissions:
   contents: read
 
 concurrency:
-  group: release-wave-${{ github.event.inputs.tag || github.ref }}
+  # Normalize to the bare tag so a tag-push and a workflow_dispatch for the SAME
+  # tag share one lock (github.ref is 'refs/tags/X' on push, ref_name is 'X').
+  group: release-wave-${{ github.event.inputs.tag || github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   fan-out:
     name: Tag every component @ ${{ github.event.inputs.tag || github.ref_name }}
     runs-on: ubuntu-latest
+    # Bound a hung git/gh network call so it fails fast instead of holding the
+    # release lock for the 360-min default (concurrency cancel-in-progress: false).
+    timeout-minutes: 30
     env:
       UMBRELLA_TAG:  ${{ github.event.inputs.tag || github.ref_name }}
       RELEASE_TOKEN: ${{ secrets.WAFFLE_RELEASE_TOKEN }}
@@ -67,7 +84,7 @@ jobs:
       # Fail-closed ALLOWLIST — ONLY these submodule paths are tagged/released.
       # Anything in .gitmodules but not listed here is reported as "skipped (not releasable)".
       # Verify the set with a DRY_RUN before a live wave; add/remove entries as the org evolves.
-      RELEASE_INCLUDE: 'cache,config,console,container,contracts,error-handler,event-dispatcher,http,http-client,log,pipeline,routing,runtime,security,skeleton,utils,waffle'
+      RELEASE_INCLUDE: 'cache,config,console,container,contracts,documentation,error-handler,event-dispatcher,http,http-client,log,pipeline,routing,runtime,security,skeleton,utils,waffle'
       # POSIX ERE (grep -E): umbrella-style pre-release tags like '0.1.0-beta1.0' or '1.2.3-rc.4'.
       PRERELEASE_REGEX: '^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc|dev|pre)([0-9.]*)?$'
       # Seconds to wait between LIVE components (abuse/secondary-rate-limit guard). 0 to disable.
@@ -90,6 +107,18 @@ jobs:
       - name: Fan out tag to every releasable submodule
         run: |
           set -euo pipefail
+
+          # ---- canonical tag-format gate (R4) --------------------------------
+          # No 'v' prefix; SemVer with an optional -alpha/-beta/-rc/-dev/-pre suffix.
+          # Runs for BOTH push and workflow_dispatch (the on.push glob does not apply
+          # to a dispatch-supplied tag), so a 'v'-prefixed or junk tag aborts here —
+          # before any network call — instead of being pushed or mis-marked stable.
+          TAG_FORMAT_REGEX='^[0-9]+\.[0-9]+\.[0-9]+(-(alpha|beta|rc|dev|pre)[0-9.]*)?$'
+          if ! printf '%s' "$UMBRELLA_TAG" | grep -qE "$TAG_FORMAT_REGEX"; then
+            echo "::error::Umbrella tag '$UMBRELLA_TAG' is not a canonical release tag."
+            echo "::error::Expected SemVer without a 'v' prefix — e.g. 0.1.0, 0.1.0-beta2, 1.2.3-rc.4. Refusing to fan out."
+            exit 1
+          fi
 
           # ---- token + maskable Basic-auth header (no token-in-URL) ----------
           if [ -z "${RELEASE_TOKEN:-}" ]; then
@@ -115,9 +144,12 @@ jobs:
             echo "🚀 LIVE: tags will be pushed and releases created."
           fi
 
-          # ---- token pre-flight: fail fast with a clear message (R3) ---------
-          if ! GH_TOKEN="$RELEASE_TOKEN" gh api user -q .login >/dev/null 2>&1; then
-            echo "::error::WAFFLE_RELEASE_TOKEN failed authentication (gh api user). The PAT is invalid, expired, or lacks access. Aborting before any tagging."
+          # ---- token pre-flight: fail fast with a clear message (R3/R5) ------
+          # `gh api rate_limit` authenticates BOTH a fine-grained PAT and a GitHub App
+          # installation token. (`gh api user` would 403 on a valid App token, which
+          # has no associated user — the cause of a false-negative abort.)
+          if ! GH_TOKEN="$RELEASE_TOKEN" gh api rate_limit >/dev/null 2>&1; then
+            echo "::error::WAFFLE_RELEASE_TOKEN failed authentication (gh api rate_limit). The token is invalid, expired, or lacks access. Aborting before any tagging."
             exit 1
           fi
           echo "token pre-flight OK"
@@ -176,7 +208,10 @@ jobs:
             fi
 
             # 1. SHA the umbrella pins for this submodule
-            sha="$(git ls-tree HEAD -- "$path" | awk '$2=="commit"{print $3}')"
+            # `|| true` so a hard failure here is bucketed as one failed component
+            # (the `[ -z "$sha" ]` guard below) instead of aborting the whole wave
+            # under `set -e` — the R1 resilience guarantee extends to this step too.
+            sha="$(git ls-tree HEAD -- "$path" | awk '$2=="commit"{print $3}')" || true
             if [ -z "$sha" ]; then
               echo "::error::no commit SHA pinned for '$path' in umbrella HEAD"
               failed+=("$path:no-pinned-sha"); echo "::endgroup::"; continue
@@ -196,7 +231,7 @@ jobs:
             # 3..7 — all per-component work in a subshell. The `|| rc=$?` keeps the
             # outer `set -e` from aborting the wave (R1), and out.log is ALWAYS printed.
             wd="$tmpdir/$path"; mkdir -p "$wd"
-            rc=0
+            rc=0; tag_st=""; rel_st=""
             (
               set -euo pipefail
               cd "$wd"
@@ -227,8 +262,10 @@ jobs:
 
               # 5. Idempotent remote tag check
               tag_state=""
+              # Exact field compare (awk) — avoids the tag's '.'/'-' being treated as
+              # regex metacharacters; matches the ref and its peeled '^{}' form.
               if git "${GIT_AUTH[@]}" ls-remote --tags origin "refs/tags/$UMBRELLA_TAG" \
-                   | grep -qE "refs/tags/${UMBRELLA_TAG}(\^\{\})?$"; then
+                   | awk -v t="refs/tags/$UMBRELLA_TAG" '$2==t || $2==(t "^{}"){f=1} END{exit !f}'; then
                 git "${GIT_AUTH[@]}" fetch -q origin "refs/tags/$UMBRELLA_TAG:refs/tags/$UMBRELLA_TAG" 2>/dev/null || true
                 resolved="$(git rev-parse "refs/tags/$UMBRELLA_TAG^{commit}" 2>/dev/null || echo "")"
                 if [ "$resolved" = "$sha" ]; then
@@ -264,10 +301,12 @@ jobs:
                 echo "[DRY-RUN] would create release '$UMBRELLA_TAG' on $gh_repo (prerelease=${PRERELEASE_FLAG:-no})"
                 release_state="dry-run"
               else
+                # The tag already exists on the remote at $sha (pushed above), so gh
+                # binds the release to it; --target would be ignored here, hence omitted.
                 # shellcheck disable=SC2086  # PRERELEASE_FLAG is intentionally word-split (empty or '--prerelease')
                 GH_TOKEN="$RELEASE_TOKEN" GH_REPO="$gh_repo" \
                   gh release create "$UMBRELLA_TAG" \
-                    --target "$sha" --title "$UMBRELLA_TAG" --generate-notes $PRERELEASE_FLAG
+                    --title "$UMBRELLA_TAG" --generate-notes $PRERELEASE_FLAG
                 release_state="new"
               fi
               echo "__RELEASE__:$release_state"
@@ -286,8 +325,12 @@ jobs:
             fi
             echo "::endgroup::"
 
-            # Sequential back-off between LIVE components (skip on the last/dry-run).
-            if [ "${DRY_RUN}" != "true" ] && [ "${BACKOFF_SECONDS:-0}" -gt 0 ]; then
+            # Sequential back-off ONLY after a component that did live work (pushed a
+            # tag or created a release) — never after a no-op/skip/excluded/failed or
+            # in dry-run. Keeps re-runs fast (a recovery run that skips 16 and creates
+            # 1 sleeps once, not 16×) while still spacing real API writes.
+            if [ "${DRY_RUN}" != "true" ] && [ "${BACKOFF_SECONDS:-0}" -gt 0 ] \
+               && { [ "$tag_st" = "new" ] || [ "$rel_st" = "new" ]; }; then
               sleep "$BACKOFF_SECONDS"
             fi
           done < "$MANIFEST"
