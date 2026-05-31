@@ -11,7 +11,7 @@
 | `.github-private/` | submodule | yes | Private org config (mirror, not always present). |
 | `.opencode/` | dir | yes | OpenCode IDE config + `skills/` AI prompt library. |
 | `build/` | dir | gitignored | Output of `zip-project.sh` (audit archives, dated). |
-| `cache/`, `config/`, `console/`, `container/`, `contracts/`, `error-handler/`, `event-dispatcher/`, `http/`, `http-client/`, `log/`, `pipeline/`, `routing/`, `runtime/`, `security/`, `utils/`, `waffle/` | submodules | yes | The 16 framework components. Each is its own Git repo released on Packagist. |
+| `auth/`, `cache/`, `config/`, `console/`, `container/`, `contracts/`, `data/`, `error-handler/`, `event-dispatcher/`, `http/`, `http-client/`, `log/`, `pipeline/`, `routing/`, `runtime/`, `security/`, `utils/`, `waffle/` | submodules | yes | The 18 framework components. Each is its own Git repo released on Packagist. |
 | `component-template/` | submodule | yes | Scaffold for new components. Used via `configure-component.sh`. |
 | `docs/` | dir | yes | Monorepo contributor documentation (this Diátaxis tree). |
 | `documentation/` | submodule | yes | Framework user documentation (separate Diátaxis tree). |
@@ -41,7 +41,7 @@
 | `scripts/hooks/pre-push-sanity.sh` | Full `composer mago` + `composer tests` gate fired by `git push` when the ref is ahead of remote. |
 | `keystore.jks` | Java keystore used by signing tooling (rare; see your team's release docs). |
 | `TODO.md` | Working notes. Not authoritative. |
-| `.gitmodules` | The canonical list of submodule paths + remote URLs. 21 entries. |
+| `.gitmodules` | The canonical list of submodule paths + remote URLs. 22 entries. |
 
 ## Per-submodule layout
 
