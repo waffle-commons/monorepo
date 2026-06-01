@@ -7,6 +7,7 @@ COMPONENTS=(
     "console"
     "container"
     "contracts"
+    "data"
     "error-handler"
     "event-dispatcher"
     "http"
