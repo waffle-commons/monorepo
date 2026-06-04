@@ -51,6 +51,19 @@ That `$(basename "$PWD")` trick reads the component directory name from the curr
 ./loop.sh git status --porcelain
 ```
 
+## The memory-neutrality gate (Igor-PHP)
+
+Worker-mode memory safety has its own gate — [Igor-PHP](../explanation/mago-purge-protocol.md#the-memory-neutrality-companion-gate-igor-php) — wired as a `composer igor` script. Unlike `composer mago`, it is defined **only** on the components that hold resident state, so don't fan it across all 18 with `loop.sh` (the rest would report `Command "igor" is not defined`). Run it on the memory-sensitive set:
+
+```bash
+for c in runtime waffle container pipeline security auth data cache http http-client workspace skeleton component-template; do
+  echo "=== $c ==="
+  docker exec -w /waffle-commons/$c waffle-dev composer igor || true
+done
+```
+
+Components scaffolded from `component-template` inherit the gate automatically.
+
 ## Exit codes
 
 - `0` — every component succeeded.

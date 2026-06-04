@@ -16,7 +16,7 @@ If those aren't all true, extend an existing component instead. New components h
 
 ## 1. Bootstrap from `component-template`
 
-The `component-template` submodule is the canonical scaffold. It ships pinned Mago/PHPUnit/Psalm config, a CI workflow, a `mago.toml` with the ecosystem's `[guard]` rules, and placeholder files.
+The `component-template` submodule is the canonical scaffold. It ships pinned Mago/PHPUnit/Psalm config, a CI workflow, a `mago.toml` with the ecosystem's `[guard]` rules, an `igor.json` + `composer igor` memory-neutrality gate (see [The Mago Purge Protocol](../explanation/mago-purge-protocol.md#the-memory-neutrality-companion-gate-igor-php)), and placeholder files.
 
 ```bash
 # At the umbrella root
@@ -122,6 +122,7 @@ Per-PR checklist:
 - [ ] `README.md` matrix and `documentation/reference/index.md` updated.
 - [ ] New `documentation/reference/<thing>.md` reference page.
 - [ ] `./loop.sh composer mago` and `./loop.sh composer tests` still green.
+- [ ] `composer igor` green for the new component (it inherits the memory-neutrality gate from the template).
 
 ## Related
 

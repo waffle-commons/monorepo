@@ -57,6 +57,7 @@ security/
 ├── SECURITY.md
 ├── composer.json        ← Packagist manifest, "require waffle-commons/contracts"
 ├── mago.toml            ← Mago config: formatter / linter / analyzer / guard rules
+├── igor.json            ← Igor-PHP memory-neutrality config (resident-state components only)
 ├── phpunit.xml          ← PHPUnit 12 config
 ├── src/                 ← production code
 ├── tests/               ← PHPUnit test suite
