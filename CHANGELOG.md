@@ -7,7 +7,7 @@ submodule (see `docs/reference/workflows/release-wave.md`).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — targeting `0.1.0-beta3`
+## [0.1.0-beta3] — 2026-06-07
 
 **Theme: identity federation & stateless persistence (RFC-021 / RFC-022).**
 
@@ -50,10 +50,12 @@ a reset-chain hardening pass across the resident-worker surface.
   the component keeps ABAC voters, `#[PublicAccess]`, the stateless HMAC CSRF
   manager and `SecureContainer` (which now forwards `reset()`). The upgrade
   path is documented in [`security/CHANGELOG.md`](security/CHANGELOG.md).
-- **Reset-chain hardening** — `cache` adapters implement `ResettableInterface`;
+- **Reset-chain hardening** — `cache`'s `ArrayCache` + `CachePool` implement
+  `ResettableInterface` (store cleared, deferred writes flushed-then-dropped);
   `container` memoizes built instances so the reset loop reaches every
-  resettable service; `waffle`'s kernel drains resettable loggers and
-  implements `TerminableInterface`; `http` message internals refactored.
+  resettable service; `security`'s `SecureContainer` forwards `reset()`;
+  `waffle`'s kernel drains resettable loggers and implements
+  `TerminableInterface`; `http` message internals refactored.
 - **`skeleton`** — ships the UAB out of the box: `waffle-commons/auth`
   requirement, French-commented authentication wiring and demo routes
   (`POST /auth/demo-token`, `GET /api/me`), `data:warmup` CLI wiring, and the

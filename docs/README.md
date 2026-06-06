@@ -2,7 +2,7 @@
 
 > **Audience:** contributors and maintainers of the Waffle Commons monorepo.
 > **Scope:** how to use *this* repository — submodules, Docker, scripts, releases.
-> **Release:** `v0.1.0-beta2`
+> **Release:** `0.1.0-beta3`
 
 For framework usage (writing controllers, configuring routing, securing endpoints), see [`/documentation`](../documentation/) — the framework's own Diátaxis tree.
 

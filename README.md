@@ -15,7 +15,7 @@
 
 ---
 
-> **Release:** `0.1.0-beta2.1` — `0.1.0-beta3` in progress &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
+> **Release:** `0.1.0-beta3` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
 > **Status:** beta software — production use requires an independent security audit.
 
 ## 🧠 Mission
