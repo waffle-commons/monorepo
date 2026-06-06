@@ -70,9 +70,9 @@ Services must be **stateless and resettable** across requests (resident-memory w
 ## 4. Architecture & PSR
 
 - **Monorepo of submodules** — each its own Git repo / Packagist release: `contracts`, `waffle`,
-  `pipeline`, `security`, `routing`, `http`, `http-client`, `log`, `event-dispatcher`, `container`,
-  `config`, `cache`, `console`, `utils`, `error-handler`, `runtime` (+ `skeleton`, `workspace`,
-  `documentation`, `component-template`).
+  `pipeline`, `security`, `auth`, `routing`, `http`, `http-client`, `log`, `event-dispatcher`,
+  `container`, `config`, `cache`, `console`, `data`, `utils`, `error-handler`, `runtime`
+  (+ `skeleton`, `workspace`, `documentation`, `component-template`).
 - **PSR enforcement:** PSR-15 middleware, PSR-14 events, PSR-3 logging, PSR-7/17 HTTP messages &
   factories, PSR-18 HTTP client.
 - **Documentation (Diátaxis):** lives in `documentation/` — `tutorials/`, `how-to/`, `reference/`,
@@ -99,5 +99,5 @@ When unsure, default to **`tech-lead`** (it orchestrates the others).
 | `diataxis-doc` | "Write/document" → Diátaxis docs with exact PHP 8.5 signatures. | `.opencode/skills/diataxis-doc/SKILL.md` |
 | `release-manager` | Independent component releases on Packagist. | `.opencode/skills/release-manager/SKILL.md` |
 | `maker-scaffold` | "Scaffold / make a controller, DTO, middleware, voter, command, HTTP client, event pair" via Waffle Maker (RFC-020). | `.opencode/skills/maker-scaffold/SKILL.md` |
-| `auth-bridge-audit` | Audit the Universal Authentication Bridge (RFC-021): HMAC, 5s TTL, IP-binding, fail-closed. | `.opencode/skills/auth-bridge-audit/SKILL.md` |
+| `auth-bridge-audit` | Audit the Universal Authentication Bridge (RFC-021, `auth` component): JWT, OAuth2/OIDC, HMAC assertions, API keys — fail-closed, stateless. | `.opencode/skills/auth-bridge-audit/SKILL.md` |
 | `data-persistence` | Design the Universal Data & Persistence Layer (RFC-022): SQR, stateless pools, Firestore paths, atomic flat-file. | `.opencode/skills/data-persistence/SKILL.md` |

@@ -2,6 +2,7 @@
 
 # List of components
 COMPONENTS=(
+    "auth"
     "cache"
     "config"
     "console"

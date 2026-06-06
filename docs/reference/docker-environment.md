@@ -67,7 +67,7 @@ docker exec -w /waffle-commons/security waffle-dev composer tests 2>&1 | tee sec
 
 | Service | Image | Host port | Purpose |
 | :--- | :--- | :--- | :--- |
-| `legacy-backend` | `php:8.5-cli` | `8090` | Deliberately slow "legacy monolith" the EcoShield gateway proxies. |
+| `legacy-backend` | `php:8.5-cli` | `8090` | Deliberately slow "legacy monolith" the Waffle gateway proxies (and asserts identities to, RFC-021). |
 | `waffle-redis` | `redis:7-alpine` | — | PSR-16 cache backend (RFC-013) + key-value driver integration target (RFC-022). |
 | `waffle-postgres` | `postgres:17-alpine` | `5432` | Primary relational sandbox (RFC-022); `bin/waffle db:migrate` runs against it. Credentials come from `workspace/.env` (`DB_*`). |
 | `waffle-mongo` | `mongo:7` | — *(internal only)* | Document-driver integration target (RFC-022); data's Mongo tests skip cleanly when it is absent. |
