@@ -72,7 +72,7 @@ The framework-side `composer.json` of every component declares **at most**:
 
 - the PSR interface packages it implements (`psr/http-server-middleware`, `psr/log`, …);
 - `waffle-commons/contracts: self.version`;
-- and, very rarely, a sibling component via a path repository (`utils-local` for cross-package helpers — `utils` is the only sibling commonly path-repo'd because it's a pure-function helper package).
+- and, very rarely, a sibling component via a path repository (`utils-local` for cross-package helpers — `utils` is the only sibling commonly path-repo'd because it's a pure-function helper package, e.g. the stateless `Assert` validation & cleansing layer the `skeleton`/`workspace` demos consume).
 
 If a `composer.json` requires a concrete waffle-commons sibling outside `contracts`/`utils`, that is a [Component Agnosticism rule](../explanation/component-agnosticism.md) violation and `mago guard` will fail.
 
