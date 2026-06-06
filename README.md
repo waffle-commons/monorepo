@@ -15,7 +15,7 @@
 
 ---
 
-> **Release:** `v0.1.0-beta2` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
+> **Release:** `0.1.0-beta2.1` — `0.1.0-beta3` in progress &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
 > **Status:** beta software — production use requires an independent security audit.
 
 ## 🧠 Mission
@@ -26,7 +26,7 @@ Waffle exists to prove that PHP can ship a framework which is simultaneously:
 - **Secure** — fail-closed ABAC, stateless HMAC CSRF bound to a per-browser anonymous SID, SSRF allowlist on the outbound client, hardened HTTP headers by default.
 - **Fast** — FrankenPHP-first; every component is stateless across requests so the resident worker can hold the assembled kernel in memory between calls.
 
-The monorepo is the umbrella that holds 16 independent framework components, a project skeleton, a contributor workspace, a component scaffold template, and the framework's user-facing documentation. Each component is its own Git repository, released independently on Packagist; this umbrella is purely a development and integration convenience.
+The monorepo is the umbrella that holds 18 independent framework components, a project skeleton, a contributor workspace, a component scaffold template, and the framework's user-facing documentation. Each component is its own Git repository, released independently on Packagist; this umbrella is purely a development and integration convenience.
 
 ## 📦 What's inside
 
@@ -41,6 +41,8 @@ The monorepo is the umbrella that holds 16 independent framework components, a p
 | | [`routing`](routing/) | `waffle-commons/routing` | Attribute-driven router (`#[Route]`) with route-table cache. |
 | | [`pipeline`](pipeline/) | `waffle-commons/pipeline` | PSR-15 middleware stack with stack-locking semantics. |
 | **Security** | [`security`](security/) | `waffle-commons/security` | Fail-closed ABAC, `#[Voter]` / `#[PublicAccess]` attributes, stateless HMAC CSRF, `AnonymousSessionMiddleware`. |
+| | [`auth`](auth/) | `waffle-commons/auth` | Universal Authentication Bridge (RFC-021): JWT, OAuth2/OIDC + PKCE, API key, Basic, `X-Wfl-Assert-User` gateway assertions — inbound and outbound, fail-closed. |
+| **Data** | [`data`](data/) | `waffle-commons/data` | Universal Data & Persistence Layer (RFC-022): worker-safe PDO pool, SQR query AST + per-backend compilers, Firestore guardrails, 7 CRUD repository backends, migrations, `data:warmup`. |
 | **DI & Config** | [`container`](container/) | `waffle-commons/container` | PSR-11 container with autowiring + `ResettableInterface` for worker-mode reset. |
 | | [`config`](config/) | `waffle-commons/config` | Native YAML (`ext-yaml`) loader, `%env(VAR)%` interpolation, type-strict getters. |
 | **Cross-cutting** | [`cache`](cache/) | `waffle-commons/cache` | PSR-6 + PSR-16, with `ArrayCache` / `FileCache` / `RedisCache` and stampede protection. |

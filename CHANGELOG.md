@@ -7,7 +7,73 @@ submodule (see `docs/reference/workflows/release-wave.md`).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — targeting `0.1.0-beta2`
+## [Unreleased] — targeting `0.1.0-beta3`
+
+**Theme: identity federation & stateless persistence (RFC-021 / RFC-022).**
+
+Two new components join the ecosystem — `auth` (the Universal Authentication
+Bridge) and `data` (the Universal Data & Persistence Layer) — alongside the
+Igor-PHP memory-leak audit tooling, OPcache warmup, the persistence makers, and
+a reset-chain hardening pass across the resident-worker surface.
+
+### Added
+- **`auth` (NEW component)** — Universal Authentication Bridge (RFC-021): four
+  inbound schemes (`X-Wfl-Assert-User` gateway assertions, Bearer JWT
+  RS256/HS256, API key, HTTP Basic), stateless OAuth2/OIDC with PKCE (S256),
+  five outbound credential providers behind a PSR-18 decorator, constant-time
+  HMAC verification with IP binding and a 5-second assertion window, and
+  fail-closed boot on a missing/short `WAFFLE_AUTH_SECRET`.
+  See [`auth/CHANGELOG.md`](auth/CHANGELOG.md).
+- **`data` (NEW component)** — Universal Data & Persistence Layer (RFC-022):
+  worker-safe `PDOConnectionPool` (ping-before-dispense, transaction rollback on
+  reset), the SQR query AST with compilers for every SQL dialect
+  (MySQL/MariaDB/SQLite/MSSQL/PostgreSQL/Oracle) plus Firestore, MongoDB,
+  Cassandra, key-value and GraphQL backends, the three Firestore guardrails
+  (strict paths, in-memory evaluation, auth gate), full CRUD on all seven
+  repository backends, property-hook hydration, the migrations runner and the
+  `data:warmup` artifact engine. See [`data/CHANGELOG.md`](data/CHANGELOG.md).
+- **`contracts`** — the RFC-021/022 surface: assertion signer/verifier
+  contracts, SQR enums + predicate/repository interfaces, data exception
+  markers, `Data\Warmup\DataWarmerInterface`, `Runtime\AuditRunnerInterface`
+  and `Core\TerminableInterface`. See [`contracts/CHANGELOG.md`](contracts/CHANGELOG.md).
+- **`console`** — `igor:audit` (monorepo memory-leak audit through `runtime`'s
+  `ProcessAuditRunner`), `data:warmup` (OPcache pre-compilation of SQR trees)
+  and the `make:entity` / `make:repository` persistence makers (RFC-020).
+  See [`console/CHANGELOG.md`](console/CHANGELOG.md).
+- **Igor-PHP audit tooling** — the root `igor.sh` dynamic scanner (+
+  `scripts/igor.sh` shim), per-component `igor.json` configuration across all
+  15 stateful packages (now including `event-dispatcher`), and the
+  `composer igor` script convention.
+
+### Changed
+- **`security`** — authentication concerns decoupled into `auth` (RFC-021);
+  the component keeps ABAC voters, `#[PublicAccess]`, the stateless HMAC CSRF
+  manager and `SecureContainer` (which now forwards `reset()`). The upgrade
+  path is documented in [`security/CHANGELOG.md`](security/CHANGELOG.md).
+- **Reset-chain hardening** — `cache` adapters implement `ResettableInterface`;
+  `container` memoizes built instances so the reset loop reaches every
+  resettable service; `waffle`'s kernel drains resettable loggers and
+  implements `TerminableInterface`; `http` message internals refactored.
+- **`skeleton`** — ships the UAB out of the box: `waffle-commons/auth`
+  requirement, French-commented authentication wiring and demo routes
+  (`POST /auth/demo-token`, `GET /api/me`), `data:warmup` CLI wiring, and the
+  migration to the canonical `contracts` `Route` attribute.
+- **CI/CD & tooling** — `auth` and `data` joined the release-wave
+  `RELEASE_INCLUDE` allowlist and the umbrella-ci change matrix (which gained
+  full `composer mago` parity: `fmt --check` + `guard`); their component
+  pipelines now trigger on push/PR; `zip-project.sh`, `coverage.sh` and
+  `loop.sh` cover all 18 libraries.
+
+## [0.1.0-beta2.1] — 2026-05-30
+
+**Patch: umbrella housekeeping.**
+
+### Changed
+- Component submodule pointers refreshed post-wave and re-tagged in lockstep —
+  no component source changes; every package carries the same content as
+  `0.1.0-beta2`. Discord badge added to the monorepo README.
+
+## [0.1.0-beta2] — 2026-05-29
 
 **Theme: HTTP correctness, developer experience, and cognitive tooling.**
 

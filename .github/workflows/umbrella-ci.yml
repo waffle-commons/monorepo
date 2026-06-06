@@ -42,11 +42,13 @@ jobs:
         with:
           list-files: none
           filters: |
+            auth:             'auth/**'
             cache:            'cache/**'
             config:           'config/**'
             console:          'console/**'
             container:        'container/**'
             contracts:        'contracts/**'
+            data:             'data/**'
             error-handler:    'error-handler/**'
             event-dispatcher: 'event-dispatcher/**'
             http:             'http/**'
@@ -123,6 +125,10 @@ jobs:
         working-directory: ${{ matrix.component }}
         run: composer install --no-interaction --no-progress --prefer-dist
 
+      - name: mago fmt (check)
+        working-directory: ${{ matrix.component }}
+        run: vendor/bin/mago fmt --check
+
       - name: mago lint
         working-directory: ${{ matrix.component }}
         run: vendor/bin/mago lint
@@ -130,6 +136,10 @@ jobs:
       - name: mago analyze
         working-directory: ${{ matrix.component }}
         run: vendor/bin/mago analyze
+
+      - name: mago guard
+        working-directory: ${{ matrix.component }}
+        run: vendor/bin/mago guard
 
       - name: composer tests
         working-directory: ${{ matrix.component }}

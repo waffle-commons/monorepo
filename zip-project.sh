@@ -2,11 +2,13 @@
 
 # List of components
 COMPONENTS=(
+    "auth"
     "cache"
     "config"
     "console"
     "container"
     "contracts"
+    "data"
     "error-handler"
     "event-dispatcher"
     "http"
@@ -66,17 +68,24 @@ for COMP in "${COMPONENTS[@]}"; do
         FILES_TO_ZIP="$FILES_TO_ZIP $COMP/docker"
     fi
 
+    if [ -d "$COMP/docs" ]; then
+        FILES_TO_ZIP="$FILES_TO_ZIP $COMP/docs"
+    fi
+
     if [ -f "$COMP/composer.json" ]; then
         FILES_TO_ZIP="$FILES_TO_ZIP $COMP/composer.json"
     fi
 
-
     if [ -f "$COMP/docker-compose.yml" ]; then
-        FILES_TO_ZIP="$FILES_TO_ZIP $COMP/composer.json"
+        FILES_TO_ZIP="$FILES_TO_ZIP $COMP/docker-compose.yml"
     fi
 
     if [ -f "$COMP/README.md" ]; then
         FILES_TO_ZIP="$FILES_TO_ZIP $COMP/README.md"
+    fi
+
+    if [ -f "$COMP/CHANGELOG.md" ]; then
+        FILES_TO_ZIP="$FILES_TO_ZIP $COMP/CHANGELOG.md"
     fi
 
     # Check for mago toml files

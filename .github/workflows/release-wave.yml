@@ -84,7 +84,7 @@ jobs:
       # Fail-closed ALLOWLIST — ONLY these submodule paths are tagged/released.
       # Anything in .gitmodules but not listed here is reported as "skipped (not releasable)".
       # Verify the set with a DRY_RUN before a live wave; add/remove entries as the org evolves.
-      RELEASE_INCLUDE: 'cache,config,console,container,contracts,documentation,error-handler,event-dispatcher,http,http-client,log,pipeline,routing,runtime,security,skeleton,utils,waffle'
+      RELEASE_INCLUDE: 'auth,cache,config,console,container,contracts,data,documentation,error-handler,event-dispatcher,http,http-client,log,pipeline,routing,runtime,security,skeleton,utils,waffle'
       # POSIX ERE (grep -E): umbrella-style pre-release tags like '0.1.0-beta1.0' or '1.2.3-rc.4'.
       PRERELEASE_REGEX: '^[0-9]+\.[0-9]+\.[0-9]+-(alpha|beta|rc|dev|pre)([0-9.]*)?$'
       # Seconds to wait between LIVE components (abuse/secondary-rate-limit guard). 0 to disable.
