@@ -1,0 +1,9 @@
+# Private directories
+Audits/
+Logs/
+Retrospectives/
+Roadmaps/
+TODOs/
+
+# Private files
+*.pem

@@ -14,7 +14,6 @@
 .venv/
 build/
 graphify-out/
-project_system/
 tmp/
 
 # Mono repository
