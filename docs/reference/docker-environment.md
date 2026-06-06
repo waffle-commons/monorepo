@@ -61,6 +61,19 @@ docker exec -w /waffle-commons/security waffle-dev composer tests 2>&1 | tee sec
 
 `vendor/bin/mago`, `vendor/bin/phpunit`, `vendor/bin/psalm` are resolved per-component by Composer — they aren't globally installed.
 
+## Sandbox services on `waffle-network`
+
+`waffle-dev` is not alone in the compose file — the workspace also boots backing services used by the framework and by the `data` component's live integration tests:
+
+| Service | Image | Host port | Purpose |
+| :--- | :--- | :--- | :--- |
+| `legacy-backend` | `php:8.5-cli` | `8090` | Deliberately slow "legacy monolith" the EcoShield gateway proxies. |
+| `waffle-redis` | `redis:7-alpine` | — | PSR-16 cache backend (RFC-013) + key-value driver integration target (RFC-022). |
+| `waffle-postgres` | `postgres:17-alpine` | `5432` | Primary relational sandbox (RFC-022); `bin/waffle db:migrate` runs against it. Credentials come from `workspace/.env` (`DB_*`). |
+| `waffle-mongo` | `mongo:7` | — *(internal only)* | Document-driver integration target (RFC-022); data's Mongo tests skip cleanly when it is absent. |
+
+`waffle-dev` waits for `legacy-backend`, `waffle-redis`, and `waffle-postgres` to be healthy before starting; `waffle-mongo` is independent. Postgres and Mongo persist their data in named volumes (`waffle-postgres-data`, `waffle-mongo-data`) — `down --volumes` resets them.
+
 ## File ownership gotchas
 
 The container's PHP user has UID/GID matching the host's user by default (the Dockerfile uses ARGs). If you see permission errors on files created inside the container, your `docker-compose.yml` may need:
