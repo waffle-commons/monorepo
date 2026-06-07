@@ -141,6 +141,10 @@ jobs:
         working-directory: ${{ matrix.component }}
         run: vendor/bin/mago guard
 
+      - name: igor-php
+        working-directory: ${{ matrix.component }}
+        run: vendor/bin/igor-php .
+
       - name: composer tests
         working-directory: ${{ matrix.component }}
         env:
