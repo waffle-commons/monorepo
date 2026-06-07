@@ -66,6 +66,28 @@ The Mago Purge Protocol covers code quality. The coverage twin is:
 
 The two together form Waffle's "Zero-Debt" guarantee: no static-analysis issues, high test coverage, no slipping standard.
 
+## The memory-neutrality companion gate (Igor-PHP)
+
+Mago guards *code* quality; it does not know whether a service leaks state between requests. Under FrankenPHP worker mode the process is resident, so a singleton that mutates a `static` array — or a `reset()` handler that forgets a property — accumulates in RAM and bleeds state from one request into the next. Mago cannot see that; **[Igor-PHP](https://github.com/igor-php/igor-php)** can.
+
+Igor is an ultra-fast Go static linter purpose-built for FrankenPHP worker mode. It enforces the **zero memory-drift** invariant (`ΔM = 0`) by rejecting three classes of defect:
+
+| Igor finding | What it catches |
+| :--- | :--- |
+| State mutation | `static::$prop`, `$this->items[] = …`, and other writes that survive the request loop. |
+| Incomplete reset | A service implementing `ResettableInterface` whose `reset()` leaves a mutable property set. |
+| Dangerous globals | Superglobals (`$_GET`, `$_SERVER`), `exit`/`die`, and ambient mutations (`date_default_timezone_set`) that poison the resident worker. |
+
+It runs exactly like the Mago phases — a `composer igor` script (`vendor/bin/igor-php .`, configured per component in `igor.json`):
+
+```bash
+docker exec -w /waffle-commons/<component> waffle-dev composer igor
+```
+
+Igor is wired into the components that hold resident or request-scoped state — `runtime`, `waffle`, `container`, `pipeline`, `security`, `auth`, `data`, `cache`, `http`, `http-client` — plus the `workspace` / `skeleton` apps and the `component-template` scaffold. Stateless components (`contracts`, `utils`, `console`, `config`, `routing`, …) are intentionally excluded: there is no resident state to audit.
+
+The **zero-baseline rule applies identically.** Igor supports a `baseline` key and a `--generate-baseline` flag; we use neither. A memory-drift finding is fixed, not snapshotted. See [Run checks across components](../how-to/run-checks-across-components.md#the-memory-neutrality-gate-igor-php) for how to fan it across the tree.
+
 ## When the protocol is wrong
 
 If a Mago rule is genuinely wrong for this codebase — e.g. it flags a pattern that PHP 8.5 made legitimate but Mago hasn't yet caught up to — the right response is:

@@ -7,7 +7,7 @@
 
 Propagates an umbrella tag to every **releasable** component repo, then creates a GitHub Release on each newly-tagged ref with auto-generated notes. Existing Packagist webhooks pick up the new tags automatically, so no Packagist API call is required.
 
-"Releasable" is a **fail-closed allowlist** (`RELEASE_INCLUDE`): only the paths listed there are tagged. Everything else in `.gitmodules` (e.g. `documentation`, `workspace`, `component-template`) is reported as `excluded` and never touched.
+"Releasable" is a **fail-closed allowlist** (`RELEASE_INCLUDE`): only the paths listed there are tagged. Everything else in `.gitmodules` (e.g. `workspace`, `component-template`) is reported as `excluded` and never touched.
 
 ## Triggers
 
@@ -40,7 +40,7 @@ Edit these in the workflow file (tag-push triggers cannot take UI inputs).
 
 | Variable | Default | Purpose |
 | :--- | :--- | :--- |
-| `RELEASE_INCLUDE` | `cache,config,console,container,contracts,error-handler,event-dispatcher,http,http-client,log,pipeline,routing,runtime,security,skeleton,utils,waffle` | **Fail-closed allowlist** of submodule paths to tag/release. A path absent from this list is `excluded`. |
+| `RELEASE_INCLUDE` | `auth,cache,config,console,container,contracts,data,documentation,error-handler,event-dispatcher,http,http-client,log,pipeline,routing,runtime,security,skeleton,utils,waffle` | **Fail-closed allowlist** of submodule paths to tag/release. A path absent from this list is `excluded`. |
 | `PRERELEASE_REGEX` | `^[0-9]+\.[0-9]+\.[0-9]+-(alpha\|beta\|rc\|dev\|pre)([0-9.]*)?$` | POSIX ERE matched against the umbrella tag. A match marks every component release as a GitHub **pre-release**. |
 | `BACKOFF_SECONDS` | `2` | Sleep between components that did **live work**, to stay under GitHub's secondary rate limiter. `0` disables it. |
 

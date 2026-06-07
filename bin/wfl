@@ -137,6 +137,7 @@ ${C_DIM}EXECUTION${C_RST}
   run [comp] <cmd...>   run an arbitrary command inside a component or monorepo root
   mago [comp]           run 'composer mago' for a component (defaults to cwd)
   test [comp]           run 'composer tests' for a component (defaults to cwd)
+  igor [args...]        run the Igor memory-leak/state audit across all components (igor.sh)
 
 ${C_DIM}PHP PROFILE${C_RST}
   debug                 activate 🐛 debug profile (xdebug on, JIT off) and restart the container
@@ -242,6 +243,15 @@ cmd_test() {
   local comp; comp="$(_resolve_component "${1:-}")"
   _ensure_running
   exec docker exec -it -w "/waffle-commons/$comp" "$CONTAINER" composer tests
+}
+
+cmd_igor() {
+  # Igor memory-leak / shared-state audit across every component.
+  # igor.sh self-locates, dynamically scans for the igor-php dependency, and
+  # runs its own docker/local mode detection + container preflight, so all args
+  # (e.g. --silent, --local, -c <comp>, -- <igor args>) are forwarded verbatim.
+  [ -x "$REPO_ROOT/igor.sh" ] || die "igor.sh not found or not executable at $REPO_ROOT/igor.sh"
+  exec "$REPO_ROOT/igor.sh" "$@"
 }
 
 _swap_profile() {
@@ -585,6 +595,7 @@ main() {
     run)         cmd_run "run" "$@" ;;
     mago)        cmd_mago        "$@" ;;
     test)        cmd_test        "$@" ;;
+    igor)        cmd_igor        "$@" ;;
     debug)       cmd_debug       "$@" ;;
     bench)       cmd_bench       "$@" ;;
     status)      cmd_status      "$@" ;;

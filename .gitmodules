@@ -58,3 +58,9 @@
 [submodule "http-client"]
 	path = http-client
 	url = git@github.com:waffle-commons/http-client.git
+[submodule "auth"]
+	path = auth
+	url = git@github.com:waffle-commons/auth.git
+[submodule "data"]
+	path = data
+	url = git@github.com:waffle-commons/data.git

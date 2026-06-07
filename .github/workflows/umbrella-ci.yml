@@ -32,7 +32,7 @@ jobs:
       any:        ${{ steps.matrix.outputs.any }}
     steps:
       - name: Checkout umbrella
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -42,11 +42,13 @@ jobs:
         with:
           list-files: none
           filters: |
+            auth:             'auth/**'
             cache:            'cache/**'
             config:           'config/**'
             console:          'console/**'
             container:        'container/**'
             contracts:        'contracts/**'
+            data:             'data/**'
             error-handler:    'error-handler/**'
             event-dispatcher: 'event-dispatcher/**'
             http:             'http/**'
@@ -90,7 +92,7 @@ jobs:
 
     steps:
       - name: Checkout umbrella + submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: recursive
           fetch-depth: 1
@@ -123,6 +125,10 @@ jobs:
         working-directory: ${{ matrix.component }}
         run: composer install --no-interaction --no-progress --prefer-dist
 
+      - name: mago fmt (check)
+        working-directory: ${{ matrix.component }}
+        run: vendor/bin/mago fmt --check
+
       - name: mago lint
         working-directory: ${{ matrix.component }}
         run: vendor/bin/mago lint
@@ -130,6 +136,21 @@ jobs:
       - name: mago analyze
         working-directory: ${{ matrix.component }}
         run: vendor/bin/mago analyze
+
+      - name: mago guard
+        working-directory: ${{ matrix.component }}
+        run: vendor/bin/mago guard
+
+      - name: igor-php
+        if: |
+          matrix.component != 'config' &&
+          matrix.component != 'console' &&
+          matrix.component != 'contracts' &&
+          matrix.component != 'error-handler' &&
+          matrix.component != 'log' &&
+          matrix.component != 'routing'
+        working-directory: ${{ matrix.component }}
+        run: vendor/bin/igor-php .
 
       - name: composer tests
         working-directory: ${{ matrix.component }}

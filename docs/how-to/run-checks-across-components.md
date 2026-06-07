@@ -51,6 +51,21 @@ That `$(basename "$PWD")` trick reads the component directory name from the curr
 ./loop.sh git status --porcelain
 ```
 
+## The memory-neutrality gate (Igor-PHP)
+
+Worker-mode memory safety has its own gate — [Igor-PHP](../explanation/mago-purge-protocol.md#the-memory-neutrality-companion-gate-igor-php) — a static `ΔM = 0` audit. Unlike `composer mago`, it is defined **only** on the components that hold resident state, so it must not be fanned across every component with `loop.sh` (the rest have no `igor` script). The root **`igor.sh`** handles that for you: it dynamically scans each component's `composer.json` for `igor-php/igor-php` and audits only the candidates.
+
+```bash
+./igor.sh            # audit every Igor-enabled component (docker mode auto-detected)
+wfl igor             # same, via the developer CLI
+./igor.sh --silent   # one line per component
+./igor.sh -c runtime # scope to a single component
+```
+
+`igor.sh` runs each candidate's `vendor/bin/igor-php .` (auto-loading that component's `igor.json`), never halts early, prints a summary table (DANGEROUS = Igor's "KO (Dangerous State)" count), and exits non-zero if any audit fails. On the host it wraps each run in `docker exec` into `waffle-dev`; pass `--local` when you are already inside the container. Components scaffolded from `component-template` declare the dependency, so they are picked up automatically.
+
+> The same audit is also available from the application console as **`igor:audit`** (`Waffle\Commons\Console\Command\MemoryAuditCommand`), a thin command whose `proc_open` engine lives in `waffle-commons/runtime`. See the [Console reference](../../documentation/reference/console.md#igoraudit).
+
 ## Exit codes
 
 - `0` — every component succeeded.

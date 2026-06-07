@@ -2,7 +2,7 @@
 
 > **Audience:** contributors and maintainers of the Waffle Commons monorepo.
 > **Scope:** how to use *this* repository — submodules, Docker, scripts, releases.
-> **Release:** `v0.1.0-beta2`
+> **Release:** `0.1.0-beta3`
 
 For framework usage (writing controllers, configuring routing, securing endpoints), see [`/documentation`](../documentation/) — the framework's own Diátaxis tree.
 
@@ -24,7 +24,7 @@ Documentation is organised by what you're trying to do, following the [Diátaxis
 - [**Make your first cross-component change**](tutorials/make-your-first-cross-component-change.md) — submodule mechanics in practice.
 
 ### Doing a specific task?
-- [**Run checks across all components**](how-to/run-checks-across-components.md) — `loop.sh`.
+- [**Run checks across all components**](how-to/run-checks-across-components.md) — `loop.sh`; memory-neutrality via `igor.sh` / `wfl igor`.
 - [**Add a new component**](how-to/add-a-new-component.md) — from `component-template`.
 - [**Update a submodule pointer**](how-to/update-a-submodule.md) — when a downstream change has merged.
 - [**Release a component**](how-to/release-a-component.md) — tag, push, Packagist.

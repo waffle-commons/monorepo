@@ -18,6 +18,13 @@ flat-file write / hydration".
 - **Stateless Semantic Query Representation (SQR):** repositories build a declarative AST
   (target scope · filter tree · projection list · bounded pagination) — **never** raw SQL strings.
   Driver adapters compile the SQR into the native backend format.
+- **Stateless CRUD writes:** read contract `RepositoryInterface` (find/findOne/stream) is extended by
+  `WritableRepositoryInterface` (`save` / `delete` / `findById`). Writes go through a pure
+  **`DataMapperInterface`** (`target` / `identityField` / `fields` / `identify` / `toRow`) — entities stay
+  immutable VOs (no Active Record). `save()` branches INSERT vs UPDATE on `identify()` (null ⇒ insert).
+  Every backend implements it: SQL (transactional INSERT/UPDATE/DELETE), Firestore, Mongo (insert/upsert/
+  deleteOne), KeyValue (SET/DEL, identity mandatory), Cassandra (CQL upsert), GraphQL (Hasura-style
+  mutations), JSON flat-file (atomic read-modify-write).
 - **Immutable hydration:** rows/documents map directly to `final readonly` DTOs; PHP 8.5 Property
   Hooks validate at construction and throw `ValidationException` on poisoned data. No change-tracking.
 - **Worker safety:** every driver implements `ResettableInterface`; on `$kernel->reset()` it releases
@@ -28,10 +35,14 @@ flat-file write / hydration".
 - **Relational (PDO/native):** **stateless connection pooling** (health-PING before dispensing;
   non-blocking reconnect); **strict parameterization only** (no interpolation — OWASP A03); buffer
   streaming / cursors for large sets (never load all rows into memory).
-- **Firestore/Firebase:** **no root collections** — enforce isolated paths
-  `/artifacts/{appId}/public/data/{collection}` and `/artifacts/{appId}/users/{userId}/{collection}`;
-  **no server-side compound/sort queries** (fetch simple, filter/sort in memory); **auth gate** before
-  every transaction (`signInWithCustomToken` / `signInAnonymously`).
+- **Firestore/Firebase (COMPLETE):** `FirestoreRepository` (+ `Driver/Firestore/FirestoreClientInterface`
+  port + `FirestoreRestClient`) enforces all three rules — Rule 1: `FirestoreScope` isolates
+  `/artifacts/{appId}/public/data/{collection}` and `/artifacts/{appId}/users/{userId}/{collection}`
+  (root impossible; `forPublic`/`forPrivate` translate a bad scope to `SecurityPathViolationException`);
+  Rule 2: only equality reaches the driver, range/set/sort/offset resolved by `InMemoryEvaluator`;
+  Rule 3: every read/write gated on `Contracts\Auth\SecurityContextInterface::isAuthenticated()` ⇒
+  `UnauthenticatedAccessException` on an anonymous caller. `forPrivate` derives `{userId}` from the
+  authenticated identity, so a caller can never reach another user's data.
 - **Flat-file JSON:** `LOCK_EX` + **atomic write** (temp file → `rename()`) to prevent corruption.
 - **GraphQL / API:** compile the SQR to query documents; execute via the async `http-client`.
 

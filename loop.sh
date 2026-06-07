@@ -2,11 +2,13 @@
 
 # List of components
 COMPONENTS=(
+    "auth"
     "cache"
     "config"
     "console"
     "container"
     "contracts"
+    "data"
     "error-handler"
     "event-dispatcher"
     "http"
