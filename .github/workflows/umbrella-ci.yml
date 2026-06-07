@@ -142,7 +142,13 @@ jobs:
         run: vendor/bin/mago guard
 
       - name: igor-php
-        if: not(contains(fromJSON('["config", "console", "contracts", "error-handler", "log", "routing"]'), matrix.component))
+        if: |
+          matrix.component != 'config' &&
+          matrix.component != 'console' &&
+          matrix.component != 'contracts' &&
+          matrix.component != 'error-handler' &&
+          matrix.component != 'log' &&
+          matrix.component != 'routing'
         working-directory: ${{ matrix.component }}
         run: vendor/bin/igor-php .
 
