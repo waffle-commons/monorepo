@@ -92,7 +92,7 @@ jobs:
 
     steps:
       - name: Checkout umbrella at the target tag (no submodule content needed)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.event.inputs.tag || github.ref_name }}
           submodules: false
