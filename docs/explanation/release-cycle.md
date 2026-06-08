@@ -1,17 +1,17 @@
 # Explanation — The release cycle
 
 > **Diátaxis quadrant:** Explanation.
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta3`.
 
 ## The cadence
 
-Components release **independently**, but the ecosystem evolves in **coordinated waves**. A Beta-1 wave produces a coherent set of `v0.1.0-beta1` tags across every component; a Beta-2 wave produces `v0.1.0-beta2` across the same set.
+Components release **independently**, but the ecosystem evolves in **coordinated waves**. A Beta-1 wave produces a coherent set of `0.1.0-beta1` tags across every component; a Beta-2 wave produces `0.1.0-beta2` across the same set.
 
 This is enabled by the `self.version` Composer trick — see below.
 
 ## Semver, as we use it
 
-Until `v1.0.0`, the version string format is `0.MINOR.PATCH-betaN`:
+Until `1.0.0`, the version string format is `0.MINOR.PATCH-betaN`:
 
 - `0` — pre-1.0; **anything can break**.
 - `MINOR` — a planned milestone (currently `1`).
@@ -36,13 +36,13 @@ Many components' `composer.json` declares:
 }
 ```
 
-`self.version` is a Composer convention meaning "the same version as me". It works because the umbrella coordinates wave releases — `security@v0.1.0-beta2` requires `contracts@v0.1.0-beta2`, `routing@v0.1.0-beta2`, etc. The whole wave is internally consistent.
+`self.version` is a Composer convention meaning "the same version as me". It works because the umbrella coordinates wave releases — `security@0.1.0-beta3` requires `contracts@0.1.0-beta3`, `routing@0.1.0-beta3`, etc. The whole wave is internally consistent.
 
-The cost: you cannot, in practice, mix-and-match component versions across a wave. If you want `security@v0.1.0-beta2` you implicitly want every other component at `v0.1.0-beta2`. This is the explicit design — coordinated waves over fine-grained interop.
+The cost: you cannot, in practice, mix-and-match component versions across a wave. If you want `security@0.1.0-beta3` you implicitly want every other component at `0.1.0-beta3`. This is the explicit design — coordinated waves over fine-grained interop.
 
 ## The release wave, step by step
 
-A coordinated wave (e.g. `v0.1.0-beta1` → `v0.1.0-beta2`):
+A coordinated wave (e.g. `0.1.0-beta2` → `0.1.0-beta3`):
 
 1. **Pre-release sanity** — every component is green on its `main`:
    ```bash
@@ -64,14 +64,14 @@ A coordinated wave (e.g. `v0.1.0-beta1` → `v0.1.0-beta2`):
    ```bash
    git submodule foreach 'git fetch origin && git switch main && git pull --ff-only'
    git add .
-   git commit -m "Bump submodule pointers to v0.1.0-beta2"
+   git commit -m "Bump submodule pointers to 0.1.0-beta3"
    git push
    ```
    See [bump-submodule-pointers](../how-to/bump-submodule-pointers.md).
 5. **Tag the umbrella** with the wave name:
    ```bash
-   git tag -a v0.1.0-beta2 -m "Beta 2 wave"
-   git push origin v0.1.0-beta2
+   git tag -a 0.1.0-beta3 -m "Beta 3 wave"
+   git push origin 0.1.0-beta3
    ```
 6. **Publish release notes** in the umbrella's GitHub Releases page summarising what changed across every component.
 
@@ -80,7 +80,7 @@ A coordinated wave (e.g. `v0.1.0-beta1` → `v0.1.0-beta2`):
 While pre-1.0:
 
 - Beta tags can break interfaces. Documented breaks only.
-- Patches (e.g. `v0.1.0-beta1.1` if needed — Composer allows `+` build metadata or fourth segments) for genuine showstoppers between waves.
+- Patches (e.g. `0.1.0-beta1.1` if needed — Composer allows `+` build metadata or fourth segments) for genuine showstoppers between waves.
 - Release notes are mandatory.
 
 At 1.0:

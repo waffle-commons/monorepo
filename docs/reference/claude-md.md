@@ -1,6 +1,6 @@
 # Reference — `CLAUDE.md` conventions
 
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta3`.
 > **Scope:** `<umbrella>/CLAUDE.md`.
 > **Purpose:** the canonical project conventions, written as instructions for AI assistants but binding on humans as well.
 

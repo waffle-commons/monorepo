@@ -1,6 +1,6 @@
 # Reference — `release-wave.yml`
 
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta3`.
 > **Scope:** `.github/workflows/release-wave.yml` — the umbrella's release fan-out workflow.
 
 ## Purpose
@@ -16,7 +16,7 @@ on:
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'      # stable: 0.1.0
-      - '[0-9]+.[0-9]+.[0-9]+-*'    # pre-release: 0.1.0-beta2, 1.2.3-rc.4
+      - '[0-9]+.[0-9]+.[0-9]+-*'    # pre-release: 0.1.0-beta3, 1.2.3-rc.4
   workflow_dispatch:
     inputs:
       tag:      { required: true,  type: string  }   # must already exist on the umbrella
@@ -50,11 +50,11 @@ The tag-format gate is a separate, non-configurable safety check (`TAG_FORMAT_RE
 
 | Tag | Pre-release? |
 | :--- | :--- |
-| `0.1.0-beta2` | yes |
+| `0.1.0-beta3` | yes |
 | `0.1.0-alpha1` | yes |
 | `1.2.3-rc.4` | yes |
 | `1.2.3` | no (stable) |
-| `v0.1.0-beta2` | **rejected** by the tag-format gate (no `v` prefix) |
+| `v0.1.0-beta3` | **rejected** by the tag-format gate (no `v` prefix) |
 | `0.1.0-hotfix.1` | rejected (suffix not in the regex) |
 
 ## Authentication model

@@ -32,7 +32,7 @@
 Every reference page in this tree starts with:
 
 ```
-> **Release:** v0.1.0-betaN
+> **Release:** 0.1.0-betaN
 > **Scope:** which file / directory / command this page describes.
 ```
 

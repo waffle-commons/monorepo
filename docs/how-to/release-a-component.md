@@ -1,7 +1,7 @@
 # How-To: Release a component
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta3`.
 > **Answers:** I'm ready to ship `waffle-commons/<component>@vX.Y.Z`. What's the process?
 
 ## Pre-flight
@@ -25,7 +25,7 @@ Also bump the **version field** in `composer.json` if your team maintains it exp
 ```json
 {
   "name": "waffle-commons/<component>",
-  "version": "0.1.0-beta2",
+  "version": "0.1.0-beta3",
   ...
 }
 ```
@@ -34,15 +34,15 @@ Commit the bump:
 
 ```bash
 git add composer.json
-git commit -m "chore: bump version to 0.1.0-beta2"
+git commit -m "chore: bump version to 0.1.0-beta3"
 git push origin main
 ```
 
 ## Tag the release
 
 ```bash
-git tag -a v0.1.0-beta2 -m "v0.1.0-beta2: <short description>"
-git push origin v0.1.0-beta2
+git tag -a 0.1.0-beta3 -m "0.1.0-beta3: <short description>"
+git push origin 0.1.0-beta3
 ```
 
 Tags MUST be **signed** if the component's ruleset requires it (`component-ruleset.json` includes `required_signatures` — see [reference](../reference/component-ruleset.md)). Configure `git config --global commit.gpgsign true` and `git config --global tag.gpgsign true` once and forget about it.
@@ -55,7 +55,7 @@ Verify:
 
 ```bash
 curl -s https://repo.packagist.org/p2/waffle-commons/<component>.json | jq '.packages."waffle-commons/<component>"[0].version'
-# "0.1.0-beta2"
+# "0.1.0-beta3"
 ```
 
 If the new tag does not appear within ~30 seconds, the webhook may be stuck — manually re-trigger via Packagist's web UI (Settings → Update).
@@ -66,19 +66,19 @@ The new version is now available, but no consumer is using it yet. For each down
 
 ```bash
 cd <consumer>
-git switch -c bump-<component>-to-v0.1.0-beta2
+git switch -c bump-<component>-to-0.1.0-beta3
 # Update composer.json constraint if pinned, e.g. "self.version" components
 # need their own version bump first.
 docker exec -it -w /waffle-commons/<consumer> waffle-dev composer update waffle-commons/<component>
 docker exec -it -w /waffle-commons/<consumer> waffle-dev composer mago
 docker exec -it -w /waffle-commons/<consumer> waffle-dev composer tests
 git add composer.json composer.lock
-git commit -m "chore: bump waffle-commons/<component> to 0.1.0-beta2"
-git push origin bump-<component>-to-v0.1.0-beta2
+git commit -m "chore: bump waffle-commons/<component> to 0.1.0-beta3"
+git push origin bump-<component>-to-0.1.0-beta3
 # Open PR, merge, release the consumer too.
 ```
 
-> **`self.version` cascade.** Many `waffle-commons` packages express inter-component constraints as `"waffle-commons/contracts": "self.version"`. That means consumer X at version V requires producer Y at exactly version V. To release X at beta2, every transitive Y has to also be at beta2. Plan releases in topological order: `contracts` → `utils` → leaf components → `waffle` → `skeleton`.
+> **`self.version` cascade.** Many `waffle-commons` packages express inter-component constraints as `"waffle-commons/contracts": "self.version"`. That means consumer X at version V requires producer Y at exactly version V. To release X at beta3, every transitive Y has to also be at beta3. Plan releases in topological order: `contracts` → `utils` → leaf components → `waffle` → `skeleton`.
 
 ## Bump the umbrella pointer
 

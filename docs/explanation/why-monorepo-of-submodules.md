@@ -1,7 +1,7 @@
 # Explanation — Why a monorepo of submodules?
 
 > **Diátaxis quadrant:** Explanation (understanding-oriented).
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta3`.
 
 The Waffle ecosystem is **19 independent Git repositories** stitched together by **one umbrella repository** that pins each at a specific commit. Each component is also its own Packagist package, released on its own cadence. This shape surprises newcomers used to either (a) a true monorepo (single repo, single version, single CI) or (b) a poly-repo (many repos, no umbrella).
 
@@ -10,7 +10,7 @@ This page explains why we picked the middle path and what it costs.
 ## The constraints we started from
 
 1. **Components must be independently consumable.** Someone using only `waffle-commons/log` should not have to pull in `waffle-commons/security`. Packagist publication implies independent repositories — Composer cannot install a subpath of a repository as a package.
-2. **Components must evolve together at known good states.** Releasing `contracts@v0.2.0` without coordinating with `security`, `routing`, and `pipeline` immediately is how interfaces drift. Some kind of umbrella checkpoint is necessary.
+2. **Components must evolve together at known good states.** Releasing `contracts@0.2.0` without coordinating with `security`, `routing`, and `pipeline` immediately is how interfaces drift. Some kind of umbrella checkpoint is necessary.
 3. **One contributor must be able to make a coordinated cross-component change.** Forking five separate repos to make a security fix that spans `contracts`, `security`, and `pipeline` is too high-friction.
 4. **CI must be component-scoped.** `cache`'s tests should not be re-run because `routing` changed.
 

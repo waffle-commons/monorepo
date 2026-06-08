@@ -1,6 +1,6 @@
 # Reference — Repository layout
 
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta3`.
 > **Scope:** the umbrella's directory tree.
 
 ## Top-level directories

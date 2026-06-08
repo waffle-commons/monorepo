@@ -1,7 +1,7 @@
 # How-To: Add a new component
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta3`.
 > **Answers:** I want to ship a new `waffle-commons/<thing>` package. What's the process?
 
 ## When to add a component vs extend an existing one
