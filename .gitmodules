@@ -64,3 +64,6 @@
 [submodule "data"]
 	path = data
 	url = git@github.com:waffle-commons/data.git
+[submodule "academy"]
+	path = academy
+	url = git@github.com:waffle-commons/academy.git

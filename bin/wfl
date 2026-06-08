@@ -139,6 +139,9 @@ ${C_DIM}EXECUTION${C_RST}
   test [comp]           run 'composer tests' for a component (defaults to cwd)
   igor [args...]        run the Igor memory-leak/state audit across all components (igor.sh)
 
+${C_DIM}ACADEMY${C_RST}
+  academy:test [--lab=NAME]   run the Waffle Academy labs smoke/TDD suite (academy/labs, in container)
+
 ${C_DIM}PHP PROFILE${C_RST}
   debug                 activate 🐛 debug profile (xdebug on, JIT off) and restart the container
   bench                 activate 🚀 bench profile (xdebug off, JIT on)  and restart the container
@@ -252,6 +255,45 @@ cmd_igor() {
   # (e.g. --silent, --local, -c <comp>, -- <igor args>) are forwarded verbatim.
   [ -x "$REPO_ROOT/igor.sh" ] || die "igor.sh not found or not executable at $REPO_ROOT/igor.sh"
   exec "$REPO_ROOT/igor.sh" "$@"
+}
+
+cmd_academy_test() {
+  # Waffle Academy — lance la suite PHPUnit des labs dans le conteneur de dev.
+  # Composant isolé : academy/labs (dépendances résolues par path repos symlink).
+  # Option : --lab=NOM (ou --lab NOM) -> transmis à PHPUnit via --filter NOM.
+  local lab=""
+  local -a pu_args=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --lab=*) lab="${1#--lab=}"; shift ;;
+      --lab)   shift; if [ $# -gt 0 ]; then lab="$1"; shift; fi ;;
+      *)       pu_args+=("$1"); shift ;;
+    esac
+  done
+
+  local labs_host="$REPO_ROOT/academy/labs"
+  [ -d "$labs_host" ] || die "academy/labs introuvable ($labs_host). Le sous-module 'academy' est-il initialisé ? (essayez: wfl init)"
+
+  # Préflight : les dépendances Composer doivent être installées dans academy/labs.
+  if [ ! -d "$labs_host/vendor" ]; then
+    warn "Les dépendances de academy/labs ne sont pas installées."
+    info "Lancez : docker exec -it -w /waffle-commons/academy/labs $CONTAINER composer install"
+    die "academy/labs/vendor manquant — installez les dépendances d'abord"
+  fi
+
+  _ensure_running
+
+  if [ -n "$lab" ]; then
+    pu_args+=(--filter "$lab")
+  fi
+
+  info "exécution de la suite de tests Waffle Academy (labs)${lab:+ — filtre: $lab}..."
+  # Exécute PHPUnit depuis le répertoire isolé des labs, à l'intérieur du conteneur.
+  if [ "${#pu_args[@]}" -gt 0 ]; then
+    exec docker exec -it -w "/waffle-commons/academy/labs" "$CONTAINER" vendor/bin/phpunit "${pu_args[@]}"
+  else
+    exec docker exec -it -w "/waffle-commons/academy/labs" "$CONTAINER" vendor/bin/phpunit
+  fi
 }
 
 _swap_profile() {
@@ -596,6 +638,7 @@ main() {
     mago)        cmd_mago        "$@" ;;
     test)        cmd_test        "$@" ;;
     igor)        cmd_igor        "$@" ;;
+    academy:test) cmd_academy_test "$@" ;;
     debug)       cmd_debug       "$@" ;;
     bench)       cmd_bench       "$@" ;;
     status)      cmd_status      "$@" ;;
