@@ -1,3 +1,12 @@
+---
+title: "RFC-005: Logging & Observability"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-005: Logging & Observability
 
 **Status:** Implemented (Alpha 5) **Components:** `waffle-commons/log` **Author:** DevSecOps Lead **Tags:** psr-3, json, cloud-native, docker

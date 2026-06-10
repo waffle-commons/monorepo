@@ -1,3 +1,12 @@
+---
+title: "RFC-003: HTTP & Middleware Pipeline"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-003: HTTP & Middleware Pipeline
 
 **Status:** Implemented (Alpha 4) **Components:** `waffle-commons/pipeline`, `waffle-commons/http` **Author:** Core Architect **Tags:** psr-15, psr-7, http, routing
@@ -25,7 +34,7 @@ Pre-controller processing is a strict FIFO (First-In, First-Out) queue of PSR-15
 4. `ControllerDispatcher` (The final handler executing the business logic).
     
 
-### 3.2 Host Header Validation (Alpha 6 P0)
+### 3.2 Host Header Validation (Beta 0 P0)
 
 To prevent Cache Poisoning and Host Header Injection, the `GlobalsFactory` (or an early middleware) must implement a strict `trusted_hosts` whitelist. If the `Host` header is unmatched, the request is immediately dropped (HTTP 400).
 

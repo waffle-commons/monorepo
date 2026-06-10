@@ -1,3 +1,12 @@
+---
+title: "RFC-006: Error Handling & Formatting"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-006: Error Handling & Formatting
 
 **Status:** Implemented (Alpha 4) **Components:** `waffle-commons/error-handler` **Author:** Core Architect **Tags:** rfc-7807, exceptions, middleware

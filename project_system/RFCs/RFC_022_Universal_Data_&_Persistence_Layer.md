@@ -1,3 +1,12 @@
+---
+title: "RFC-022: Universal Data & Persistence Layer (UDPL)"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-022: Universal Data & Persistence Layer (UDPL)
 
 **Status:** Proposed (Planned for v1.x / Ecosystem Phase)

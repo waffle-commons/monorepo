@@ -1,6 +1,15 @@
+---
+title: "RFC-002: Security & ABAC Model"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-002: Security & ABAC Model
 
-**Status:** Implemented (Alpha 5), Hardening in Alpha 6 **Components:** `waffle-commons/security` **Author:** DevSecOps Lead **Tags:** security, abac, container, middleware
+**Status:** Implemented (Alpha 5), Hardening in Beta 0 **Components:** `waffle-commons/security` **Author:** DevSecOps Lead **Tags:** security, abac, container, middleware
 
 ## 1. Summary
 

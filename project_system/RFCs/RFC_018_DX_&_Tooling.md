@@ -1,3 +1,12 @@
+---
+title: "RFC-018: Developer Experience (DX) & Tooling"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-018: Developer Experience (DX) & Tooling
 
 **Status:** Planned for Beta 1 & Post-v1.0 **Components:** `waffle-commons/maker`, `waffle-commons/profiler` **Author:** Core Architect **Tags:** dx, scaffolding, profiling, testing

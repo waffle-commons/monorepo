@@ -1,3 +1,12 @@
+---
+title: "RFC-007: Dependency Injection Container"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-007: Dependency Injection Container
 
 **Status:** Implemented (Alpha 1-5) **Components:** `waffle-commons/container` **Author:** Core Architect **Tags:** psr-11, autowiring, reflection

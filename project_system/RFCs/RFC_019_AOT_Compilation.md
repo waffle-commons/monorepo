@@ -1,3 +1,12 @@
+---
+title: "RFC-019: Ahead-of-Time (AOT) Compilation"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-019: Ahead-of-Time (AOT) Compilation
 
 **Status:** Horizon v2.0 **Components:** `waffle-commons/waffle` **Author:** Core Architect **Tags:** performance, aot, compiler, routing-tree

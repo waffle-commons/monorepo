@@ -1,6 +1,15 @@
+---
+title: "RFC-001: Core Architecture & Runtime"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-001: Core Architecture & Runtime
 
-**Status:** Implemented (Alpha 1-5), Hardening in Alpha 6 **Components:** `waffle-commons/waffle`, `waffle-commons/runtime` **Author:** Core Architect **Tags:** architecture, frankenphp, php-8.5, kernel
+**Status:** Implemented (Alpha 1-5), Hardening in Beta 0 **Components:** `waffle-commons/waffle`, `waffle-commons/runtime` **Author:** Core Architect **Tags:** architecture, frankenphp, php-8.5, kernel
 
 ## 1. Summary
 

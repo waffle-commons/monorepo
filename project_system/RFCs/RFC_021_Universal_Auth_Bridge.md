@@ -1,3 +1,12 @@
+---
+title: "RFC-021: Universal Authentication Bridge (UAB)"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-021: Universal Authentication Bridge (UAB)
 
 **Status:** Accepted (implementation target: Beta 3)

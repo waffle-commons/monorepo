@@ -1,3 +1,12 @@
+---
+title: "RFC-008: Routing Engine"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-008: Routing Engine
 
 **Status:** Implemented (Alpha 4) **Components:** `waffle-commons/routing` **Author:** Core Architect **Tags:** attributes, dispatching

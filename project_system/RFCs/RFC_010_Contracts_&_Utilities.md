@@ -1,6 +1,15 @@
+---
+title: "RFC-010: Contracts & Utilities"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-010: Contracts & Utilities
 
-**Status:** Implemented, Strict Hardening in Alpha 6 **Components:** `waffle-commons/contracts`, `waffle-commons/utils` **Author:** Core Architect **Tags:** interfaces, mago-pure, reflection
+**Status:** Implemented, Strict Hardening in Beta 0 **Components:** `waffle-commons/contracts`, `waffle-commons/utils` **Author:** Core Architect **Tags:** interfaces, mago-pure, reflection
 
 ## 1. Summary
 
@@ -16,7 +25,7 @@ To prevent circular dependencies and monolithic coupling, components must only d
 
 No package (except `waffle` core) is allowed to `require` another concrete Waffle package in its `composer.json`. They must rely exclusively on the interfaces defined in `contracts`.
 
-### 3.2 Alpha 6 "Zero Tolerance" (Mago Purity)
+### 3.2 Beta 0 "Zero Tolerance" (Mago Purity)
 
 These foundational components must achieve an absolute 0-error rate in Mago static analysis without any baseline files.
 

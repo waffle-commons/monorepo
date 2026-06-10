@@ -1,6 +1,15 @@
+---
+title: "RFC-012: CLI Tooling & Console"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-012: CLI Tooling & Console
 
-**Status:** Planned for Alpha 6 **Components:** `waffle-commons/console` **Author:** DevSecOps Lead **Tags:** cli, dx, security-audit
+**Status:** Planned for Beta 0 **Components:** `waffle-commons/console` **Author:** DevSecOps Lead **Tags:** cli, dx, security-audit
 
 ## 1. Summary
 
