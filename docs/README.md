@@ -42,6 +42,9 @@ Documentation is organised by what you're trying to do, following the [Diátaxis
 - [**`component-ruleset.json`**](reference/component-ruleset.md) — GitHub branch protection ruleset.
 - [**`CODEOWNERS`**](reference/codeowners.md) — review routing.
 
+### Planning a change or proposing a feature?
+- [**`project_system/` — governance & roadmap**](reference/project-system.md) — the **official roadmap**, the RFC design specs, and per-release logs & retrospectives. Align your proposal with the current [roadmap](../project_system/Roadmaps/Roadmap_Beta4.md) and the relevant RFC **before** you build.
+
 ### Why is it like this?
 - [**Why a monorepo of submodules?**](explanation/why-monorepo-of-submodules.md) — the rationale and trade-offs.
 - [**The Component Agnosticism rule**](explanation/component-agnosticism.md) — why every component depends only on `contracts`.

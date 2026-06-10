@@ -16,7 +16,7 @@
 | `docs/` | dir | yes | Monorepo contributor documentation (this Diátaxis tree). |
 | `documentation/` | submodule | yes | Framework user documentation (separate Diátaxis tree). |
 | `graphify-out/` | dir | gitignored | Project Graphify generated graph artifacts. |
-| `project_system/` | dir | gitignored | Working area for in-progress system-level artifacts. |
+| `project_system/` | dir | partly tracked | **Official project governance & roadmap.** Tracked & shared: `RFCs/`, `Roadmaps/`, `Logs/Releases/`, `Logs/Retrospectives/`. Gitignored (maintainers' private): `Audits/`, `Notes/`, `TODOs/`, `*.pem`. See the [project-system reference](project-system.md). |
 | `scripts/` | dir | yes | Git hook installer (`install-git-hooks.sh`) plus hook payloads in `scripts/hooks/` (`pre-commit-mago.sh`, `pre-push-sanity.sh`). |
 | `skeleton/` | submodule | yes | `composer create-project` template (FrankenPHP + Docker + sample). |
 | `tmp/` | dir | gitignored | Local scratch space. |

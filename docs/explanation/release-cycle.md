@@ -9,6 +9,8 @@ Components release **independently**, but the ecosystem evolves in **coordinated
 
 This is enabled by the `self.version` Composer trick — see below.
 
+Each wave is **planned** in `project_system/Roadmaps/Roadmap_<Release>.md` — the project's official roadmap and binding plan of record — and once it ships it is **recorded** in `project_system/Logs/Releases/Log_<Release>.md` alongside a `Logs/Retrospectives/Retro_<Release>.md`. See the [`project_system/` reference](../reference/project-system.md) for the full governance lifecycle (RFC → roadmap → release log → retrospective).
+
 ## Semver, as we use it
 
 Until `1.0.0`, the version string format is `0.MINOR.PATCH-betaN`:
@@ -122,3 +124,4 @@ Bump it as part of the release commit. The Git tag must agree.
 - [Bump submodule pointers](../how-to/bump-submodule-pointers.md) — the umbrella half.
 - [`component-ruleset.json` reference](../reference/component-ruleset.md) — required signatures, PR approvals enforced by the ruleset.
 - [Why a monorepo of submodules?](why-monorepo-of-submodules.md) — what the umbrella is for.
+- [`project_system/` governance & roadmap](../reference/project-system.md) — where each wave is planned (roadmap) and recorded (logs + retrospectives).
