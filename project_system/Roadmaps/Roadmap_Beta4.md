@@ -251,7 +251,7 @@ Our developer tools must be highly polished, explicitly separated, and integrate
         
     - **Pre-Push Hook:** Trigger the test suite, preventing pushes if coverage drops below $95\%$.
         
-    - **Userland Exclusion:** Ensure `/skeleton`, `/workspace`, and `/component-template` contain no Git hooks, leaving consuming projects entirely unburdened.
+    - **Userland:** Ensure `/skeleton`, `/workspace`, have custom Git hooks, and `/component-template` contain no Git hooks, leaving consuming projects entirely unburdened.
         
 
 ### `[DX-03]` Hot-Reload and Container Experience

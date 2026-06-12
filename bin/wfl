@@ -138,6 +138,7 @@ ${C_DIM}EXECUTION${C_RST}
   mago [comp]           run 'composer mago' for a component (defaults to cwd)
   test [comp]           run 'composer tests' for a component (defaults to cwd)
   igor [args...]        run the Igor memory-leak/state audit across all components (igor.sh)
+  compare-audit [comp...]  SEC-03 gate: ban naive === / !== on secret/token/hmac sites (hash_equals)
 
 ${C_DIM}ACADEMY${C_RST}
   academy:test [--lab=NAME]   run the Waffle Academy labs smoke/TDD suite (academy/labs, in container)
@@ -255,6 +256,19 @@ cmd_igor() {
   # (e.g. --silent, --local, -c <comp>, -- <igor args>) are forwarded verbatim.
   [ -x "$REPO_ROOT/igor.sh" ] || die "igor.sh not found or not executable at $REPO_ROOT/igor.sh"
   exec "$REPO_ROOT/igor.sh" "$@"
+}
+
+cmd_compare_audit() {
+  # SEC-03 timing-safe comparison gate. Thin wrapper around the shared runner
+  # scripts/sec03-compare-audit.php (which reuses the unit-tested
+  # SensitiveComparisonScanner) to ban naive === / !== between two runtime
+  # secrets (token, hmac, signature, key, …) that must use hash_equals().
+  # No args ⇒ sweep the security-sensitive components; otherwise the named ones.
+  [ -f "$REPO_ROOT/scripts/sec03-compare-audit.php" ] \
+    || die "scripts/sec03-compare-audit.php not found at $REPO_ROOT/scripts/"
+  _ensure_running
+  exec docker exec -w /waffle-commons "$CONTAINER" \
+    php scripts/sec03-compare-audit.php "$@"
 }
 
 cmd_academy_test() {
@@ -638,6 +652,7 @@ main() {
     mago)        cmd_mago        "$@" ;;
     test)        cmd_test        "$@" ;;
     igor)        cmd_igor        "$@" ;;
+    compare-audit) cmd_compare_audit "$@" ;;
     academy:test) cmd_academy_test "$@" ;;
     debug)       cmd_debug       "$@" ;;
     bench)       cmd_bench       "$@" ;;

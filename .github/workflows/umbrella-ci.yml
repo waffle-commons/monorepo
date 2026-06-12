@@ -165,23 +165,52 @@ jobs:
           files: ./var/data/phpunit-coverage/clover.xml
 
   # --------------------------------------------------------------------------
-  # 3. Single aggregating gate so branch protection can pin one required check.
+  # 3. SEC-03 timing-safe comparison gate (cross-component, autoload-free).
+  #    Bans naive === / !== between two runtime secrets that must use
+  #    hash_equals(); Mago has no custom-rule API to express this.
+  # --------------------------------------------------------------------------
+  sec03:
+    name: SEC-03 timing-safe comparison gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout umbrella + submodules
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          extensions: mbstring, tokenizer
+
+      - name: SEC-03 audit (security-sensitive components)
+        run: php scripts/sec03-compare-audit.php auth security http http-client data cache
+
+  # --------------------------------------------------------------------------
+  # 4. Single aggregating gate so branch protection can pin one required check.
   # --------------------------------------------------------------------------
   gate:
     name: umbrella-ci gate
-    needs: [detect-changes, check]
+    needs: [detect-changes, check, sec03]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Decide
         run: |
           set -euo pipefail
+          if [ "${{ needs.sec03.result }}" != "success" ]; then
+            echo "::error::SEC-03 timing-safe comparison gate failed (result: ${{ needs.sec03.result }})"
+            exit 1
+          fi
           if [ "${{ needs.detect-changes.outputs.any }}" != "true" ]; then
-            echo "✓ No component changed — gate trivially green."
+            echo "✓ No component changed — gate trivially green (SEC-03 passed)."
             exit 0
           fi
           if [ "${{ needs.check.result }}" != "success" ]; then
             echo "::error::check matrix did not succeed (result: ${{ needs.check.result }})"
             exit 1
           fi
-          echo "✓ All component checks passed."
+          echo "✓ All component checks + SEC-03 passed."

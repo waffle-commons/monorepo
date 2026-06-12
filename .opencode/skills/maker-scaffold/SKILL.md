@@ -32,8 +32,8 @@ or PSR-14 event pair.
 - **Namespace from `composer.json`:** parse the local package's `autoload.psr-4` — never hardcode.
 - **Stateless engine:** `TemplateRenderer` is stateless and memory-bounded; no shared worker state.
 - **Language:** generated comments and display logs are **English** by default; write **French only
-  when the target package is `skeleton`** (the sole French-localized component). RFC-020 sets no
-  localization requirement.
+  when the target package is a template app — `skeleton`, `workspace`, or `academy`**. Code,
+  namespaces, and contracts stay English even there. RFC-020 sets no localization requirement.
 - **Registration:** new commands are explicitly registered in the console factory ("zero-magic").
 
 ## Verify (RFC-020 §6, in Docker)

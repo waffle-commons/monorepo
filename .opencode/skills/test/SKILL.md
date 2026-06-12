@@ -1,16 +1,17 @@
 ---
 name: test
-description: Write and run PHPUnit 11 tests for waffle-commons targeting >=95% coverage
+description: Write and run PHPUnit 12.5 tests for waffle-commons targeting >=95% coverage
 compatibility: opencode
 ---
 
 ## What I do
-Write well-structured PHPUnit 11+ tests for `waffle-commons` components and verify they pass, enforcing strict code coverage targets (>=95%) and stateless testing.
+Write well-structured PHPUnit 12.5+ tests for `waffle-commons` components and verify they pass, enforcing strict code coverage targets (>=95%) and stateless testing.
 
 ## Test architecture
-- **Location** — Tests live in the `tests/` directory of each specific component (e.g., `waffle-commons/security/tests/`).
-- **PHPUnit 11** — Use native PHPUnit 11 features, strict typing (`declare(strict_types=1);`), and proper data providers.
+- **Location** — Tests live in the `tests/` directory of each specific component (e.g., `waffle-commons/security/tests/`). `tests/` is **also** Mago-linted/analyzed, so test code obeys the same zero-output bar.
+- **PHPUnit 12.5** — Use native PHPUnit 12.5 features, strict typing (`declare(strict_types=1);`), and proper data providers.
 - **Mocking** — Mock any interface dependency coming from `waffle-commons/contracts`. Do not instantiate concrete classes from other components.
+- **PHPUnit 12.5 mock notices** — expectation-less mocks (intersection mocks, unused `setUp` mocks) trigger `OK, but there were issues!`. Use a concrete spy/fake, or annotate with `#[AllowMockObjectsWithoutExpectations]`. A spy that asserts via captured state beats a bare mock.
 
 ## Execution
 

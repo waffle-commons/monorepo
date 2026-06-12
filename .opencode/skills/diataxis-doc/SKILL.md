@@ -29,5 +29,11 @@ paraphrased or invented:
 
 ## Core Constraints
 - Explicitly explain the PHP 8.5 feature each example uses.
-- State that every component depends **only** on `waffle-commons/contracts`.
+- State that every component depends **only** on `waffle-commons/contracts` (+ `waffle-commons/utils`).
 - Cite the source path (`component/src/...`) for non-trivial reference entries.
+
+## Version stamps
+- Doc/release version stamps are `0.1.0-betaN` — **no `v` prefix** (matches the no-`v` tag gate).
+- Update the **current**-version stamp on a page when its component ships; **never bulk-bump**
+  historical `CHANGELOG`/`Waffle_Evolutions` entries or past `Beta-N` prose — that history is pinned.
+- The direction these docs track lives in `project_system/` — see `[[roadmap-steward]]`.

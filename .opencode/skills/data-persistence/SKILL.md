@@ -5,10 +5,11 @@ compatibility: opencode
 ---
 
 ## What I do
-I design and review the **Universal Data & Persistence Layer (UDPL)** (RFC-022), the future
+I design and review the **Universal Data & Persistence Layer (UDPL)** (RFC-022), the **shipped**
 `waffle-commons/data` component — a stateless, memory-bounded persistence abstraction over SQL,
-Firestore, flat-file JSON, and API backends for FrankenPHP worker mode. No Active Record, no
-Unit-of-Work / Identity-Map.
+Firestore, Mongo, KeyValue, Cassandra, GraphQL, and flat-file JSON backends for FrankenPHP worker
+mode. Read repos + live drivers + CRUD writes (save/delete/findById on all 7 backends) are landed. No
+Active Record, no Unit-of-Work / Identity-Map.
 
 ## When to use
 "Design the data layer", "RFC-022", "SQR / repository / connection pool / Firestore path /
@@ -51,5 +52,6 @@ flat-file write / hydration".
   baselines; all driver errors rethrown as `DatabaseExceptionInterface` (defined in `contracts`).
 
 > **Localization note:** RFC-022 §7.4 requests **French** for the data component's
-> logs/exceptions/audit messages, but project policy is **English everywhere except the `skeleton`
-> component**. `waffle-commons/data` is not `skeleton`, so it emits **English**.
+> logs/exceptions/audit messages, but project policy is **English everywhere except the template apps
+> (`skeleton`, `workspace`, `academy`)**. `waffle-commons/data` is none of those, so it emits
+> **English**.

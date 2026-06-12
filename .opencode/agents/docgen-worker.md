@@ -18,8 +18,12 @@ Files must fit into exactly one quadrant:
 ### PHP 8.5 Code Analysis
 - Document modern PHP 8.5 syntax accurately: Asymmetric visibility, property hooks, typed constants.
 - Extract descriptions from code strictly typed with `declare(strict_types=1);`.
-- Explain how components interact solely via `waffle-commons/contracts`.
+- Explain how components interact via `waffle-commons/contracts` (+ `waffle-commons/utils`).
 - Highlight any PSR (PSR-3, PSR-7, PSR-14, PSR-15) specific implementations.
+
+### Version stamps
+- Version stamps are `0.1.0-betaN` — **no `v` prefix**. Update the **current**-version stamp only;
+  never bulk-bump historical `CHANGELOG`/`Waffle_Evolutions` entries (that history is pinned).
 
 ### What You Must NOT Do
 - Do not create files outside `waffle-commons/documentation/`.
