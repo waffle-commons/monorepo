@@ -15,13 +15,14 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 - **Core security (AXE 1):** session-fixation rotation + cryptographic CSRF binding (SEC-01); **default-on** SSRF resolve→validate→pin with IPv6 resolution + internal allowlist (SEC-02); the `security:compare-audit` / `wfl compare-audit` timing-safety gate (SEC-03); fail-closed CORS (SEC-04); path-traversal guards on file transfers (SEC-05).
 - **Worker-mode diagnostics (AXE 3):** a dev-only boot-time state-reset compliance scanner (DIAG-02) and an orphaned-connection tracer for PDO/Redis/streams (DIAG-03).
 - **Developer experience (AXE 4):** `wfl check:all` + `wfl monorepo:sync`, native `mb_trim()` migration (DX-04), and an injectable, mockable `ValidatorInterface` (DX-05).
+- **Academy:** the Waffle Academy onboarding monorepo — 5 levels × 10 lessons (50 Obsidian lessons), 50 executable-spec TDD labs with an answer-key tree (`wfl academy:solve` / `academy:reset` / `academy:verify`), and a FrankenPHP `sandbox` worker app — held to the same `mago` + `guard --perimeter` + PHPUnit bar and `wfl igor` 0-KO gate. Driven via `wfl academy:test` / `academy:serve`.
 
 ### Changed
 - **Architecture & stability (AXE 2):** typed kernel lifecycle events (ARCH-04), interface-based response conversion (ARCH-05), a standalone uploaded-files normalizer (ARCH-06), and stream-resource ownership (STB-01). STB-02 buffer pooling stays deferred behind its benchmark gate.
 - Ecosystem-wide worker-safety migration to igor-php 0.7 (`#[WorkerSafe]`); `wfl igor` remains a 0-KO definition-of-done gate.
 
 ### Notes
-- The `academy` labs/sandbox content is the only remaining post-beta4 item; the framework surface is release-ready.
+- The Beta-4 surface — framework, tooling, and the `academy` (lessons, labs, and sandbox) — is release-ready. STB-02 buffer pooling is the sole deferred item, held behind its benchmark gate.
 
 ## [0.1.0-beta3] — 2026-06-07
 

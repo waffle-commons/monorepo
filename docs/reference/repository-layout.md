@@ -21,6 +21,7 @@
 | `skeleton/` | submodule | yes | `composer create-project` template (FrankenPHP + Docker + sample). |
 | `tmp/` | dir | gitignored | Local scratch space. |
 | `workspace/` | submodule | yes | Contributor dev environment: Docker, path repos, integration tests. |
+| `academy/` | submodule | yes | Hands-on onboarding — a nested monorepo of `obsidian/` (50 lessons across 5 levels), `labs/` (50 TDD exercises + answer keys), and `sandbox/` (a FrankenPHP worker app). |
 
 ## Top-level files
 
@@ -41,7 +42,7 @@
 | `scripts/hooks/pre-push-sanity.sh` | Full `composer mago` + `composer tests` gate fired by `git push` when the ref is ahead of remote. |
 | `keystore.jks` | Java keystore used by signing tooling (rare; see your team's release docs). |
 | `TODO.md` | Working notes. Not authoritative. |
-| `.gitmodules` | The canonical list of submodule paths + remote URLs. 22 entries. |
+| `.gitmodules` | The canonical list of submodule paths + remote URLs. 23 entries (one per submodule, including `academy`). |
 
 ## Per-submodule layout
 

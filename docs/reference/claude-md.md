@@ -2,28 +2,26 @@
 
 > **Release:** `0.1.0-beta4`.
 > **Scope:** `<umbrella>/CLAUDE.md`.
-> **Purpose:** the canonical project conventions, written as instructions for AI assistants but binding on humans as well.
+> **Purpose:** the thin CLI router at the umbrella root — it ships the canonical Dockerized commands and points to `AGENTS.md` (the binding standards) and the `.opencode/skills/` library. Written for AI assistants, binding on humans too.
 
 ## What it is
 
-A single file at the umbrella root that tells any AI assistant (Claude Code, Cursor, Aider, …) the project's non-negotiable rules. The file is loaded automatically by tools that respect the convention.
+A thin file at the umbrella root that any AI assistant (Claude Code, Cursor, Aider, …) loads automatically. It is **a router, not the rulebook**: it ships the canonical Dockerized commands plus a redirection directive, then defers the actual operating standards to [`AGENTS.md`](../../AGENTS.md) and the per-task `.opencode/skills/<skill>/SKILL.md` files.
 
-Humans should also read it. It is, in effect, the contributor handbook.
+Humans should read it too — then follow the link into `AGENTS.md` for the full standards.
 
 ## Sections
 
 | Section | Codifies |
 | :--- | :--- |
-| **Build & Test Commands** | Canonical `docker exec` invocations for Mago, PHPUnit, Composer. |
-| **PHP 8.5 Strict Coding Standards** | `declare(strict_types=1)`, no `mixed`, typed constants, Property Hooks, Asymmetric Visibility, `readonly`. |
-| **Architecture Map & Monorepo Structure** | Component agnosticism rule, PSR enforcement, FrankenPHP worker-mode constraints. |
-| **Documentation (Diátaxis)** | The four quadrants, content rules per quadrant. |
-| **The Mago Purge Protocol** | Zero baselines, zero errors. |
-| **🧠 SPECIALIZED AI SKILLS (ROUTING DIRECTIVE)** | Maps user intent to `.opencode/skills/<skill>/SKILL.md`. See [opencode-skills reference](opencode-skills.md). |
+| **Canonical commands** | The Dockerized `docker exec … waffle-dev` invocations, the `composer` intents (`mago`, `tests`, `igor`, …), and the `wfl` CLI wrapper. |
+| **Redirection directive** | The non-negotiable "read `AGENTS.md` + the matching `SKILL.md` before planning or editing" rule, and the hard invariants (contracts-only perimeter, zero Mago output, statelessness / `wfl igor` 0 KO). |
+
+> The operational standards themselves — PHP 8.5 strict coding, the FrankenPHP statelessness mandate, the Mago Purge Protocol, the worker-safety gate, and the **Skills Routing Table** — live in [`AGENTS.md`](../../AGENTS.md). `CLAUDE.md` only routes you there.
 
 ## The non-negotiables
 
-If you only remember a handful of things from `CLAUDE.md`:
+If you only remember a handful of things (the full, binding set lives in `AGENTS.md`):
 
 1. **All work happens inside Docker.** Never run PHP / Composer on the host machine.
 2. **`declare(strict_types=1);` is the first line of every PHP file.** No exceptions.
@@ -35,11 +33,11 @@ If you only remember a handful of things from `CLAUDE.md`:
 
 ## When you, the human contributor, are deciding something
 
-Read `CLAUDE.md` first. If the file is silent on your question, file an issue or open a discussion to propose adding a rule — don't invent one in your PR description.
+Read `AGENTS.md` first (`CLAUDE.md` routes you there). If it is silent on your question, file an issue or open a discussion to propose adding a rule — don't invent one in your PR description.
 
-## When `CLAUDE.md` and a doc page disagree
+## When `AGENTS.md` and a doc page disagree
 
-`CLAUDE.md` wins. The other doc is wrong; fix it.
+`AGENTS.md` (the source of truth `CLAUDE.md` routes to) wins. The other doc is wrong; fix it.
 
 ## When an AI assistant is mis-applying a rule
 
@@ -60,6 +58,7 @@ Trivial changes (typos, formatting, link fixes) can go straight to PR.
 
 ## Related
 
+- [`AGENTS.md` — the central brain](agents-md.md) — the binding operating standards `CLAUDE.md` routes to.
 - [`.opencode/skills/` reference](opencode-skills.md) — the specialised AI prompts CLAUDE.md routes to.
 - [The Mago Purge Protocol](../explanation/mago-purge-protocol.md) — the rationale behind the Zero-Debt rule.
 - [The Component Agnosticism rule](../explanation/component-agnosticism.md) — the rationale behind the contracts-only dependency rule.

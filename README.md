@@ -26,7 +26,7 @@ Waffle exists to prove that PHP can ship a framework which is simultaneously:
 - **Secure** — fail-closed ABAC, stateless HMAC CSRF bound to a per-browser anonymous SID, SSRF allowlist on the outbound client, hardened HTTP headers by default.
 - **Fast** — FrankenPHP-first; every component is stateless across requests so the resident worker can hold the assembled kernel in memory between calls.
 
-The monorepo is the umbrella that holds 18 independent framework components, a project skeleton, a contributor workspace, a component scaffold template, the framework's user-facing documentation, and the project's official governance & roadmap ([`project_system/`](project_system/)). Each component is its own Git repository, released independently on Packagist; this umbrella is purely a development and integration convenience.
+The monorepo is the umbrella that holds 18 independent framework components, a project skeleton, a contributor workspace, a hands-on onboarding academy, a component scaffold template, the framework's user-facing documentation, and the project's official governance & roadmap ([`project_system/`](project_system/)). Each component is its own Git repository, released independently on Packagist; this umbrella is purely a development and integration convenience.
 
 ## 📦 What's inside
 
@@ -54,6 +54,7 @@ The monorepo is the umbrella that holds 18 independent framework components, a p
 | | [`workspace`](workspace/) | (internal) | Contributor dev environment: Docker, path repositories, integration tests. |
 | **Tooling** | [`component-template`](component-template/) | (internal) | Scaffold for a new component. Pinned tooling and CI. |
 | | [`documentation`](documentation/) | (internal) | Framework user docs (Diátaxis). |
+| **Learning** | [`academy`](academy/) | (internal) | Hands-on onboarding monorepo: 50 Obsidian lessons (5 levels), 50 executable-spec TDD labs, and a FrankenPHP `sandbox` app. |
 
 > **Component-agnosticism rule.** Components depend **only** on `waffle-commons/contracts`. Never on each other's concrete classes. This rule is enforced by `mago guard` on every PR and is the single load-bearing invariant of the ecosystem.
 
@@ -172,6 +173,7 @@ waffle-commons/
 ├── component-template/    ← scaffold for new components (submodule)
 ├── skeleton/              ← composer create-project template (submodule)
 ├── workspace/             ← contributor dev environment (submodule)
+├── academy/               ← hands-on onboarding: lessons / labs / sandbox (submodule)
 └── <component>/           ← one git submodule per framework component
 ```
 
@@ -179,7 +181,7 @@ A more detailed map lives at [`docs/reference/repository-layout.md`](docs/refere
 
 ## 🤖 Working with AI assistants
 
-The repo ships an `.opencode/skills/` directory with specialised AI prompts (`tech-lead`, `coding`, `refactoring`, `test`, `code-review`, `mago-purge`, `security-audit`, `component-scaffold`, `diataxis-doc`). When you ask an AI to perform a task that matches one of these skills, the assistant is expected to read the corresponding `SKILL.md` before acting — see [`CLAUDE.md`](CLAUDE.md#-specialized-ai-skills-routing-directive) for the routing directive. Reference covers [`docs/reference/opencode-skills.md`](docs/reference/opencode-skills.md).
+The repo ships an `.opencode/skills/` directory with **27 specialised AI prompts** (`tech-lead`, `coding`, `refactoring`, `test`, `code-review`, `maker-scaffold`, `mago-purge`, `worker-safety`, `contracts-first`, `security-audit`, `auth-bridge-audit`, `data-persistence`, `diataxis-doc`, `component-scaffold`, `release-manager`, `release-wave`, …) plus **9 focused subagents** under `.opencode/agents/`. When you ask an AI to perform a task that matches one of these skills, the assistant is expected to read the corresponding `SKILL.md` before acting — the binding routing table lives in [`AGENTS.md`](AGENTS.md) (with [`CLAUDE.md`](CLAUDE.md) as the thin CLI router that redirects to it). Reference covers [`docs/reference/opencode-skills.md`](docs/reference/opencode-skills.md).
 
 ## 🤝 Contributing
 
