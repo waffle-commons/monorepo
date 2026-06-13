@@ -139,6 +139,7 @@ ${C_DIM}EXECUTION${C_RST}
   test [comp]           run 'composer tests' for a component (defaults to cwd)
   igor [args...]        run the Igor memory-leak/state audit across all components (igor.sh)
   compare-audit [comp...]  SEC-03 gate: ban naive === / !== on secret/token/hmac sites (hash_equals)
+  check:all [--with-tests]  parallel 'composer mago' across all components (add --with-tests for PHPUnit)
 
 ${C_DIM}ACADEMY${C_RST}
   academy:test [--lab=NAME]   run the Waffle Academy labs smoke/TDD suite (academy/labs, in container)
@@ -158,6 +159,7 @@ ${C_DIM}DEVELOPMENT${C_RST}
   unlink <consumer> <provider>  unlink a local provider component from a consumer composer.json
   csrf-init [token-id]          generate matching WAFFLE_SID & CSRF token for testing (defaults to '_default')
   secret-gen                    generate a fresh 32-byte cryptographically secure application secret
+  monorepo:sync [--fix]         report (or with --fix, align) waffle-commons/* version constraints across components
 
 ${C_DIM}ENV${C_RST}
   Containers : $CONTAINER, $CONTAINER_LEGACY, $CONTAINER_REDIS
@@ -639,6 +641,117 @@ cmd_unlink() {
 }
 
 # ---------------------------------------------------------------------------
+# DX-01 — monorepo-wide tooling (internal contributors)
+# ---------------------------------------------------------------------------
+
+# Parallel static-gate sweep. Runs 'composer mago' (fmt+lint+analyze+guard) for
+# every component that ships a mago script, in parallel, and prints a green/red
+# summary. PHPUnit is intentionally NOT in the fast budget — add --with-tests to
+# also run 'composer tests' per component.
+cmd_check_all() {
+  _ensure_running
+
+  local with_tests=0 a
+  for a in "$@"; do
+    case "$a" in
+      --with-tests) with_tests=1 ;;
+      *) die "unknown option for check:all: '$a' (use --with-tests)" ;;
+    esac
+  done
+
+  local -a comps=(); local p
+  while IFS= read -r p; do
+    # component-template ships a placeholder package name that Composer rejects
+    # before any script runs — it is a scaffold, not a gateable package.
+    case "$p" in component-template) continue ;; esac
+    [ -f "$REPO_ROOT/$p/composer.json" ] || continue
+    grep -q '"mago"' "$REPO_ROOT/$p/composer.json" || continue
+    comps+=("$p")
+  done < <(_list_components)
+  [ "${#comps[@]}" -gt 0 ] || die "no mago-enabled components found"
+
+  local tmp; tmp="$(mktemp -d)"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$tmp'" EXIT
+
+  local failures=0 start; start="$SECONDS"
+  # Bounded parallelism: a full fan-out runs ~20 vendor-walking analyzers at once
+  # and exhausts file descriptors on the macOS/Docker share. Tune with WFL_CHECK_JOBS.
+  local max_jobs="${WFL_CHECK_JOBS:-4}"
+
+  _sweep() { # $1=composer-script  $2=label
+    local script="$1" label="$2" c
+    info "check:all — 'composer $script' across ${#comps[@]} components (≤${max_jobs} parallel)…"
+    for c in "${comps[@]}"; do
+      while [ "$(jobs -rp | wc -l | tr -d ' ')" -ge "$max_jobs" ]; do sleep 0.2; done
+      ( if docker exec -w "/waffle-commons/$c" "$CONTAINER" composer "$script" >"$tmp/$c.$script" 2>&1
+        then printf 'PASS' >"$tmp/$c.$script.ok"; else printf 'FAIL' >"$tmp/$c.$script.ok"; fi ) &
+    done
+    wait
+    for c in "${comps[@]}"; do
+      if [ "$(cat "$tmp/$c.$script.ok" 2>/dev/null)" = PASS ]; then
+        ok "$label $c"
+      else
+        failures=$((failures + 1)); warn "$label $c — FAILED"
+        sed 's/^/      /' "$tmp/$c.$script" >&2
+      fi
+    done
+  }
+
+  _sweep mago "mago "
+  [ "$with_tests" = 1 ] && _sweep tests "tests"
+
+  local elapsed=$((SECONDS - start))
+  if [ "$failures" -eq 0 ]; then
+    ok "check:all GREEN — ${#comps[@]} components in ${elapsed}s"
+  else
+    die "check:all RED — $failures failure(s) in ${elapsed}s"
+  fi
+}
+
+# Report (and with --fix, align) the version constraints each component declares
+# for its waffle-commons/* siblings. The monorepo convention is "self.version";
+# any sibling constraint that drifts from it is flagged. Read-only by default.
+cmd_monorepo_sync() {
+  local convention="self.version" do_fix=0 a
+  for a in "$@"; do
+    case "$a" in
+      --fix) do_fix=1 ;;
+      *) die "unknown option for monorepo:sync: '$a' (use --fix)" ;;
+    esac
+  done
+
+  local p drift=0 fixed=0
+  while IFS= read -r p; do
+    # The template apps + docs are consumers, not released framework packages —
+    # they legitimately pin dev/path constraints, so they are out of sync scope.
+    case "$p" in skeleton|workspace|academy|documentation) continue ;; esac
+    local cj="$REPO_ROOT/$p/composer.json"
+    [ -f "$cj" ] || continue
+    local line pkg constraint
+    while IFS= read -r line; do
+      pkg="$(printf '%s' "$line" | sed -E 's/.*"(waffle-commons\/[a-z0-9-]+)".*/\1/')"
+      constraint="$(printf '%s' "$line" | sed -E 's/.*"waffle-commons\/[a-z0-9-]+"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1/')"
+      [ "$constraint" = "$convention" ] && continue
+      drift=$((drift + 1))
+      warn "$p → $pkg : \"$constraint\" (expected \"$convention\")"
+      if [ "$do_fix" = 1 ]; then
+        sed -i.bak -E "s#(\"$pkg\"[[:space:]]*:[[:space:]]*\")[^\"]*(\")#\1${convention}\2#" "$cj" \
+          && rm -f "$cj.bak" && fixed=$((fixed + 1)) && ok "  aligned $p → $pkg"
+      fi
+    done < <(grep -E '"waffle-commons/[a-z0-9-]+"[[:space:]]*:' "$cj")
+  done < <(_list_components)
+
+  if [ "$drift" -eq 0 ]; then
+    ok "monorepo:sync — all sibling constraints already use \"$convention\""
+  elif [ "$do_fix" = 1 ]; then
+    ok "monorepo:sync — aligned $fixed/$drift constraint(s) to \"$convention\""
+  else
+    warn "monorepo:sync — $drift constraint(s) drift from \"$convention\"; re-run with --fix to align"
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
 main() {
@@ -653,6 +766,7 @@ main() {
     test)        cmd_test        "$@" ;;
     igor)        cmd_igor        "$@" ;;
     compare-audit) cmd_compare_audit "$@" ;;
+    check:all)   cmd_check_all   "$@" ;;
     academy:test) cmd_academy_test "$@" ;;
     debug)       cmd_debug       "$@" ;;
     bench)       cmd_bench       "$@" ;;
@@ -662,6 +776,7 @@ main() {
     unlink)      cmd_unlink      "$@" ;;
     csrf-init)   cmd_csrf_init   "$@" ;;
     secret-gen)  cmd_secret_gen  "$@" ;;
+    monorepo:sync) cmd_monorepo_sync "$@" ;;
     logs)
       local logsub="${1:-}"; shift || true
       case "$logsub" in

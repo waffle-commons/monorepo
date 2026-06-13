@@ -3,7 +3,9 @@
 # Waffle Git Hook Installer
 # ============================================================================
 # Robust, Git-native installer that wires up pre-commit and pre-push hooks
-# in the monorepo root and inside every submodule's git hooks directory.
+# in the monorepo root and inside every submodule's git hooks directory —
+# EXCEPT the consumer-facing `component-template` scaffold, which must ship with
+# no Git hooks so downstream projects stay entirely unburdened (DX-02).
 # ============================================================================
 
 set -euo pipefail
@@ -77,7 +79,14 @@ for sub in $submodules; do
   if [ ! -d "$sub" ]; then
     continue
   fi
-  
+
+  # component-template is the scaffold consuming projects copy — it must stay
+  # hook-free so downstream users inherit no engineering hooks (DX-02).
+  if [ "$sub" = "component-template" ]; then
+    echo "Skipping component-template (consumer scaffold stays hook-free)..."
+    continue
+  fi
+
   # Resolve submodule git directory using rev-parse inside submodule context
   relative_sub_git_dir=$(cd "$sub" && git rev-parse --git-dir)
   # Resolve to absolute path

@@ -2,7 +2,10 @@
 # ============================================================================
 # pre-commit-mago.sh — fast, incremental Mago gate
 # Runs only on staged PHP files, grouped by component, inside the waffle-dev
-# container. Designed to finish under 3s on small commits.
+# container. The DX-02 design target is a sub-150ms lint; that figure assumes a
+# native Mago run, whereas routing every invocation through `docker exec` adds
+# fixed container overhead, so in practice this finishes in ~1–3s on small
+# commits. CI runs the full suite; this hook is the fast staged-only guard.
 # Bypass with: SKIP_MAGO=1 git commit ...
 # ============================================================================
 
