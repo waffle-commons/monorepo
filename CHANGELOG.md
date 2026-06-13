@@ -20,6 +20,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 ### Changed
 - **Architecture & stability (AXE 2):** typed kernel lifecycle events (ARCH-04), interface-based response conversion (ARCH-05), a standalone uploaded-files normalizer (ARCH-06), and stream-resource ownership (STB-01). STB-02 buffer pooling stays deferred behind its benchmark gate.
 - Ecosystem-wide worker-safety migration to igor-php 0.7 (`#[WorkerSafe]`); `wfl igor` remains a 0-KO definition-of-done gate.
+- **Perimeter hardening:** `runtime` now depends only on `contracts` (new `Http\GlobalsFactoryInterface`; `http` concretes injected at the app layer), restoring the "contracts + utils only" invariant across every framework component. The full DX-04 `mb_trim()` sweep was completed across the remaining framework `src/` (config, utils, runtime, http-client, data, console).
 
 ### Notes
 - The Beta-4 surface — framework, tooling, and the `academy` (lessons, labs, and sandbox) — is release-ready. STB-02 buffer pooling is the sole deferred item, held behind its benchmark gate.
