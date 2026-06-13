@@ -1,9 +1,9 @@
 {
-  "id": 17605636,
+  "id": 17605691,
   "name": "Enforce Fork Workflow",
   "target": "branch",
   "source_type": "Repository",
-  "source": "waffle-commons/auth",
+  "source": "waffle-commons/console",
   "enforcement": "active",
   "conditions": {
     "ref_name": {
@@ -33,13 +33,14 @@
       "type": "pull_request",
       "parameters": {
         "required_approving_review_count": 1,
-        "dismiss_stale_reviews_on_push": false,
+        "dismiss_stale_reviews_on_push": true,
         "required_reviewers": [],
         "require_code_owner_review": true,
-        "require_last_push_approval": false,
-        "required_review_thread_resolution": false,
+        "require_last_push_approval": true,
+        "required_review_thread_resolution": true,
         "allowed_merge_methods": [
-          "merge"
+          "merge",
+          "squash"
         ]
       }
     }
@@ -66,7 +67,22 @@
       "bypass_mode": "always"
     },
     {
+      "actor_id": 3903025,
+      "actor_type": "Integration",
+      "bypass_mode": "always"
+    },
+    {
       "actor_id": 12801756,
+      "actor_type": "Team",
+      "bypass_mode": "always"
+    },
+    {
+      "actor_id": 15707019,
+      "actor_type": "Team",
+      "bypass_mode": "always"
+    },
+    {
+      "actor_id": 15707023,
       "actor_type": "Team",
       "bypass_mode": "always"
     }
