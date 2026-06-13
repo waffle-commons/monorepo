@@ -142,7 +142,11 @@ ${C_DIM}EXECUTION${C_RST}
   check:all [--with-tests]  parallel 'composer mago' across all components (add --with-tests for PHPUnit)
 
 ${C_DIM}ACADEMY${C_RST}
-  academy:test [--lab=NAME]   run the Waffle Academy labs smoke/TDD suite (academy/labs, in container)
+  academy:test [--lab=N_MM]   run the labs TDD suite + render the progress card (academy/labs, in container)
+  academy:solve [--lab=N_MM]  load the reference solution(s) into labs/src (answer key)
+  academy:reset               clear loaded solutions from labs/src (back to a blank slate)
+  academy:verify              prove the reference solutions green (solve → mago → phpunit → unsolve)
+  academy:serve [:PORT]       serve the sandbox playground via the FrankenPHP worker (default :8000)
 
 ${C_DIM}PHP PROFILE${C_RST}
   debug                 activate 🐛 debug profile (xdebug on, JIT off) and restart the container
@@ -303,13 +307,95 @@ cmd_academy_test() {
     pu_args+=(--filter "$lab")
   fi
 
-  info "exécution de la suite de tests Waffle Academy (labs)${lab:+ — filtre: $lab}..."
-  # Exécute PHPUnit depuis le répertoire isolé des labs, à l'intérieur du conteneur.
+  local junit="var/cache/phpunit/junit.xml"
+  local pu_code=0
+  # Allouer un TTY seulement s'il y en a un (sinon CI / pipes échouent ; PHPUnit
+  # force déjà les couleurs via phpunit.xml).
+  local tty=""
+  [ -t 1 ] && tty="-it"
+  info "exécution de la suite Waffle Academy (labs)${lab:+ — filtre: $lab}..."
+  # PHPUnit dans le conteneur : sortie live + rapport JUnit pour la carte (ACAD-02).
   if [ "${#pu_args[@]}" -gt 0 ]; then
-    exec docker exec -it -w "/waffle-commons/academy/labs" "$CONTAINER" vendor/bin/phpunit "${pu_args[@]}"
+    docker exec $tty -w "/waffle-commons/academy/labs" "$CONTAINER" \
+      vendor/bin/phpunit --log-junit "$junit" "${pu_args[@]}" || pu_code=$?
   else
-    exec docker exec -it -w "/waffle-commons/academy/labs" "$CONTAINER" vendor/bin/phpunit
+    docker exec $tty -w "/waffle-commons/academy/labs" "$CONTAINER" \
+      vendor/bin/phpunit --log-junit "$junit" || pu_code=$?
   fi
+
+  # Gate statique (lecture seule) → ligne « propreté du code » de la carte.
+  local mago_status="ok"
+  docker exec -w "/waffle-commons/academy/labs" "$CONTAINER" sh -c \
+    'vendor/bin/mago fmt --check >/dev/null 2>&1 && vendor/bin/mago lint >/dev/null 2>&1 && vendor/bin/mago analyze >/dev/null 2>&1 && vendor/bin/mago guard --perimeter >/dev/null 2>&1' \
+    || mago_status="ko"
+
+  # Carte de progression terminale (ACAD-02).
+  docker exec -w "/waffle-commons" "$CONTAINER" \
+    php scripts/academy-card.php \
+    "/waffle-commons/academy/labs/$junit" "/waffle-commons/academy/labs" "$mago_status" "$lab" \
+    || true
+
+  return "$pu_code"
+}
+
+cmd_academy_solve() {
+  # Charge le(s) corrigé(s) (answer key) depuis labs/solutions/ vers labs/src/.
+  # Option : --lab=N_MM pour un seul lab (ex. 1_01 → solutions/Lesson0101).
+  local lab=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --lab=*) lab="${1#--lab=}"; shift ;;
+      --lab)   shift; if [ $# -gt 0 ]; then lab="$1"; shift; fi ;;
+      *)       shift ;;
+    esac
+  done
+  _ensure_running
+  if [ -n "$lab" ]; then
+    local dir="Lesson0${lab//_/}"
+    info "chargement du corrigé $lab → src/$dir ..."
+    docker exec -w "/waffle-commons/academy/labs" "$CONTAINER" sh -c \
+      "cp -R solutions/$dir src/ && composer dump-autoload -q" \
+      || die "corrigé introuvable pour le lab '$lab' (solutions/$dir)"
+    ok "corrigé $lab chargé — vérifiez : wfl academy:test --lab=$lab"
+  else
+    info "chargement de TOUS les corrigés dans src/ ..."
+    docker exec -w "/waffle-commons/academy/labs" "$CONTAINER" composer solve
+    ok "tous les corrigés chargés dans src/"
+  fi
+}
+
+cmd_academy_reset() {
+  # Réinitialise labs/src/ : supprime les implémentations chargées (retour vierge).
+  _ensure_running
+  info "réinitialisation de labs/src/ (suppression des implémentations) ..."
+  docker exec -w "/waffle-commons/academy/labs" "$CONTAINER" composer unsolve
+  ok "labs/src/ réinitialisé (seul .gitkeep subsiste)"
+}
+
+cmd_academy_verify() {
+  # Preuve « corrigé au vert » : solve → mago → guard → phpunit → unsolve.
+  _ensure_running
+  info "vérification du corrigé (solve → mago → phpunit → unsolve) ..."
+  exec docker exec -it -w "/waffle-commons/academy/labs" "$CONTAINER" composer verify
+}
+
+cmd_academy_serve() {
+  # Sert l'applicatif sandbox via le worker FrankenPHP, à l'intérieur du conteneur.
+  # Port d'écoute optionnel (défaut :8000). Non publié vers l'hôte : accès depuis
+  # `wfl shell` (curl) ou en publiant le port côté docker-compose.
+  local listen="${1:-:8000}"
+  local sandbox_host="$REPO_ROOT/academy/sandbox"
+  [ -d "$sandbox_host" ] || die "academy/sandbox introuvable ($sandbox_host)."
+  if [ ! -d "$sandbox_host/vendor" ]; then
+    warn "Les dépendances de academy/sandbox ne sont pas installées."
+    info "Lancez : docker exec -it -w /waffle-commons/academy/sandbox $CONTAINER composer install"
+    die "academy/sandbox/vendor manquant — installez les dépendances d'abord"
+  fi
+  _ensure_running
+  info "worker FrankenPHP de la sandbox sur ${listen} (Ctrl-C pour arrêter)..."
+  info "accès depuis le conteneur : wfl shell → curl http://127.0.0.1${listen}/"
+  exec docker exec -it -w "/waffle-commons/academy/sandbox" "$CONTAINER" \
+    frankenphp php-server --listen "$listen" --root public --worker public/index.php
 }
 
 _swap_profile() {
@@ -767,7 +853,11 @@ main() {
     igor)        cmd_igor        "$@" ;;
     compare-audit) cmd_compare_audit "$@" ;;
     check:all)   cmd_check_all   "$@" ;;
-    academy:test) cmd_academy_test "$@" ;;
+    academy:test)   cmd_academy_test   "$@" ;;
+    academy:solve)  cmd_academy_solve  "$@" ;;
+    academy:reset)  cmd_academy_reset  "$@" ;;
+    academy:verify) cmd_academy_verify "$@" ;;
+    academy:serve)  cmd_academy_serve  "$@" ;;
     debug)       cmd_debug       "$@" ;;
     bench)       cmd_bench       "$@" ;;
     status)      cmd_status      "$@" ;;
