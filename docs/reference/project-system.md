@@ -1,6 +1,6 @@
 # Reference — `project_system/` (governance & roadmap)
 
-> **Release:** `0.1.0-beta3`
+> **Release:** `0.1.0-beta4`
 > **Scope:** the `project_system/` directory — the project's authoritative governance, roadmap, and historical record.
 
 `project_system/` is the **single source of truth for how the Waffle ecosystem is planned, decided, shipped, and reviewed.** It is read by maintainers and contributors alike.

@@ -15,7 +15,7 @@
 
 ---
 
-> **Release:** `0.1.0-beta3` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
+> **Release:** `0.1.0-beta4` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
 > **Status:** beta software — production use requires an independent security audit.
 
 ## 🧠 Mission
@@ -117,18 +117,19 @@ Or fan a command out across **all** components:
 
 See [`docs/tutorials/setup-your-monorepo-workspace.md`](docs/tutorials/setup-your-monorepo-workspace.md) for the full setup walkthrough.
 
-## 🏗️ Pipeline at a glance (Beta-3)
+## 🏗️ Pipeline at a glance (Beta-4)
 
 Every request through a Waffle application traverses this canonical PSR-15 middleware order:
 
 ```
-ErrorHandler → TrustedHost → AnonymousSession → Authentication → Routing → CSRF → Security → SecureHeaders → Dispatcher
+ErrorHandler → TrustedHost → CORS → AnonymousSession → Authentication → Routing → CSRF → Security → SecureHeaders → Dispatcher
 ```
 
 | Stage | Role |
 | :--- | :--- |
 | **ErrorHandler** | RFC 7807 problem-details on any thrown error. |
 | **TrustedHost** | Host-header allowlist (anti-poisoning). |
+| **CORS** | Fail-closed cross-origin policy (SEC-04): rejects un-allowlisted origins, answers preflight. |
 | **AnonymousSession** | Mints / propagates the per-browser `WAFFLE_SID` (`_anon_sid`). |
 | **Authentication** | Universal Auth Bridge — verifies credentials, publishes `_auth_identity` (fail-closed). |
 | **Routing** | Resolves the route, publishes `_classname` / `_method`. |

@@ -7,6 +7,22 @@ submodule (see `docs/reference/workflows/release-wave.md`).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-beta4] — 2026-06-13
+
+**Theme: security hardening & worker-mode stability — RC-readiness groundwork (Roadmap_Beta4).**
+
+### Added
+- **Core security (AXE 1):** session-fixation rotation + cryptographic CSRF binding (SEC-01); **default-on** SSRF resolve→validate→pin with IPv6 resolution + internal allowlist (SEC-02); the `security:compare-audit` / `wfl compare-audit` timing-safety gate (SEC-03); fail-closed CORS (SEC-04); path-traversal guards on file transfers (SEC-05).
+- **Worker-mode diagnostics (AXE 3):** a dev-only boot-time state-reset compliance scanner (DIAG-02) and an orphaned-connection tracer for PDO/Redis/streams (DIAG-03).
+- **Developer experience (AXE 4):** `wfl check:all` + `wfl monorepo:sync`, native `mb_trim()` migration (DX-04), and an injectable, mockable `ValidatorInterface` (DX-05).
+
+### Changed
+- **Architecture & stability (AXE 2):** typed kernel lifecycle events (ARCH-04), interface-based response conversion (ARCH-05), a standalone uploaded-files normalizer (ARCH-06), and stream-resource ownership (STB-01). STB-02 buffer pooling stays deferred behind its benchmark gate.
+- Ecosystem-wide worker-safety migration to igor-php 0.7 (`#[WorkerSafe]`); `wfl igor` remains a 0-KO definition-of-done gate.
+
+### Notes
+- The `academy` labs/sandbox content is the only remaining post-beta4 item; the framework surface is release-ready.
+
 ## [0.1.0-beta3] — 2026-06-07
 
 **Theme: identity federation & stateless persistence (RFC-021 / RFC-022).**

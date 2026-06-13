@@ -15,7 +15,7 @@ These guides assume you've already set up the workspace — if not, start with t
 | [**Bump submodule pointers in the umbrella**](bump-submodule-pointers.md) | I've cut a release in `<component>` — how do I commit the new pointer here? |
 | [**Work on multiple components locally**](work-on-multiple-components-locally.md) | How do I make `security` consume my in-progress `contracts` changes without publishing them? |
 | [**Install Git hooks**](install-git-hooks.md) | How do I wire the Project Graphify pre-commit / post-checkout hooks into every submodule? |
-| [**Release a component**](release-a-component.md) | I'm ready to ship `waffle-commons/security@0.1.0-beta3`. What's the process? |
+| [**Release a component**](release-a-component.md) | I'm ready to ship `waffle-commons/security@0.1.0-beta4`. What's the process? |
 
 ## When to pick which
 
@@ -25,4 +25,4 @@ These guides assume you've already set up the workspace — if not, start with t
 | "Mago is unhappy in five components at once." | [Run checks across components](run-checks-across-components.md) (`./loop.sh composer mago`). |
 | "Coverage in CI dropped to 91%." | [Check coverage across components](check-coverage-across-components.md). |
 | "I want to test my `contracts` patch from inside `security` before pushing." | [Work on multiple components locally](work-on-multiple-components-locally.md). |
-| "We're ready to tag 0.1.0-beta3." | [Release a component](release-a-component.md) → [Bump submodule pointers](bump-submodule-pointers.md). |
+| "We're ready to tag 0.1.0-beta4." | [Release a component](release-a-component.md) → [Bump submodule pointers](bump-submodule-pointers.md). |

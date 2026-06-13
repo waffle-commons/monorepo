@@ -1,7 +1,7 @@
 # Explanation — Why a monorepo of submodules?
 
 > **Diátaxis quadrant:** Explanation (understanding-oriented).
-> **Release:** `0.1.0-beta3`.
+> **Release:** `0.1.0-beta4`.
 
 The Waffle ecosystem is **19 independent Git repositories** stitched together by **one umbrella repository** that pins each at a specific commit. Each component is also its own Packagist package, released on its own cadence. This shape surprises newcomers used to either (a) a true monorepo (single repo, single version, single CI) or (b) a poly-repo (many repos, no umbrella).
 

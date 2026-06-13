@@ -1,7 +1,7 @@
 # Explanation — The release cycle
 
 > **Diátaxis quadrant:** Explanation.
-> **Release:** `0.1.0-beta3`.
+> **Release:** `0.1.0-beta4`.
 
 ## The cadence
 
@@ -38,13 +38,13 @@ Many components' `composer.json` declares:
 }
 ```
 
-`self.version` is a Composer convention meaning "the same version as me". It works because the umbrella coordinates wave releases — `security@0.1.0-beta3` requires `contracts@0.1.0-beta3`, `routing@0.1.0-beta3`, etc. The whole wave is internally consistent.
+`self.version` is a Composer convention meaning "the same version as me". It works because the umbrella coordinates wave releases — `security@0.1.0-beta4` requires `contracts@0.1.0-beta4`, `routing@0.1.0-beta4`, etc. The whole wave is internally consistent.
 
-The cost: you cannot, in practice, mix-and-match component versions across a wave. If you want `security@0.1.0-beta3` you implicitly want every other component at `0.1.0-beta3`. This is the explicit design — coordinated waves over fine-grained interop.
+The cost: you cannot, in practice, mix-and-match component versions across a wave. If you want `security@0.1.0-beta4` you implicitly want every other component at `0.1.0-beta4`. This is the explicit design — coordinated waves over fine-grained interop.
 
 ## The release wave, step by step
 
-A coordinated wave (e.g. `0.1.0-beta2` → `0.1.0-beta3`):
+A coordinated wave (e.g. `0.1.0-beta3` → `0.1.0-beta4`):
 
 1. **Pre-release sanity** — every component is green on its `main`:
    ```bash
@@ -66,14 +66,14 @@ A coordinated wave (e.g. `0.1.0-beta2` → `0.1.0-beta3`):
    ```bash
    git submodule foreach 'git fetch origin && git switch main && git pull --ff-only'
    git add .
-   git commit -m "Bump submodule pointers to 0.1.0-beta3"
+   git commit -m "Bump submodule pointers to 0.1.0-beta4"
    git push
    ```
    See [bump-submodule-pointers](../how-to/bump-submodule-pointers.md).
 5. **Tag the umbrella** with the wave name:
    ```bash
-   git tag -a 0.1.0-beta3 -m "Beta 3 wave"
-   git push origin 0.1.0-beta3
+   git tag -a 0.1.0-beta4 -m "Beta 4 wave"
+   git push origin 0.1.0-beta4
    ```
 6. **Publish release notes** in the umbrella's GitHub Releases page summarising what changed across every component.
 

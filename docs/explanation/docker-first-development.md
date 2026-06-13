@@ -1,7 +1,7 @@
 # Explanation — Docker-first development
 
 > **Diátaxis quadrant:** Explanation.
-> **Release:** `0.1.0-beta3`.
+> **Release:** `0.1.0-beta4`.
 
 ## The rule
 

@@ -1,7 +1,7 @@
 # How-To: Install Git hooks
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `0.1.0-beta3`.
+> **Release:** `0.1.0-beta4`.
 > **Answers:** How do I install the Project Graphify pre-commit / post-checkout / post-merge / post-rewrite hooks in every submodule?
 
 ## The one-liner
