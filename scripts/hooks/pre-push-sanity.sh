@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # ============================================================================
-# pre-push-sanity.sh — full Mago + PHPUnit gate before push
-# Runs 'composer mago' and 'composer tests' on every component that has PHP
-# changes in the about-to-be-pushed ref range. No-op when nothing is ahead.
-# Bypass with: SKIP_MAGO=1 git push ...
+# pre-push-sanity.sh — Mago + PHPUnit gate before push
+# For every component with PHP changes in the about-to-be-pushed ref range, runs
+# the composer scripts that component actually DEFINES: 'composer mago' and,
+# when present, 'composer tests'. Template apps (e.g. 'skeleton') define no
+# 'tests' script, so it is skipped there instead of aborting the push. No-op
+# when nothing is ahead. Bypass with: SKIP_MAGO=1 git push ...
 # ============================================================================
 
 set -euo pipefail
@@ -107,18 +109,22 @@ if [ "$state" != "running" ]; then
   exit 1
 fi
 
+# True when the component's composer.json defines the named script. Lets the
+# gate adapt to each component (apps like 'skeleton' have no 'tests' script).
+has_composer_script() {  # $1=component  $2=script
+  grep -qE "^[[:space:]]*\"$2\"[[:space:]]*:" "$UMBRELLA_ROOT/$1/composer.json" 2>/dev/null
+}
+
 FAILED=0
 for comp in $COMPS; do
-  printf '\033[0;36m→ composer mago   [%s]\033[0m\n' "$comp"
-  if ! docker exec -w "/waffle-commons/$comp" "$CONTAINER" composer mago; then
-    FAILED=$((FAILED + 1))
-    continue
-  fi
-  printf '\033[0;36m→ composer tests  [%s]\033[0m\n' "$comp"
-  if ! docker exec -w "/waffle-commons/$comp" "$CONTAINER" composer tests; then
-    FAILED=$((FAILED + 1))
-    continue
-  fi
+  for script in mago tests; do
+    has_composer_script "$comp" "$script" || continue   # not defined → skip, don't fail
+    printf '\033[0;36m→ composer %-5s [%s]\033[0m\n' "$script" "$comp"
+    if ! docker exec -w "/waffle-commons/$comp" "$CONTAINER" composer "$script"; then
+      FAILED=$((FAILED + 1))
+      break   # stop this component on the first failing gate
+    fi
+  done
 done
 
 if [ "$FAILED" -gt 0 ]; then
