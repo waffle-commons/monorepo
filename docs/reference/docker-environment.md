@@ -1,6 +1,6 @@
 # Reference — Docker environment
 
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta4`.
 > **Scope:** the `waffle-dev` Docker container and its compose file.
 
 ## Where the compose file lives

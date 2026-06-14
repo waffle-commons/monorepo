@@ -39,11 +39,13 @@ monorepo (PHP 8.5, FrankenPHP resident-worker, independent submodules each relea
   specific domain exceptions (`ValidationException`, `SecurityException`) — `ErrorHandlerMiddleware`
   transforms them.
 - **Language:** all comments, identifiers, and emitted logs/exceptions in framework
-  components are **English**. The **only** exceptions are the two template-app
-  directories — **`skeleton/` AND `workspace/`** — where every comment, docblock,
-  YAML/TOML/compose comment, and user-facing string is **French**. Even where an
-  RFC requests French in a framework component (e.g. RFC-021 §6.3, RFC-022 §7.4),
-  project policy is English outside those two template dirs.
+  components are **English**. The **only** exceptions are the template-app
+  directories — **`skeleton/`, `workspace/` AND `academy/`** (the last including its
+  `docs/`, `labs/`, and `sandbox/` submodules) — where every comment, docblock,
+  YAML/TOML/compose comment, and user-facing string is **French**. Code, namespaces,
+  and contracts stay English even there (e.g. `Waffle\Academy\Labs\…`). Where an RFC
+  requests French in a framework component (e.g. RFC-021 §6.3, RFC-022 §7.4), project
+  policy is English outside those template dirs.
 
 ## 2. FrankenPHP Statelessness Mandate
 
@@ -58,46 +60,142 @@ Services must be **stateless and resettable** across requests (resident-memory w
 
 ## 3. The Mago Purge Protocol (zero-baseline)
 
+- **Clean = ZERO output:** `composer mago` is green only when it emits **no errors, no warnings, no
+  info, and no help/notice messages**. A "warning" or "info" line is a failure, not an FYI — fix it.
 - **Zero baselines:** `mago-*-baseline.toml` files are forbidden — scan for and delete them. We fix
-  errors; we never suppress them.
-- **Native solution first:** resolve every `analyze`/`lint` finding with a proper PHP 8.5 type or
-  refactor — not `@var` band-aids, ignore annotations, `mixed`, or baselines.
+  findings; we never suppress them.
+- **Native solution first:** resolve every `analyze`/`lint`/`guard` finding with a proper PHP 8.5 type
+  or refactor — not `@var` band-aids, ignore annotations, `mixed`, or baselines. (Inherent `mixed`
+  from `json_decode` may use a single scoped `@var` narrowing — see the `mago-purge` skill.)
 - **Guard perimeter (`mago guard`):** no circular dependencies, no illegal cross-component imports.
-  **Every component depends ONLY on `waffle-commons/contracts`** — never a sibling's concrete classes.
-- **Done = green:** `composer mago && composer tests` (≥95% coverage) pass for every modified
-  component, in Docker.
+  **Every component depends ONLY on `waffle-commons/contracts`** — plus `waffle-commons/utils` (the
+  shared foundation, which itself requires only `contracts`). Never a sibling's concrete classes; push
+  reusable primitives down into `utils`.
+- **Done = green:** `composer mago && composer tests` (PHPUnit 12.5, ≥95% coverage) pass for every
+  modified component, in Docker, **and** `wfl igor` reports 0 KO (see §5).
 
 ## 4. Architecture & PSR
 
-- **Monorepo of submodules** — each its own Git repo / Packagist release: `contracts`, `waffle`,
-  `pipeline`, `security`, `auth`, `routing`, `http`, `http-client`, `log`, `event-dispatcher`,
-  `container`, `config`, `cache`, `console`, `data`, `utils`, `error-handler`, `runtime`
-  (+ `skeleton`, `workspace`, `documentation`, `component-template`).
+- **Monorepo of submodules** — each its own Git repo / Packagist release. **23 submodules today**
+  (the master roadmap counts **22 packages → 26 in beta6**):
+  - **Framework:** `contracts`, `utils`, `waffle`, `runtime`, `pipeline`, `routing`, `http`,
+    `http-client`, `security`, `auth`, `data`, `cache`, `container`, `config`, `console`, `log`,
+    `event-dispatcher`, `error-handler`.
+  - **Template / docs:** `skeleton`, `workspace`, `academy`, `documentation`, `component-template`.
+  - **Planned (beta6):** `queue`, `openapi`, `serializer`, `testing` — each scaffolded from
+    `component-template` (see the `component-scaffold` skill).
 - **PSR enforcement:** PSR-15 middleware, PSR-14 events, PSR-3 logging, PSR-7/17 HTTP messages &
   factories, PSR-18 HTTP client.
+- **Contracts-first sequencing:** every new interface lands in `waffle-commons/contracts` **before**
+  its consuming component; the `mago guard` perimeter is non-negotiable. See the `contracts-first`
+  skill (and mind the vendor-contracts skew it documents).
 - **Documentation (Diátaxis):** lives in `documentation/` — `tutorials/`, `how-to/`, `reference/`,
   `explanation/`. See the `diataxis-doc` skill.
 
+## 5. Worker-Safety Gate (`wfl igor` — igor-php 0.7)
+
+FrankenPHP keeps services resident, so state that leaks across requests is a bug. `wfl igor`
+(`composer igor` per component) audits this and is part of the definition of done:
+
+- **0 KO required.** igor grades each stateful class **KO** / **WARN** / OK — **only KO fails the
+  gate** ("Mutation of state '<prop>' in <method>()"); WARN passes.
+- **`#[WorkerSafe]`** (`IgorPhp\IgorBundle\Attribute\WorkerSafe`) marks a property/class as an
+  audited, intentional exception. Adding it requires the component's `mago.toml` guard to permit
+  `IgorPhp\IgorBundle\Attribute\**`.
+- **Resettable must be DIRECT.** A class that mutates per-request state passes only if it **directly**
+  declares `implements ResettableInterface` in its class clause — igor does a *shallow* scan, so
+  inheriting it transitively through a parent interface does **not** satisfy the gate.
+- **Remediation taxonomy** (per the `worker-safety` skill): direct `ResettableInterface` + `reset()`
+  · ctor-`readonly` · inline (no field) · `#[WorkerSafe]`. Never paper over a real leak.
+
 ---
+
+## 5b. Release train & source of truth
+
+`project_system/` (RFCs + Roadmaps) is the **direction** source of truth — consult it, don't invent.
+
+| Release | Theme | Roadmap |
+|---|---|---|
+| `0.1.0-beta4` | Security & stability (current work) | `Roadmap_Beta4.md` |
+| `0.1.0-beta5` | AOT · pooling · async · telemetry (+spikes) | `Roadmap_Beta5.md` |
+| `0.1.0-beta6` | Production surface — `queue` · `openapi` · `serializer` · `testing` · NET · OPS | `Roadmap_Beta6.md` |
+| `0.1.0-beta7` | Consolidation & API freeze | `Roadmap_Beta7.md` |
+| `1.0.0-RC1` → `1.0.0` | Freeze cert + EcoShield-Gateway soak → Gold | `Roadmap_RC1.md` / `Roadmap_V1_Gold.md` |
+
+- **Version stamps:** `0.1.0-betaN` — **no `v` prefix** (the tag gate rejects it). Fix the *current*
+  stamp; never bulk-bump historical CHANGELOGs. See the `roadmap-steward` skill.
+- **Release mechanics (umbrella wave):** one `pre-release/<version>` branch per component → umbrella
+  tag pushed to the remote → dispatch **dry-run on the pushed tag** (`ref:<tag>` must already exist) →
+  LIVE wave. Per-component steps live in `release-manager`; the orchestration lives in `release-wave`.
 
 ## 🧠 Specialized AI Skills — Routing Table
 
 **SELF-DIRECTIVE:** if a request matches a skill below, **READ that `SKILL.md` BEFORE planning or
 acting**. These files carry component-specific operating procedures that override general defaults.
-When unsure, default to **`tech-lead`** (it orchestrates the others).
+When unsure, default to **`tech-lead`** (it orchestrates the others). All skill files live under
+`.opencode/skills/<name>/SKILL.md`.
 
-| Skill | Trigger / Use when… | File |
-|-------|---------------------|------|
-| `tech-lead` | Entry point for non-trivial / multi-skill / ambiguous work; sequences coding→test→review. | `.opencode/skills/tech-lead/SKILL.md` |
-| `coding` | Implement a feature or bug fix across the components. | `.opencode/skills/coding/SKILL.md` |
-| `refactoring` | "Refactor / clean up / restructure" — needs a green test baseline first. | `.opencode/skills/refactoring/SKILL.md` |
-| `test` | Add/improve PHPUnit tests; target ≥95% coverage. | `.opencode/skills/test/SKILL.md` |
-| `code-review` | "Review my changes" / pre-merge sanity (per-component diff). | `.opencode/skills/code-review/SKILL.md` |
-| `mago-purge` | Fix Mago findings; eradicate baselines; harden types (native-first). | `.opencode/skills/mago-purge/SKILL.md` |
-| `security-audit` | Security/compliance: statelessness, fail-closed ABAC, SSRF, HMAC, `#[PublicAccess]`. | `.opencode/skills/security-audit/SKILL.md` |
-| `component-scaffold` | "Create a new component / bootstrap a package." | `.opencode/skills/component-scaffold/SKILL.md` |
-| `diataxis-doc` | "Write/document" → Diátaxis docs with exact PHP 8.5 signatures. | `.opencode/skills/diataxis-doc/SKILL.md` |
-| `release-manager` | Independent component releases on Packagist. | `.opencode/skills/release-manager/SKILL.md` |
-| `maker-scaffold` | "Scaffold / make a controller, DTO, middleware, voter, command, HTTP client, event pair" via Waffle Maker (RFC-020). | `.opencode/skills/maker-scaffold/SKILL.md` |
-| `auth-bridge-audit` | Audit the Universal Authentication Bridge (RFC-021, `auth` component): JWT, OAuth2/OIDC, HMAC assertions, API keys — fail-closed, stateless. | `.opencode/skills/auth-bridge-audit/SKILL.md` |
-| `data-persistence` | Design the Universal Data & Persistence Layer (RFC-022): SQR, stateless pools, Firestore paths, atomic flat-file. | `.opencode/skills/data-persistence/SKILL.md` |
+**Core workflow**
+
+| Skill | Trigger / Use when… |
+|-------|---------------------|
+| `tech-lead` | Entry point for non-trivial / multi-skill / ambiguous work; sequences coding→test→review. |
+| `coding` | Implement a feature or bug fix across the components. |
+| `refactoring` | "Refactor / clean up / restructure" — needs a green test baseline first. |
+| `test` | Add/improve PHPUnit 12.5 tests; target ≥95% coverage. |
+| `code-review` | "Review my changes" / pre-merge sanity (per-component diff). |
+| `maker-scaffold` | "Scaffold / make a controller, DTO, middleware, voter, command, HTTP client, event pair" via Waffle Maker (RFC-020). |
+
+**Quality gates & worker-mode**
+
+| Skill | Trigger / Use when… |
+|-------|---------------------|
+| `mago-purge` | Fix Mago findings to ZERO output; eradicate baselines; harden types (native-first). |
+| `worker-safety` | `wfl igor` is KO; `#[WorkerSafe]` / direct `ResettableInterface`; reset-per-request leaks. |
+| `contracts-first` | New interface sequencing; `mago guard` perimeter (contracts + utils); vendor-contracts skew. |
+| `benchmark-gate` | Benchmark-gated items (GC churn, memory curve, AOT/pool/telemetry overhead) → `…-GATE-RESULT.md`. |
+
+**Security**
+
+| Skill | Trigger / Use when… |
+|-------|---------------------|
+| `security-audit` | Statelessness, fail-closed ABAC, SSRF (SEC-02), CORS, traversal, `#[PublicAccess]`, SEC-03 compare-audit. |
+| `auth-bridge-audit` | Universal Authentication Bridge (RFC-021, `auth`): JWT, OAuth2/OIDC, HMAC assertions, API keys. |
+
+**Data & persistence**
+
+| Skill | Trigger / Use when… |
+|-------|---------------------|
+| `data-persistence` | Universal Data & Persistence Layer (RFC-022): SQR, stateless pools, Firestore paths, atomic flat-file, CRUD mappers. |
+
+**Docs, scaffolding & release**
+
+| Skill | Trigger / Use when… |
+|-------|---------------------|
+| `diataxis-doc` | "Write/document" → Diátaxis docs with exact PHP 8.5 signatures + version stamps. |
+| `component-scaffold` | "Create a new component / bootstrap a package" from `component-template`. |
+| `release-manager` | Per-component release steps within the umbrella wave (Packagist). |
+| `release-wave` | Orchestrate a full multi-component umbrella release (tag → dry-run → LIVE). |
+| `demo-app-wiring` | Wire a shipped feature into `skeleton` / `workspace` / `academy` (vendor skew, French, routes). |
+| `roadmap-steward` | Maintain `project_system/` RFCs & Roadmaps as the direction source of truth. |
+
+**Roadmap-forward (operating procedures staged ahead of the code — flagged "not yet built")**
+
+| Skill | Trigger / Use when… | Roadmap |
+|-------|---------------------|---------|
+| `aot-compilation` | Build-time compiled container + router preheat. | beta5 AOT (RFC-019) |
+| `async-concurrency` | Fiber deferred runner; concurrent HTTP-client promises. | beta5 ASYNC (RFC-015) |
+| `observability` | OTel tracer contract + bridge; Prometheus `/waffle-metrics`. | beta5 OBS (RFC-005) |
+| `resilience-net` | Rate limiter, retry/backoff, circuit breaker. | beta6 NET (RFC-017) |
+| `queue-worker` | Background processing (`queue` component, Redis Streams). | beta6 QUEUE (RFC-015) |
+| `api-surface` | OpenAPI generation + DTO serializer / content negotiation. | beta6 API (RFC-016) |
+| `k8s-ops` | Health/readiness probes, graceful drain, migration maturity. | beta6 OPS (RFC-014) |
+| `testing-bridge` | `WaffleTestCase` in-process kernel + test doubles. | beta6 TEST (RFC-012) |
+
+## 🤖 Subagents (`.opencode/agents/<name>.md`, `mode: subagent`)
+
+Skills dispatch focused single-component workers. Available: `coding-worker`, `coding-integrator`,
+`docgen-worker`, **`gate-runner`** (run `composer mago && composer tests` + `composer igor`, report
+green/red), **`mago-fixer`** (purge to zero output), **`test-author`** (PHPUnit 12.5 ≥95%),
+**`worker-safety-auditor`** (`wfl igor` remediation), **`security-auditor`** (security checklist),
+**`contracts-sync`** (mirror fresh `contracts/src` into a consumer `vendor/`).

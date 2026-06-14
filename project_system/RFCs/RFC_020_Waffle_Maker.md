@@ -1,3 +1,12 @@
+---
+title: "RFC-020: Waffle Maker (Scaffolding Engine)"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-020: Waffle Maker (Scaffolding Engine)
 
 **Status:** Approved (Planned for Beta 1)

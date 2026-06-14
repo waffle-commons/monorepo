@@ -68,4 +68,5 @@ Verify RFC-021 §6: tampered / expired / IP-mismatched assertions ⇒ **403**; t
 `none` / wrong-issuer JWTs ⇒ **401**; missing secret ⇒ fatal boot; coverage ≥95%.
 
 > **Language note:** the bridge lives in framework components — all comments, logs, and
-> exceptions are **English** (French only in the `skeleton/` and `workspace/` template apps).
+> exceptions are **English** (French only in the `skeleton/`, `workspace/`, and `academy/` template
+> apps).

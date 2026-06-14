@@ -24,8 +24,16 @@ required for FrankenPHP worker mode. Each component is its own Git repo, so audi
     secret is absent (refuse to boot, never bypass).
   - **Temporal validation:** reject assertions/tokens older than the strict TTL (UAB default 5s).
   - **IP-binding:** the signed client IP must match the request's remote IP.
-- **SSRF mitigation (RFC-017/021):** outbound PSR-18 calls validate/allow-list target hosts; no
-  user-controlled URL reaches the network unchecked; block internal/metadata IP ranges.
+- **SSRF mitigation — default-on (SEC-02, RFC-017/021):** the native `http-client` `Client` ships
+  with `SsrfGuard` wired by default (not opt-in). Every outbound call runs **resolve → validate →
+  pin**: resolve the host (IPv4 **and** IPv6/AAAA), reject private/loopback/link-local/reserved CIDRs,
+  then pin the vetted IP via `CURLOPT_RESOLVE` (closes the DNS-rebind TOCTOU window); redirects are not
+  auto-followed. Trusted internal hosts bypass **only** via the explicit allow-list (exact host or
+  CIDR), sourced from `waffle.security.ssrf.allowed_hosts` — everything else stays fail-closed.
+- **Timing-safe comparisons (SEC-03):** secret/token/HMAC/signature/CSRF comparisons use
+  `hash_equals()` — never `===`/`!==`/`==`. Enforced by the `wfl compare-audit` gate (a
+  `token_get_all` scanner that flags naive identity checks on sensitive-named operands, with qualifier
+  demotion so `keyId`/`tokenType` don't false-positive). Run it over the security-sensitive surface.
 
 ## Execution (always in Docker)
 ```bash
@@ -34,6 +42,8 @@ docker exec -it -w /waffle-commons/{component} waffle-dev composer analyzer
 docker exec -it -w /waffle-commons/{component} waffle-dev composer guard
 # Hunt forbidden stateful/superglobal patterns in source
 docker exec -it -w /waffle-commons/{component} waffle-dev grep -rnE '\$_SESSION|\$_GET|\$_POST|\$_SERVER|session_start|sys_get_temp_dir' src
+# SEC-03 timing-safe comparison gate (naive === / !== on secret/token/hmac sites)
+wfl compare-audit {component}
 ```
 Produce a graded report: Statelessness · Superglobal purge · Fail-closed ABAC · DTO safety ·
 Crypto/SSRF. For the Universal Authentication Bridge specifically, defer to `auth-bridge-audit`.

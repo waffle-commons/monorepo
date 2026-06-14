@@ -16,6 +16,9 @@ build/
 graphify-out/
 tmp/
 
+# Open-Source Contributions
+contributions/
+
 # Mono repository
 TODO.md
 

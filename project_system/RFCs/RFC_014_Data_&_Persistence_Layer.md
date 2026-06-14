@@ -1,3 +1,12 @@
+---
+title: "RFC-014: Data & Persistence Layer"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-014: Data & Persistence Layer
 
 **Status:** Planned for v1.x (Post-v1.0) **Components:** `waffle-commons/data` **Author:** Lead Engineer **Tags:** dbal, database, persistence, worker-safe

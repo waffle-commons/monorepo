@@ -1,7 +1,7 @@
 # How-To: Run checks across all components
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta4`.
 > **Answers:** How do I run a command (`composer mago`, `composer tests`, anything else) on every component at once?
 
 ## The one-liner

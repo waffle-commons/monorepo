@@ -1,3 +1,12 @@
+---
+title: "RFC-015: Asynchronous Execution & Parallelism"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-015: Asynchronous Execution & Parallelism
 
 **Status:** Planned for v1.x (Post-v1.0) **Components:** `waffle-commons/async` **Author:** Core Architect **Tags:** fibers, frankenphp, mercure, async

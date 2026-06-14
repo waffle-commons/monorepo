@@ -1,3 +1,12 @@
+---
+title: "RFC-016: OpenAPI & Auto-Documentation"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-016: OpenAPI & Auto-Documentation
 
 **Status:** Planned for v1.x (Post-v1.0) **Components:** `waffle-commons/openapi` **Author:** DevSecOps Lead **Tags:** swagger, openapi, documentation, dx

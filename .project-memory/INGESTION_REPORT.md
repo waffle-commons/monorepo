@@ -1,17 +1,22 @@
 # Knowledge Ingestion Report
 
-**Generated:** 2026-05-25 08:40:28Z
+**Generated:** 2026-06-14 07:11:34Z
 
 ## Components Ingested
 
 | Component | Status | Graph |
 |-----------|--------|-------|
+| labs | ✅ Success | graphify-out/labs/graph.json |
+| sandbox | ✅ Success | graphify-out/sandbox/graph.json |
+| auth | ✅ Success | graphify-out/auth/graph.json |
 | cache | ✅ Success | graphify-out/cache/graph.json |
 | component-template | ✅ Success | graphify-out/component-template/graph.json |
 | config | ✅ Success | graphify-out/config/graph.json |
 | console | ✅ Success | graphify-out/console/graph.json |
 | container | ✅ Success | graphify-out/container/graph.json |
 | contracts | ✅ Success | graphify-out/contracts/graph.json |
+| igor-php | ✅ Success | graphify-out/igor-php/graph.json |
+| data | ✅ Success | graphify-out/data/graph.json |
 | error-handler | ✅ Success | graphify-out/error-handler/graph.json |
 | event-dispatcher | ✅ Success | graphify-out/event-dispatcher/graph.json |
 | http-client | ✅ Success | graphify-out/http-client/graph.json |
@@ -39,7 +44,7 @@
 
 ## Ingestion Metrics
 
-- **Total Components:** 19
+- **Total Components:** 24
 - **Failed Ingestions:** 0
 - **Output Directory:** graphify-out
 - **Project Memory:** /Users/lesliepetrimaux/Git/Perso/waffle-commons/.project-memory

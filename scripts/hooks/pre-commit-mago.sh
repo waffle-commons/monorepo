@@ -2,7 +2,10 @@
 # ============================================================================
 # pre-commit-mago.sh — fast, incremental Mago gate
 # Runs only on staged PHP files, grouped by component, inside the waffle-dev
-# container. Designed to finish under 3s on small commits.
+# container. The DX-02 design target is a sub-150ms lint; that figure assumes a
+# native Mago run, whereas routing every invocation through `docker exec` adds
+# fixed container overhead, so in practice this finishes in ~1–3s on small
+# commits. CI runs the full suite; this hook is the fast staged-only guard.
 # Bypass with: SKIP_MAGO=1 git commit ...
 # ============================================================================
 
@@ -36,6 +39,16 @@ STAGED_COMPOSER_FILES=$(git diff --cached --name-only --diff-filter=ACMR 2>/dev/
 
 if [ -n "$STAGED_COMPOSER_FILES" ]; then
   for file in $STAGED_COMPOSER_FILES; do
+    # The dev workspace is the development station: it stays permanently linked
+    # (path repositories by design), so exempt its composer.json from the guard.
+    if [ "$IN_SUBMODULE" -eq 1 ]; then
+      file_owner="$SUB_COMP"
+    else
+      file_owner="$(dirname "$file")"
+    fi
+    if [ "$file_owner" = "workspace" ]; then
+      continue
+    fi
     if git show :"$file" | grep -qE '"type"[[:space:]]*:[[:space:]]*"path"|"url"[[:space:]]*:[[:space:]]*"\.\./' ; then
       printf '\033[0;31m[ERROR] Local linkage detected in file %s!\033[0m\n' "$file" >&2
       printf '\033[0;31mCommitting "path"-type repositories pointing to local paths is forbidden.\033[0m\n' >&2

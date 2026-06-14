@@ -20,9 +20,10 @@ Only review or integrate files that were created or meaningfully changed within 
 ## Review checklist
 
 ### Architecture & Layering
-- [ ] Component only depends on `waffle-commons/contracts`, not concrete implementations of other components.
+- [ ] Component only depends on `waffle-commons/contracts` (+ `waffle-commons/utils`), not concrete implementations of other components.
+- [ ] Any new interface landed in `contracts` **before** its consumer (contracts-first sequencing).
 - [ ] Conforms strictly to required PSR standards (PSR-15, PSR-14, PSR-3, PSR-7/17).
-- [ ] Service is stateless and safe for FrankenPHP Resident Memory worker mode.
+- [ ] Service is stateless and safe for FrankenPHP Resident Memory worker mode — `wfl igor` 0 KO; any mutable per-request state class **directly** implements `ResettableInterface` or carries `#[WorkerSafe]`.
 - [ ] No native PHP sessions or `sys_get_temp_dir()` calls used.
 
 ### PHP 8.5 Standards & Types
@@ -38,9 +39,9 @@ Only review or integrate files that were created or meaningfully changed within 
 - [ ] No `@` error-control operators used (insecure).
 
 ### Testing & Static Analysis
-- [ ] Tests use PHPUnit 11+.
-- [ ] Code is fully compliant with `Mago` strict mode (Zero errors).
-- [ ] **Critical:** No `mago-analyzer-baseline.toml` files added or modified. The "Mago Purge Protocol" mandates zero tolerance for baselines.
+- [ ] Tests use PHPUnit 12.5+ (no expectation-less-mock notices — concrete spy or `#[AllowMockObjectsWithoutExpectations]`; `tests/` is Mago-linted too).
+- [ ] `composer mago` emits **zero output** — no errors, **and no warnings, info, or help/notice messages**.
+- [ ] **Critical:** No `mago-*-baseline.toml` files added or modified. The "Mago Purge Protocol" mandates zero tolerance for baselines.
 
 ### Documentation
 - [ ] If applicable, documentation in `waffle-commons/documentation/` is updated.
@@ -51,7 +52,7 @@ Only review or integrate files that were created or meaningfully changed within 
 Report findings grouped by severity:
 
 **Blocking** — must fix before merge (type error, security issue, architectural violation, Mago baseline usage, FrankenPHP memory leak risk)  
-**Important** — should fix (style violation, missing PHPUnit 11 test, lack of property hooks)  
+**Important** — should fix (style violation, missing PHPUnit 12.5 test, lack of property hooks)  
 **Suggestion** — optional improvement (naming, minor simplification)
 
 If there are no findings in a category, omit it. End with a one-line verdict: `Approved`, `Approved with suggestions`, or `Changes required`.

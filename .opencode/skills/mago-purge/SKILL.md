@@ -10,16 +10,30 @@ aggressive fixer of static-analysis findings: I never silence errors, I solve th
 PHP 8.5 constructs.
 
 ## The Purge Protocol
-1. **Zero baselines (absolute):** scan for and DELETE any `mago-*-baseline.toml`
+1. **Clean = ZERO output (absolute):** `composer mago` is green only when it emits **no errors AND no
+   warnings, info, or help/notice messages**. A warning is a failure to fix, not an FYI.
+2. **Zero baselines (absolute):** scan for and DELETE any `mago-*-baseline.toml`
    (`mago-analyzer-baseline.toml`, `mago-linter-baseline.toml`, …). Baselines are never created and
    never tolerated.
-2. **Native solution FIRST:** every `analyze`/`lint`/`guard` finding is resolved by fixing the type
+3. **Native solution FIRST:** every `analyze`/`lint`/`guard` finding is resolved by fixing the type
    or the design — explicit types, Property Hooks, `readonly`, asymmetric visibility, real generics
    only where the engine needs them. **Never** patch with `@var` band-aids, `@mago-ignore`, `mixed`,
    or any suppression.
-3. **Guard perimeter:** resolve `mago guard` violations by removing illegal cross-component or
-   circular imports — a component may depend ONLY on `waffle-commons/contracts`.
-4. **Verify green:** after fixing, the component passes the full gate with no test regressions.
+4. **Guard perimeter:** resolve `mago guard` violations by removing illegal cross-component or
+   circular imports — a component may depend ONLY on `waffle-commons/contracts` (+ `waffle-commons/utils`).
+5. **Verify green:** after fixing, the component passes the full gate with no test regressions, and
+   `wfl igor` stays 0 KO (see `[[worker-safety]]`).
+
+## Analyzer idioms (battle-tested)
+- **Property narrowing is lost across a method call** — capture the narrowed value in a local before
+  the call, or re-check after.
+- **≤5 constructor params** — split an over-wide constructor into a DTO rather than fighting the rule.
+- **Null-guard before `<=>`** — guard nullable operands before the spaceship.
+- **Scoped `@var` is allowed only for inherent `mixed`** (e.g. `json_decode` output) — one narrowing
+  line, never as a band-aid for a type you could express natively.
+- **`mago.toml` template skew:** the beta3 scaffold's `property-type`/`return-type` linter rules break
+  mago 1.29.0 parsing — delete them (the analyzer already enforces typing). Mago "errors" in
+  `skeleton`/vendored components are usually dependency lag — fix by bumping deps, **never** baseline.
 
 ## Execution (always in Docker)
 ```bash

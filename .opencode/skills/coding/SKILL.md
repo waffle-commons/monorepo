@@ -5,7 +5,11 @@ compatibility: opencode
 ---
 
 ## What I do
-Guide the implementation of new features and bug fixes across the 13 independent `waffle-commons` components. I enforce strict PHP 8.5 types, PSR compliance, stateless resident worker architecture (FrankenPHP), and the Mago Purge Protocol. For complex tasks, I orchestrate parallel `coding-worker` subagents and dispatch a `coding-integrator`.
+Guide the implementation of new features and bug fixes across the 23 independent `waffle-commons`
+submodule components. I enforce strict PHP 8.5 types, PSR compliance, stateless resident worker
+architecture (FrankenPHP — see `[[worker-safety]]`), contracts-first sequencing (`[[contracts-first]]`),
+and the Mago Purge Protocol (zero output). For complex tasks, I orchestrate parallel `coding-worker`
+subagents and dispatch a `coding-integrator`.
 
 ## Scope constraint & Monorepo/Submodule Context
 The `waffle-commons` codebase is a monorepo managing independent Git submodules. Each component is an autonomous Git repository released independently on Packagist.
@@ -27,13 +31,13 @@ Treat a task as **complex** (parallelise) when:
 
 ## Workflow — simple task
 
-1. **Understand before writing** — read the relevant interfaces in `contracts`. Components must ONLY depend on `waffle-commons/contracts`, never on concrete implementations of other components.
+1. **Understand before writing** — read the relevant interfaces in `contracts`. Components depend only on `waffle-commons/contracts` (+ `waffle-commons/utils`, the shared foundation), never on concrete implementations of other components.
 2. **Follow PSR Standards** — PSR-15 for middleware, PSR-14 for events, PSR-7/17 for HTTP.
 3. **Immutability & State** — All classes should be `readonly` when possible. Use Asymmetric Visibility (`public private(set) type $name`). Make sure services are entirely stateless to avoid memory leaks in FrankenPHP worker mode.
 4. **Validation** — Use PHP 8.5 Property Hooks (`set(string $value) { ... }`) instead of legacy getters/setters.
 5. **Types** — Always start with `declare(strict_types=1);`. No `mixed` types. Typed constants everywhere.
 6. **Error Handling** — Never silence errors. Throw specific exceptions (e.g., `ValidationException`) to be intercepted by `error-handler`. No native `$_SESSION` or `sys_get_temp_dir()`.
-7. **After writing** — load the `test` skill, then load `code-review`. Verify with `docker exec -it -w /waffle-commons/{component} waffle-dev composer lint`.
+7. **After writing** — load the `test` skill, then load `code-review`. Verify with `docker exec -it -w /waffle-commons/{component} waffle-dev composer mago` (must emit **zero** errors/warnings/info/help) and `composer igor` (0 KO).
 
 ## Workflow — complex task (parallel workers)
 
@@ -47,7 +51,7 @@ Define the interfaces in the `contracts` component first. Every worker must hono
 Dispatch `coding-worker` subagents simultaneously, instructing them: *"Do not touch files outside your assigned component. Output a handoff summary."*
 
 ### Step 4 & 5 — Collect & Integrate
-Dispatch a single `coding-integrator` with all handoff summaries. The integrator wires everything together and runs `composer lint` and `composer test` inside the Docker container for each modified component.
+Dispatch a single `coding-integrator` with all handoff summaries. The integrator wires everything together and runs `composer mago`, `composer tests`, and `composer igor` inside the Docker container for each modified component.
 
 ### Step 6 — Verification
 Load `test` to fill gaps, then `code-review`.

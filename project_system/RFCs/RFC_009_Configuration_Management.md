@@ -1,3 +1,12 @@
+---
+title: "RFC-009: Configuration Management"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-009: Configuration Management
 
 **Status:** Implemented (Alpha 4) **Components:** `waffle-commons/config` **Author:** DevSecOps Lead **Tags:** yaml, libyaml, environment

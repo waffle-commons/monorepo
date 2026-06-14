@@ -3,10 +3,34 @@
 # Waffle Git Hook Installer
 # ============================================================================
 # Robust, Git-native installer that wires up pre-commit and pre-push hooks
-# in the monorepo root and inside every submodule's git hooks directory.
+# in the monorepo root and inside every submodule's git hooks directory —
+# EXCEPT the consumer-facing `component-template` scaffold, which must ship with
+# no Git hooks so downstream projects stay entirely unburdened (DX-02).
+#
+# IDEMPOTENT REFRESH: the WAFFLE hook blocks are re-written on every run (old
+# copy stripped, current copy appended), so re-running this script REPAIRS or
+# UPDATES already-installed hooks instead of silently skipping them. Run it any
+# time hooks misbehave (e.g. `wfl init`).
 # ============================================================================
 
 set -euo pipefail
+
+# Strip any existing copy of a marked WAFFLE block (and the blank line that
+# precedes it) so the caller can append a fresh copy — making installation
+# idempotent and re-runnable as a repair step.
+strip_waffle_block() {  # $1=hook-file  $2=marker (e.g. "WAFFLE PRE-PUSH")
+  local f="$1" m="$2"
+  [ -f "$f" ] || return 0
+  awk -v b="# BEGIN $m HOOK" -v e="# END $m HOOK" '
+    function flush() { if (blank) { print ""; blank = 0 } }
+    /^$/ && !skip { blank = 1; next }
+    $0 == b { blank = 0; skip = 1; next }
+    skip && $0 == e { skip = 0; next }
+    skip { next }
+    { flush(); print }
+    END { flush() }
+  ' "$f" > "$f.waffle.tmp" && mv "$f.waffle.tmp" "$f"
+}
 
 # Colors
 GREEN='\033[0;32m'
@@ -38,8 +62,8 @@ if [ ! -f "$PRE_COMMIT" ]; then
 fi
 chmod +x "$PRE_COMMIT"
 
-if ! grep -q "scripts/hooks/pre-commit-mago.sh" "$PRE_COMMIT"; then
-  cat >> "$PRE_COMMIT" <<'EOF'
+strip_waffle_block "$PRE_COMMIT" "WAFFLE PRE-COMMIT"
+cat >> "$PRE_COMMIT" <<'EOF'
 
 # BEGIN WAFFLE PRE-COMMIT HOOK
 if [ -x "./scripts/hooks/pre-commit-mago.sh" ]; then
@@ -47,7 +71,6 @@ if [ -x "./scripts/hooks/pre-commit-mago.sh" ]; then
 fi
 # END WAFFLE PRE-COMMIT HOOK
 EOF
-fi
 
 # Install pre-push hook
 PRE_PUSH="$ROOT_HOOKS_DIR/pre-push"
@@ -56,8 +79,8 @@ if [ ! -f "$PRE_PUSH" ]; then
 fi
 chmod +x "$PRE_PUSH"
 
-if ! grep -q "scripts/hooks/pre-push-sanity.sh" "$PRE_PUSH"; then
-  cat >> "$PRE_PUSH" <<'EOF'
+strip_waffle_block "$PRE_PUSH" "WAFFLE PRE-PUSH"
+cat >> "$PRE_PUSH" <<'EOF'
 
 # BEGIN WAFFLE PRE-PUSH HOOK
 if [ -x "./scripts/hooks/pre-push-sanity.sh" ]; then
@@ -65,7 +88,6 @@ if [ -x "./scripts/hooks/pre-push-sanity.sh" ]; then
 fi
 # END WAFFLE PRE-PUSH HOOK
 EOF
-fi
 
 # --- 2. INSTALL HOOKS IN EVERY SUBMODULE ---
 echo -e "\n${CYAN}Installing Git hooks in all submodules...${NC}"
@@ -77,7 +99,14 @@ for sub in $submodules; do
   if [ ! -d "$sub" ]; then
     continue
   fi
-  
+
+  # component-template is the scaffold consuming projects copy — it must stay
+  # hook-free so downstream users inherit no engineering hooks (DX-02).
+  if [ "$sub" = "component-template" ]; then
+    echo "Skipping component-template (consumer scaffold stays hook-free)..."
+    continue
+  fi
+
   # Resolve submodule git directory using rev-parse inside submodule context
   relative_sub_git_dir=$(cd "$sub" && git rev-parse --git-dir)
   # Resolve to absolute path
@@ -94,8 +123,8 @@ for sub in $submodules; do
   fi
   chmod +x "$SUB_PRE_COMMIT"
   
-  if ! grep -q "scripts/hooks/pre-commit-mago.sh" "$SUB_PRE_COMMIT"; then
-    cat >> "$SUB_PRE_COMMIT" <<'EOF'
+  strip_waffle_block "$SUB_PRE_COMMIT" "WAFFLE PRE-COMMIT"
+  cat >> "$SUB_PRE_COMMIT" <<'EOF'
 
 # BEGIN WAFFLE PRE-COMMIT HOOK
 if [ -x "../scripts/hooks/pre-commit-mago.sh" ]; then
@@ -103,7 +132,6 @@ if [ -x "../scripts/hooks/pre-commit-mago.sh" ]; then
 fi
 # END WAFFLE PRE-COMMIT HOOK
 EOF
-  fi
   
   # B. Install Graphify hooks (existing hooks)
   if ! grep -q "BEGIN PROJECT GRAPHIFY PRE-COMMIT HOOK" "$SUB_PRE_COMMIT"; then
@@ -130,8 +158,8 @@ EOF
   fi
   chmod +x "$SUB_PRE_PUSH"
   
-  if ! grep -q "scripts/hooks/pre-push-sanity.sh" "$SUB_PRE_PUSH"; then
-    cat >> "$SUB_PRE_PUSH" <<'EOF'
+  strip_waffle_block "$SUB_PRE_PUSH" "WAFFLE PRE-PUSH"
+  cat >> "$SUB_PRE_PUSH" <<'EOF'
 
 # BEGIN WAFFLE PRE-PUSH HOOK
 if [ -x "../scripts/hooks/pre-push-sanity.sh" ]; then
@@ -139,7 +167,6 @@ if [ -x "../scripts/hooks/pre-push-sanity.sh" ]; then
 fi
 # END WAFFLE PRE-PUSH HOOK
 EOF
-  fi
   
   # D. Install Graphify post hooks (existing hooks)
   for HOOK_NAME in post-checkout post-merge post-rewrite; do

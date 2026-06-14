@@ -7,9 +7,11 @@
 ### Repository
 
 - [**Repository layout**](repository-layout.md) — every directory and what it contains.
+- [**`project_system/` — governance & roadmap**](project-system.md) — the **official roadmap**, RFCs, and per-release logs & retrospectives.
 - [**`CODEOWNERS`**](codeowners.md) — who reviews what.
 - [**`component-ruleset.json`**](component-ruleset.md) — GitHub branch-protection ruleset shipped with this repo.
-- [**`CLAUDE.md` conventions**](claude-md.md) — the canonical project rules + AI-assistant routing.
+- [**`AGENTS.md` — the central brain**](agents-md.md) — the binding operating standards (coding, statelessness, Mago Purge, worker-safety, skills routing).
+- [**`CLAUDE.md` conventions**](claude-md.md) — the thin CLI router → `AGENTS.md` (the canonical standards) + AI-assistant routing.
 - [**OpenCode skills**](opencode-skills.md) — the `.opencode/skills/*` AI prompt library.
 
 ### Development environment
@@ -32,7 +34,7 @@
 Every reference page in this tree starts with:
 
 ```
-> **Release:** v0.1.0-betaN
+> **Release:** 0.1.0-betaN
 > **Scope:** which file / directory / command this page describes.
 ```
 

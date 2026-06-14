@@ -1,3 +1,12 @@
+---
+title: "RFC-017: Advanced Security & Edge Protection"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-017: Advanced Security & Edge Protection
 
 **Status:** Planned for v1.x (Post-v1.0) **Components:** `waffle-commons/security-extra` **Author:** DevSecOps Lead **Tags:** rate-limiting, oauth2, oidc, hmac

@@ -1,6 +1,6 @@
 # Reference — Repository layout
 
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta4`.
 > **Scope:** the umbrella's directory tree.
 
 ## Top-level directories
@@ -16,11 +16,12 @@
 | `docs/` | dir | yes | Monorepo contributor documentation (this Diátaxis tree). |
 | `documentation/` | submodule | yes | Framework user documentation (separate Diátaxis tree). |
 | `graphify-out/` | dir | gitignored | Project Graphify generated graph artifacts. |
-| `project_system/` | dir | gitignored | Working area for in-progress system-level artifacts. |
+| `project_system/` | dir | partly tracked | **Official project governance & roadmap.** Tracked & shared: `RFCs/`, `Roadmaps/`, `Logs/Releases/`, `Logs/Retrospectives/`. Gitignored (maintainers' private): `Audits/`, `Notes/`, `TODOs/`, `*.pem`. See the [project-system reference](project-system.md). |
 | `scripts/` | dir | yes | Git hook installer (`install-git-hooks.sh`) plus hook payloads in `scripts/hooks/` (`pre-commit-mago.sh`, `pre-push-sanity.sh`). |
 | `skeleton/` | submodule | yes | `composer create-project` template (FrankenPHP + Docker + sample). |
 | `tmp/` | dir | gitignored | Local scratch space. |
 | `workspace/` | submodule | yes | Contributor dev environment: Docker, path repos, integration tests. |
+| `academy/` | submodule | yes | Hands-on onboarding — a nested monorepo of `obsidian/` (50 lessons across 5 levels), `labs/` (50 TDD exercises + answer keys), and `sandbox/` (a FrankenPHP worker app). |
 
 ## Top-level files
 
@@ -41,7 +42,7 @@
 | `scripts/hooks/pre-push-sanity.sh` | Full `composer mago` + `composer tests` gate fired by `git push` when the ref is ahead of remote. |
 | `keystore.jks` | Java keystore used by signing tooling (rare; see your team's release docs). |
 | `TODO.md` | Working notes. Not authoritative. |
-| `.gitmodules` | The canonical list of submodule paths + remote URLs. 22 entries. |
+| `.gitmodules` | The canonical list of submodule paths + remote URLs. 23 entries (one per submodule, including `academy`). |
 
 ## Per-submodule layout
 

@@ -1,3 +1,12 @@
+---
+title: "RFC-004: Event Dispatcher System"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-004: Event Dispatcher System
 
 **Status:** Implemented (Alpha 5) **Components:** `waffle-commons/event-dispatcher` **Author:** Lead Observability **Tags:** psr-14, events, decoupling

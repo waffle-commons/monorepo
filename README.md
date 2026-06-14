@@ -15,7 +15,7 @@
 
 ---
 
-> **Release:** `0.1.0-beta3` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
+> **Release:** `0.1.0-beta4` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
 > **Status:** beta software — production use requires an independent security audit.
 
 ## 🧠 Mission
@@ -26,7 +26,7 @@ Waffle exists to prove that PHP can ship a framework which is simultaneously:
 - **Secure** — fail-closed ABAC, stateless HMAC CSRF bound to a per-browser anonymous SID, SSRF allowlist on the outbound client, hardened HTTP headers by default.
 - **Fast** — FrankenPHP-first; every component is stateless across requests so the resident worker can hold the assembled kernel in memory between calls.
 
-The monorepo is the umbrella that holds 18 independent framework components, a project skeleton, a contributor workspace, a component scaffold template, and the framework's user-facing documentation. Each component is its own Git repository, released independently on Packagist; this umbrella is purely a development and integration convenience.
+The monorepo is the umbrella that holds 18 independent framework components, a project skeleton, a contributor workspace, a hands-on onboarding academy, a component scaffold template, the framework's user-facing documentation, and the project's official governance & roadmap ([`project_system/`](project_system/)). Each component is its own Git repository, released independently on Packagist; this umbrella is purely a development and integration convenience.
 
 ## 📦 What's inside
 
@@ -54,6 +54,7 @@ The monorepo is the umbrella that holds 18 independent framework components, a p
 | | [`workspace`](workspace/) | (internal) | Contributor dev environment: Docker, path repositories, integration tests. |
 | **Tooling** | [`component-template`](component-template/) | (internal) | Scaffold for a new component. Pinned tooling and CI. |
 | | [`documentation`](documentation/) | (internal) | Framework user docs (Diátaxis). |
+| **Learning** | [`academy`](academy/) | (internal) | Hands-on onboarding monorepo: 50 Obsidian lessons (5 levels), 50 executable-spec TDD labs, and a FrankenPHP `sandbox` app. |
 
 > **Component-agnosticism rule.** Components depend **only** on `waffle-commons/contracts`. Never on each other's concrete classes. This rule is enforced by `mago guard` on every PR and is the single load-bearing invariant of the ecosystem.
 
@@ -67,6 +68,19 @@ Documentation is split by audience, deliberately.
 | **You're contributing to Waffle itself** | [`/docs`](docs/) | Monorepo usage. Tutorials (set up the workspace), how-tos (add a component, release a version), reference (`loop.sh`, Docker container, `CLAUDE.md`), explanation (why submodules, the Mago Purge Protocol). |
 
 If you're not sure which tree to read: are you `composer require`-ing Waffle? → `/documentation`. Are you `git clone`-ing this repo? → `/docs`.
+
+## 🗺️ Roadmap & governance
+
+The project's **official roadmap and design record live in [`project_system/`](project_system/)** — the binding plan of record for the whole ecosystem:
+
+| Area | Path | What it is |
+| :--- | :--- | :--- |
+| **Roadmap** | [`project_system/Roadmaps/`](project_system/Roadmaps/) | The official, release-by-release plan (current: [`Roadmap_Beta4.md`](project_system/Roadmaps/Roadmap_Beta4.md)). **If it isn't written here, it isn't committed direction.** |
+| **RFCs** | [`project_system/RFCs/`](project_system/RFCs/) | Authoritative design specifications (`RFC-001` … `RFC-022`) — the "why & what" behind every component. |
+| **Release logs** | [`project_system/Logs/Releases/`](project_system/Logs/Releases/) | What shipped in each wave (`Log_<Release>.md`). |
+| **Retrospectives** | [`project_system/Logs/Retrospectives/`](project_system/Logs/Retrospectives/) | What went well / what to improve, per release. |
+
+New work should **align with the current roadmap and the relevant RFC before it lands.** Full reference: [`docs/reference/project-system.md`](docs/reference/project-system.md).
 
 ## 🚀 Quick start — building an app on Waffle
 
@@ -104,20 +118,28 @@ Or fan a command out across **all** components:
 
 See [`docs/tutorials/setup-your-monorepo-workspace.md`](docs/tutorials/setup-your-monorepo-workspace.md) for the full setup walkthrough.
 
-## 🏗️ Pipeline at a glance (Beta-2)
+## 🏗️ Pipeline at a glance (Beta-4)
 
 Every request through a Waffle application traverses this canonical PSR-15 middleware order:
 
 ```
-┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  ┌──────────┐  ┌─────┐  ┌──────────┐  ┌──────────────┐  ┌────────────┐
-│ ErrorHandler │→ │ TrustedHost  │→ │ AnonymousSession  │→ │ Routing  │→ │ CSRF│→ │ Security │→ │ SecureHeaders│→ │ Dispatcher │
-└──────────────┘  └──────────────┘  └───────────────────┘  └──────────┘  └─────┘  └──────────┘  └──────────────┘  └────────────┘
-       RFC 7807         Host             WAFFLE_SID            attr        HMAC      fail-closed     headers          controller
-       on errors       allowlist          + _anon_sid       _classname,    +SID         ABAC         on response       call
-                                                            _method
+ErrorHandler → TrustedHost → CORS → AnonymousSession → Authentication → Routing → CSRF → Security → SecureHeaders → Dispatcher
 ```
 
-Each box is a standalone PSR-15 middleware; the order is wired by `AppKernelFactory` in the [`skeleton`](skeleton/) component. The middleware stack locks on first request (no mutation under load) and is FrankenPHP-safe.
+| Stage | Role |
+| :--- | :--- |
+| **ErrorHandler** | RFC 7807 problem-details on any thrown error. |
+| **TrustedHost** | Host-header allowlist (anti-poisoning). |
+| **CORS** | Fail-closed cross-origin policy (SEC-04): rejects un-allowlisted origins, answers preflight. |
+| **AnonymousSession** | Mints / propagates the per-browser `WAFFLE_SID` (`_anon_sid`). |
+| **Authentication** | Universal Auth Bridge — verifies credentials, publishes `_auth_identity` (fail-closed). |
+| **Routing** | Resolves the route, publishes `_classname` / `_method`. |
+| **CSRF** | Stateless HMAC double-submit, bound to the per-browser SID. |
+| **Security** | Fail-closed ABAC (`#[Voter]` / `#[PublicAccess]`). |
+| **SecureHeaders** | Hardened security headers on the response. |
+| **Dispatcher** | Invokes the controller. |
+
+Each stage is a standalone PSR-15 middleware; the order is wired by `AppKernelFactory` in the [`skeleton`](skeleton/) component. The middleware stack locks on first request (no mutation under load) and is FrankenPHP-safe.
 
 ## 🧹 Quality bar
 
@@ -147,9 +169,11 @@ waffle-commons/
 ├── scripts/               ← hook installer + hook payloads (pre-commit-mago, pre-push-sanity)
 ├── docs/                  ← MONOREPO contributor documentation (Diátaxis)
 ├── documentation/         ← FRAMEWORK user documentation (Diátaxis, submodule)
+├── project_system/        ← OFFICIAL governance: RFCs, roadmaps, release logs & retrospectives
 ├── component-template/    ← scaffold for new components (submodule)
 ├── skeleton/              ← composer create-project template (submodule)
 ├── workspace/             ← contributor dev environment (submodule)
+├── academy/               ← hands-on onboarding: lessons / labs / sandbox (submodule)
 └── <component>/           ← one git submodule per framework component
 ```
 
@@ -157,7 +181,7 @@ A more detailed map lives at [`docs/reference/repository-layout.md`](docs/refere
 
 ## 🤖 Working with AI assistants
 
-The repo ships an `.opencode/skills/` directory with specialised AI prompts (`tech-lead`, `coding`, `refactoring`, `test`, `code-review`, `mago-purge`, `security-audit`, `component-scaffold`, `diataxis-doc`). When you ask an AI to perform a task that matches one of these skills, the assistant is expected to read the corresponding `SKILL.md` before acting — see [`CLAUDE.md`](CLAUDE.md#-specialized-ai-skills-routing-directive) for the routing directive. Reference covers [`docs/reference/opencode-skills.md`](docs/reference/opencode-skills.md).
+The repo ships an `.opencode/skills/` directory with **27 specialised AI prompts** (`tech-lead`, `coding`, `refactoring`, `test`, `code-review`, `maker-scaffold`, `mago-purge`, `worker-safety`, `contracts-first`, `security-audit`, `auth-bridge-audit`, `data-persistence`, `diataxis-doc`, `component-scaffold`, `release-manager`, `release-wave`, …) plus **9 focused subagents** under `.opencode/agents/`. When you ask an AI to perform a task that matches one of these skills, the assistant is expected to read the corresponding `SKILL.md` before acting — the binding routing table lives in [`AGENTS.md`](AGENTS.md) (with [`CLAUDE.md`](CLAUDE.md) as the thin CLI router that redirects to it). Reference covers [`docs/reference/opencode-skills.md`](docs/reference/opencode-skills.md).
 
 ## 🤝 Contributing
 

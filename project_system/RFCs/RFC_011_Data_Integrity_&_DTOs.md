@@ -1,10 +1,19 @@
+---
+title: "RFC-011: Data Integrity & DTOs (PHP 8.5)"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-011: Data Integrity & DTOs (PHP 8.5)
 
-**Status:** Planned for Alpha 6 **Components:** `waffle-commons/waffle` (ArgumentResolver) **Author:** Architect & Security Team **Tags:** php-8.5, property-hooks, validation, dto
+**Status:** Planned for Beta 0 **Components:** `waffle-commons/waffle` (ArgumentResolver) **Author:** Architect & Security Team **Tags:** php-8.5, property-hooks, validation, dto
 
 ## 1. Summary
 
-This RFC introduces the paradigm shift for data validation in Waffle Alpha 6. We are abandoning heavy, annotation-based external validator libraries in favor of native PHP 8.5 Property Hooks within Data Transfer Objects (DTOs).
+This RFC introduces the paradigm shift for data validation in Waffle Beta 0. We are abandoning heavy, annotation-based external validator libraries in favor of native PHP 8.5 Property Hooks within Data Transfer Objects (DTOs).
 
 ## 2. Motivation
 

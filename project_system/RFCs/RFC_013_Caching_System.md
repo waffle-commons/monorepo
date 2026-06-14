@@ -1,6 +1,15 @@
+---
+title: "RFC-013: Caching System & PSR-6/16"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
 # RFC-013: Caching System & PSR-6/16
 
-**Status:** Planned for Alpha 6 / Beta 1 **Components:** `waffle-commons/cache` **Author:** Core Architect **Tags:** psr-6, psr-16, caching, performance
+**Status:** Planned for Beta 0 / Beta 1 **Components:** `waffle-commons/cache` **Author:** Core Architect **Tags:** psr-6, psr-16, caching, performance
 
 ## 1. Summary
 

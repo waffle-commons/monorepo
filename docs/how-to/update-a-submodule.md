@@ -1,7 +1,7 @@
 # How-To: Update a submodule
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta4`.
 > **Answers:** Someone merged a change to `<component>`. How do I pull it into my local checkout?
 
 ## Pull one submodule

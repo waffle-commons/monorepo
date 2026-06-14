@@ -1,33 +1,83 @@
 # Reference — `.opencode/skills/`
 
-> **Release:** `v0.1.0-beta2`.
+> **Release:** `0.1.0-beta4`.
 > **Scope:** `<umbrella>/.opencode/skills/`.
 > **Purpose:** the project-specific AI prompt library. Each subdirectory contains a single `SKILL.md` that an AI assistant must consult before performing a matching task.
 
 ## Routing directive (binding)
 
-`CLAUDE.md` carries this directive: *if the user's request matches a specialised skill, the assistant MUST read the corresponding `SKILL.md` before planning or acting.* These prompts encode component-specific operating procedures that override generic AI defaults.
+`AGENTS.md` carries this directive (with `CLAUDE.md` as the thin CLI router that redirects to it): *if the user's request matches a specialised skill, the assistant MUST read the corresponding `SKILL.md` before planning or acting.* These prompts encode component-specific operating procedures that override generic AI defaults. The always-current source is the **Skills Routing Table** in `AGENTS.md`; this page mirrors it.
 
 ## Available skills
 
-| Skill name | Trigger | SKILL.md path |
+**27 skills**, grouped by intent. Each lives at `.opencode/skills/<name>/SKILL.md`.
+
+### Core workflow
+
+| Skill | Trigger |
+| :--- | :--- |
+| **tech-lead** | Entry point for non-trivial / multi-skill / ambiguous work; sequences coding → test → review. |
+| **coding** | Implement a feature or bug fix across the components. |
+| **refactoring** | "Refactor / clean up / restructure" — needs a green test baseline first. |
+| **test** | Add/improve PHPUnit 12.5 tests; target ≥95% coverage. |
+| **code-review** | "Review my changes" / pre-merge sanity (per-component diff). |
+| **maker-scaffold** | Scaffold a controller, DTO, middleware, voter, command, HTTP client, or event pair via Waffle Maker (RFC-020). |
+
+### Quality gates & worker-mode
+
+| Skill | Trigger |
+| :--- | :--- |
+| **mago-purge** | Fix Mago findings to ZERO output; eradicate baselines; harden types (native-first). |
+| **worker-safety** | `wfl igor` is KO; `#[WorkerSafe]` / direct `ResettableInterface`; reset-per-request leaks. |
+| **contracts-first** | New interface sequencing; `mago guard` perimeter (contracts + utils); vendor-contracts skew. |
+| **benchmark-gate** | Benchmark-gated items (GC churn, memory curve, AOT/pool/telemetry overhead) → `…-GATE-RESULT.md`. |
+
+### Security
+
+| Skill | Trigger |
+| :--- | :--- |
+| **security-audit** | Statelessness, fail-closed ABAC, SSRF (SEC-02), CORS, traversal, `#[PublicAccess]`, SEC-03 compare-audit. |
+| **auth-bridge-audit** | Universal Authentication Bridge (RFC-021, `auth`): JWT, OAuth2/OIDC, HMAC assertions, API keys. |
+
+### Data & persistence
+
+| Skill | Trigger |
+| :--- | :--- |
+| **data-persistence** | Universal Data & Persistence Layer (RFC-022): SQR, stateless pools, Firestore paths, atomic flat-file, CRUD mappers. |
+
+### Docs, scaffolding & release
+
+| Skill | Trigger |
+| :--- | :--- |
+| **diataxis-doc** | "Write/document" → Diátaxis docs with exact PHP 8.5 signatures + version stamps. |
+| **component-scaffold** | "Create a new component / bootstrap a package" from `component-template`. |
+| **release-manager** | Per-component release steps within the umbrella wave (Packagist). |
+| **release-wave** | Orchestrate a full multi-component umbrella release (tag → dry-run → LIVE). |
+| **demo-app-wiring** | Wire a shipped feature into `skeleton` / `workspace` / `academy` (vendor skew, French, routes). |
+| **roadmap-steward** | Maintain `project_system/` RFCs & Roadmaps as the direction source of truth. |
+
+### Roadmap-forward (operating procedures staged *ahead* of the code — flagged "not yet built")
+
+| Skill | Trigger | Roadmap |
 | :--- | :--- | :--- |
-| **tech-lead** | Default for non-trivial or multi-component work. Orchestrates `coding` / `refactoring` / `test` / `code-review`. | `.opencode/skills/tech-lead/SKILL.md` |
-| **coding** | New features and bug fixes — PHP 8.5 strict types, PSR compliance, FrankenPHP statelessness, Mago Purge. | `.opencode/skills/coding/SKILL.md` |
-| **refactoring** | Behaviour-preserving restructuring. Requires green tests first. | `.opencode/skills/refactoring/SKILL.md` |
-| **test** | PHPUnit 12 tests, ≥95% coverage, mocking via `contracts` interfaces only. | `.opencode/skills/test/SKILL.md` |
-| **code-review** | Pre-merge code review, monorepo-aware (per-component `git diff`). | `.opencode/skills/code-review/SKILL.md` |
-| **mago-purge** | Aggressive Mago error cleanup, Zero Baseline policy. | `.opencode/skills/mago-purge/SKILL.md` |
-| **security-audit** | DevSecOps audit: FrankenPHP statelessness, ABAC, DTO validation, no superglobals. | `.opencode/skills/security-audit/SKILL.md` |
-| **component-scaffold** | Bootstrap a new `waffle-commons/*` component from the template. | `.opencode/skills/component-scaffold/SKILL.md` |
-| **diataxis-doc** | Generate Diátaxis-categorised technical documentation. | `.opencode/skills/diataxis-doc/SKILL.md` |
-| **release-manager** | Coordinate releases — tags, Packagist, submodule pointer bumps. | `.opencode/skills/release-manager/SKILL.md` |
+| **aot-compilation** | Build-time compiled container + router preheat. | beta5 (RFC-019) |
+| **async-concurrency** | Fiber deferred runner; concurrent HTTP-client promises. | beta5 (RFC-015) |
+| **observability** | OTel tracer contract + bridge; Prometheus `/waffle-metrics`. | beta5 (RFC-005) |
+| **resilience-net** | Rate limiter, retry/backoff, circuit breaker. | beta6 (RFC-017) |
+| **queue-worker** | Background processing (`queue` component, Redis Streams). | beta6 (RFC-015) |
+| **api-surface** | OpenAPI generation + DTO serializer / content negotiation. | beta6 (RFC-016) |
+| **k8s-ops** | Health/readiness probes, graceful drain, migration maturity. | beta6 (RFC-014) |
+| **testing-bridge** | `WaffleTestCase` in-process kernel + test doubles. | beta6 (RFC-012) |
+
+## Subagents (`.opencode/agents/<name>.md`, `mode: subagent`)
+
+Skills dispatch **9 focused single-component workers**: `coding-worker`, `coding-integrator`, `docgen-worker`, `gate-runner` (run `composer mago && composer tests` + `composer igor`), `mago-fixer` (purge to zero output), `test-author` (PHPUnit 12.5 ≥95%), `worker-safety-auditor` (`wfl igor` remediation), `security-auditor` (security checklist), and `contracts-sync` (mirror fresh `contracts/src` into a consumer `vendor/`).
 
 ## How a skill is loaded
 
 The AI assistant invocation conventionally:
 
-1. Reads `CLAUDE.md` first.
+1. Reads `CLAUDE.md` (the thin router) → `AGENTS.md` (the standards) first.
 2. Determines if the user's task matches a skill from the routing table above.
 3. Reads the corresponding `SKILL.md` **before** planning or editing files.
 4. Defers to that skill's operating procedure for the duration of the task.
@@ -60,7 +110,7 @@ The frontmatter is read by OpenCode (and similar tools) to surface the skill in 
 ## Adding a new skill
 
 1. Create `.opencode/skills/<name>/SKILL.md`.
-2. Add a row to the routing table in `CLAUDE.md` (the `🧠 SPECIALIZED AI SKILLS` section).
+2. Add a row to the **Skills Routing Table** in `AGENTS.md` (the `🧠 Specialized AI Skills` section).
 3. Add a row to this reference page.
 4. Open an umbrella PR — review by `@waffle-commons/waffle-core` per CODEOWNERS.
 
