@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 5)"
 date_created: 2026-06-07
-date_updated: 2026-06-07
+date_updated: 2026-06-14
 type: project
 status: pending
 tags:
@@ -18,7 +18,114 @@ aliases: []
 > 
 > **Core Vision:** Transition Waffle-Commons from a high-performance HTTP runner to an event-driven, reactive, and Ahead-of-Time (AOT) optimized enterprise-grade application runtime.
 > 
-> **Commitment Tiers:** Committed — AXE 1 (AOT), AXE 4 (DBAL), AXE 5 (OBS) · Next — `[ASYNC-02]` · Research spikes (prototype + go/no-go before any commitment) — `[ASYNC-01]`, `[REACTIVE-01]`, `[AUTH-01]`.
+> **Commitment Tiers:** **Gate-0 (blocks release) — AXE 0 Pre-Release Hardening (all MUST items).** · Committed — AXE 1 (AOT), AXE 4 (DBAL), AXE 5 (OBS) · Next — `[ASYNC-02]` + AXE 0 SHOULD items · Research spikes (prototype + go/no-go before any commitment) — `[ASYNC-01]`, `[REACTIVE-01]`, `[AUTH-01]`.
+
+## 🛡️ AXE 0: PRE-RELEASE HARDENING (Audit-Driven — Gate-0)
+
+_Source: full-project audit on **2026-06-14** (OWASP Top 10 + Modern-PHP review) across all 18 framework
+components. **Headline:** **zero CRITICAL** findings — the injection / crypto / auth / SSRF surface is
+genuinely robust: the SQR compiler emits `?`-placeholders with a separate parameter array and quote-
+escapes identifiers per dialect (OWASP A03); `JwtValidator` rejects `alg:none`, allow-lists algorithms
+and blocks HS/RS key-confusion; `CsrfTokenManager` is a stateless signed double-submit (`hash_equals`,
+`random_bytes`); `SsrfGuard` is default-on with resolve→validate-all-IPs→`CURLOPT_RESOLVE`-pin and no
+redirect-follow; no `unserialize`, no superglobals outside `GlobalsFactory`, no weak crypto primitives.
+The findings below are the **one HIGH + the MEDIUM/LOW hardening backlog**; the MUST block gates the
+beta5 tag ahead of every feature axe. DoD for each item is the standard gate: `composer mago` zero
+output, `composer tests` ≥95 %, `wfl igor` 0 KO._
+
+### 🔴 MUST HAVE — Security & Stability (blocks the beta5 release)
+
+- **`[AUTHZ-01]` Context-aware authorization — close the ABAC capability gap** *(HIGH · OWASP A01 / IDOR)*
+  - **Finding:** authorization is correctly **fail-closed** (`SecureContainer::analyze()` denies any action
+    with no `#[Voter]` and no `#[PublicAccess]`), but voters are **context-free**:
+    `VoterInterface::decide(): bool` takes no arguments and `SecureContainer::vote()` does `new $voterName()`
+    with no DI (`security/src/Container/SecureContainer.php:175-204`, `contracts/.../Security/VoterInterface.php`).
+    A voter therefore **cannot see the authenticated identity, the request, or the target resource**, so
+    ownership / IDOR rules (“user A may not read user B’s record”) are **impossible to express** in the
+    framework’s ABAC — apps must hand-roll them and must not over-trust the gate.
+  - **Action:** contracts-first — evolve the contract to
+    `decide(SecurityContextInterface $ctx, mixed $subject = null): bool`; resolve voters **through the container**
+    (constructor DI) instead of `new $voterName()`; thread the authenticated `UserIdentity` + PSR-7 request +
+    resolved resource into the decision. Keep deny-by-default.
+  - **Gate:** an IDOR scenario test (subject-bound voter denies cross-owner access) passes; fail-closed
+    snapshot unchanged; `wfl igor` 0 KO (no static SecurityContext).
+
+- **`[STATE-02]` Remove `sys_get_temp_dir()` from the upload path** *(MEDIUM · A05 + statelessness mandate)*
+  - **Finding:** `http/src/Factory/UploadedFileFactory.php:35` calls `tempnam(sys_get_temp_dir(), …)` — a
+    forbidden ambient global (AGENTS §2/§59), writes to a shared world-readable dir, **never cleans the temp
+    file up** (worker-mode file leak), and throws a generic `\RuntimeException`.
+  - **Action:** stream to `php://temp` or a configured, request-scoped upload dir injected from config;
+    guarantee cleanup on teardown; raise a domain exception.
+  - **Gate:** `rg 'sys_get_temp_dir' <framework>/src` is empty; upload round-trip test green; `wfl igor` 0 KO.
+
+- **`[LEAK-03]` Stop leaking internals on 4xx errors** *(MEDIUM · A01 / A05 info disclosure)*
+  - **Finding:** `error-handler/src/Renderer/JsonErrorRenderer.php:55` masks `detail` only for `status >= 500`.
+    A `SecurityException` carries code **403**, so its message is surfaced verbatim in production — leaking the
+    **controller FQCN + method** (“`App\Foo::bar declares no #[Voter] …`”) to the client.
+  - **Action:** mask every exception message by default (fall back to the RFC-7807 `title`); surface `detail`
+    **only** for an explicit allow-list of client-safe types (validation field messages, route-not-found,
+    method-not-allowed) regardless of status.
+  - **Gate:** debug-off snapshot test proves a forced 403/400 exposes no class/method/path internals.
+
+- **`[DEP-04]` Dependency-advisory release gate** *(LOW-effort · A06)*
+  - **Finding:** no `composer audit` runs in the release path; the contracts-only perimeter keeps the surface
+    tiny, but a Packagist tag should still be advisory-clean.
+  - **Action:** add `composer audit` to the per-component CI gate and the release-wave dry-run.
+  - **Gate:** 0 advisories across all components before the umbrella tag.
+
+### 🟠 SHOULD HAVE — Modernization (keep the framework competitive)
+
+- **`[ARCH-01]` Consolidate the fragmented security model** *(A04 — insecure design / maintainability)*
+  - **Finding:** **three** authorization paradigms coexist: `#[Voter]` attributes (`SecureContainer`), the
+    numeric `Level1Rule … Level10Rule` + `AbstractSecurity::$level`/`isSecure()` ladder, and
+    `SecurityInterface::analyze(object, expectations)` (instanceof). `SecureContainer` even exposes **two**
+    `analyze()` signatures (`(string,string)` vs `$security->analyze($instance)`).
+  - **Action:** make the (context-aware) voter path the single authorization entry point; retire or clearly
+    re-scope the level/expectations paths; one documented `analyze()` signature.
+
+- **`[MODERN-02]` Type always-throwing helpers `never`, not `void`** *(PHP 8.1+ feature unused — high leverage)*
+  - **Finding:** `waffle/src/Abstract/AbstractKernel.php:430` `logAndThrow(): void` always throws; the analyzer
+    can’t prove it, which is *why* the kernel needs scattered post-guard null handling on `$this->container`.
+  - **Action:** mark such helpers `: never`; sweep siblings. The analyzer then proves non-null after guards,
+    deleting narrowing workarounds for free.
+
+- **`[ARCH-03]` Replace kernel setter-injection + nullable state with constructor injection** *(temporal coupling)*
+  - **Finding:** `AbstractKernel` holds required collaborators as `?T = null` populated via `set*()` (lines
+    69-82) and relies on `validateState()` + scattered null checks — a half-constructed object is reachable.
+  - **Action:** inject required collaborators immutably (or via a dedicated `KernelBuilder`), keeping the
+    boot-time `#[WorkerSafe]` exceptions minimal.
+
+- **`[CPLX-04]` Reduce the cyclomatic-complexity hotspots** *(refactor)*
+  - **Finding:** `AbstractKernel` (441 LOC / 47 branch-lines), `Router` (269/37), `Stream` (386/37),
+    `ControllerArgumentResolver` (242/33), `Uri` (414/31), `GlobalsFactory` (294/24).
+  - **Action:** extract kernel boot/wiring into a `Bootstrapper`; split `GlobalsFactory`’s `$_SERVER` parsing
+    into focused mappers; consider a mago lint complexity threshold.
+
+- **`[POLICY-05]` Eliminate the last suppressions (zero-baseline integrity)** *(self-policy: AGENTS §38/§61)*
+  - **Finding:** 8× `@`-error-suppression confined to `cache/src/Adapter/FileCache.php` (`@mkdir/@unlink/@rename/
+    @file_get_contents/@file_put_contents/@chmod`), and 1× `@mago-ignore analysis:mixed-assignment` at
+    `http-client/src/Client.php:148`. Functionally guarded, but both violate the “never silence / zero baseline”
+    mandate.
+  - **Action:** replace `@` with explicit return-value/exception handling; resolve the mixed-assignment with a
+    typed local. `rg '@(mkdir|unlink|rename|file_get_contents|file_put_contents|chmod)' src` → 0.
+
+### 🟡 COULD HAVE — Comfort (minor optimizations & documentation)
+
+- **`[DX-01]` Unpredictable temp names** — swap `uniqid()` for `bin2hex(random_bytes(…))` in
+  `data/src/Storage/JsonFileStore.php:120` and `console/src/Maker/AbstractMakerCommand.php:171`, matching the
+  pattern `FileCache` already uses.
+- **`[OBS-02]` Security & forensic logging** — emit a log event on authorization denials, and restore the
+  server-side stack trace currently commented out at `error-handler/.../ErrorHandlerMiddleware.php:47` (logged,
+  never sent to the client). Pairs naturally with **AXE 5 (OBS)**.
+- **`[HARDEN-03]` Defense-in-depth** — collapse consecutive `LIKE` wildcards in
+  `data/src/Evaluation/InMemoryEvaluator.php:113` to bound worst-case regex cost (already `preg_quote`-safe), and
+  add an identifier allow-list alongside the dialect quote-escaping in `SQLCompiler`.
+- **`[FINAL-04]` Seal the PSR surface** — mark the PSR-7/17 concretes (`Uri`, `Stream`, `Response`, `Request`,
+  `ServerRequest`, the factories) and `container/src/Autowire.php` `final` unless an extension point is
+  intentional.
+- **`[DOC-05]` Document the authorization limits** — until `[AUTHZ-01]` lands, state explicitly that voters are
+  policy-**presence** gates and that ownership/IDOR checks must live in handlers, so integrators don’t over-trust
+  the gate.
 
 ## 🏗️ AXE 1: AHEAD-OF-TIME (AOT) METADATA COMPILATION
 
