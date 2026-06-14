@@ -91,11 +91,20 @@ jobs:
       COMPONENT: ${{ matrix.component }}
 
     steps:
-      - name: Checkout umbrella + submodules
+      - name: Checkout umbrella (no submodules)
         uses: actions/checkout@v6
         with:
-          submodules: recursive
           fetch-depth: 1
+
+      # Init ONLY the component under test — never the private 'academy' submodule
+      # (the default GITHUB_TOKEN is repo-scoped and can't clone it). Rewrite the
+      # SSH remote to HTTPS so the runner reads the public component repo
+      # anonymously (no SSH key, no token needed).
+      - name: Init only the component under test
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule sync -- "$COMPONENT"
+          git submodule update --init --depth=1 -- "$COMPONENT"
 
       - name: Sanity-check component dir
         run: |
@@ -173,11 +182,18 @@ jobs:
     name: SEC-03 timing-safe comparison gate
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout umbrella + submodules
+      - name: Checkout umbrella (no submodules)
         uses: actions/checkout@v6
         with:
-          submodules: recursive
           fetch-depth: 1
+
+      # Init ONLY the audited components (keep in sync with the audit args below);
+      # never the private 'academy' submodule. HTTPS rewrite → anonymous public read.
+      - name: Init only the audited components
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule sync -- auth security http http-client data cache
+          git submodule update --init --depth=1 -- auth security http http-client data cache
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
