@@ -179,7 +179,7 @@ cmd_init() {
 
   _ensure_compose
   info "booting docker stack..."
-  (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" up -d)
+  (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" up --build -d)
   ok "docker stack up"
 
   if [ -x "$REPO_ROOT/scripts/install-git-hooks.sh" ]; then
