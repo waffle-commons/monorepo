@@ -150,6 +150,10 @@ jobs:
         working-directory: ${{ matrix.component }}
         run: vendor/bin/mago guard
 
+      - name: composer audit (DEP-04)
+        working-directory: ${{ matrix.component }}
+        run: composer audit
+
       - name: igor-php
         if: |
           matrix.component != 'config' &&
