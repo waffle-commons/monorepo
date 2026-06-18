@@ -512,7 +512,7 @@ if (!\$secret || strlen(\$secret) < 32) {
 \$nonce = random_bytes(16);
 \$expiresAtTimestamp = time() + 3600;
 \$timestampBytes = pack('J', \$expiresAtTimestamp);
-\$hmac = hash_hmac('sha256', \$nonce . \$timestampBytes . \$tokenId . \$sid, \$secret, true);
+\$hmac = hash_hmac('sha256', \$nonce . \$timestampBytes . \$tokenId . 'anon:' . \$sid, \$secret, true);
 \$token = rtrim(strtr(base64_encode(\$nonce . \$timestampBytes . \$hmac), '+/', '-_'), '=');
 
 echo 'SECRET:' . \$secret . \"\n\";
