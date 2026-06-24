@@ -25,9 +25,20 @@ messages. Native-first fixes; never a baseline or suppression.
 **Definition of done (per modified component):** `composer mago && composer tests` both green, and
 `wfl igor` reports **0 KO**.
 
-> 🛠 **Internal CLI:** `wfl <cmd>` wraps the Docker calls — `wfl mago [comp]`, `wfl test [comp]`,
+> 🛠 **Internal CLI:** `wfl <cmd>` wraps the Docker calls — `wfl mago [comp]`, `wfl test [comp] [--filter=…]`,
 > `wfl igor`, `wfl compare-audit [comp…]` (SEC-03 gate), `wfl academy:test`, `wfl link/unlink`,
-> `wfl components`. Run `wfl help` for the full surface.
+> `wfl components`. **Beta5 automation:** `wfl dod [comp]` (full definition-of-done gate),
+> `wfl coverage [comp]` (clover %), `wfl flake-hunt <comp> [N]` (isolate a flaky test),
+> `wfl sync:contracts [comp]` / `wfl sync:demos [app]` (vendor-skew fix), `wfl pre-release [comp]`,
+> `wfl new-component <Name> <url>`, `wfl docker:reset`, `wfl mcp:check`. **Diagnostics / agent helpers:**
+> `wfl coverage:gaps <comp>` (files under 95% + uncovered count), `wfl xref <Symbol> [--tests]`
+> (fixed-string symbol search, vendor-excluded, sanity-checked), `wfl changed` (dirty submodules — commit
+> prep), `wfl boot-smoke <app>` (kernel boots without HTTP), `wfl wf-report <file>` (digest a workflow/agent
+> JSON output). Run `wfl help` for the full surface.
+>
+> 🔌 **MCP:** five servers (filesystem · postgres · mongo · redis · github) are declared for Claude Code
+> (`.mcp.json`), opencode (`opencode.json`), and AntigravityCLI (`.antigravitycli/mcp_config.json`). Secrets
+> are env-var refs; run `wfl mcp:check` for prerequisites. See **[`/MCP.md`](./MCP.md)**.
 
 ## 🧭 Redirection directive (NON-NEGOTIABLE)
 

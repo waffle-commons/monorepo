@@ -19,6 +19,14 @@ to **≥95%** with well-structured, stateless PHPUnit 12.5 tests.
 - **No native state:** no `$_SESSION`/superglobals; use a mocked `GlobalsFactory` or PSR-7 requests.
 - **For mocked native functions** (php-mock): drop the `use function` import and `defineFunctionMock`
   in `setUpBeforeClass` (pattern in `data` `QueryWarmerTest`).
+- **Crypto fixtures are deterministic — no per-run keygen.** A fixture that mints an EC keypair each run
+  (e.g. `openssl_pkey_new()` per test) intermittently fails: a raw P-256 scalar/coordinate can have a
+  leading zero byte that gets stripped, yielding a < 32-byte component and a flaky signature mismatch.
+  Use a **FIXED, hardcoded known-good keypair** (raw 32-byte components, base64-decoded once), as
+  `auth` `WebAuthnFixtureFactory` does — opaque-by-equality values (a credential id) may stay random.
+- **Flaky-test triage:** if a test passes/fails intermittently, do NOT paper over it — run
+  `wfl flake-hunt {component}` (or dispatch the `flake-hunter` agent) to loop the suite, capture the
+  failing testcase from the JUnit XML, and pin the root cause before changing assertions.
 
 ## Execution (in Docker)
 ```bash

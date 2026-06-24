@@ -47,6 +47,8 @@ contracts stay **English** even there.
 
 ## Execution (in Docker)
 ```bash
+# refresh skeleton's stale vendor copies + re-wire the demo apps after a feature lands
+wfl sync:demos
 # after wiring, gate each touched app
 docker exec -it -w /waffle-commons/skeleton  waffle-dev composer mago && \
 docker exec -it -w /waffle-commons/skeleton  waffle-dev composer tests
@@ -56,4 +58,5 @@ wfl academy:test
 ```
 > **Flakiness note:** `workspace` `mago analyze` can hit Docker/macOS file-share EMFILE/ENOENT
 > (`Too many open files`) — that's the file mount, not a code regression. Restart `waffle-dev` and
-> re-run.
+> re-run, or use **`wfl flake-hunt`** to re-run the gate and confirm the failure is mount flakiness
+> (not a real regression) before chasing it.

@@ -45,7 +45,8 @@ docker exec -it -w /waffle-commons/{consumer} waffle-dev composer dump-autoload
 - **workspace** vendor is a **symlink** (always fresh) — no rsync needed.
 - **skeleton** and framework components vendor a **stale copy** — rsync + dump-autoload first.
 
-Dispatch the **`contracts-sync`** subagent for this. Then run the consumer gate.
+Dispatch the **`contracts-sync`** subagent for this, or run **`wfl sync:contracts`** (the wrapper that
+mirrors fresh `contracts/src` into every stale-copy consumer and dumps autoloaders). Then gate the consumer.
 
 ## Execution
 ```bash

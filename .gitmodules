@@ -70,6 +70,9 @@
 [submodule "telemetry-otel"]
 	path = telemetry-otel
 	url = git@github.com:waffle-commons/telemetry-otel.git
+[submodule "async"]
+	path = async
+	url = git@github.com:waffle-commons/async.git
 [submodule "academy"]
 	path = academy
 	url = git@github.com:waffle-commons/academy.git

@@ -1,28 +1,17 @@
 #!/bin/bash
 
-# List of components
-COMPONENTS=(
-    "auth"
-    "cache"
-    "config"
-    "console"
-    "container"
-    "contracts"
-    "data"
-    "error-handler"
-    "event-dispatcher"
-    "http"
-    "http-client"
-    "log"
-    "pipeline"
-    "routing"
-    "runtime"
-    "security"
-    "skeleton"
-    "utils"
-    "waffle"
-    "workspace"
-)
+# Component list — sourced from .gitmodules via scripts/list-components.sh
+# (single source of truth), so it never drifts. The audit bundle ships the
+# framework packages plus the skeleton & workspace template apps; the scaffold,
+# the docs submodule and the academy app are excluded.
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+COMPONENTS=()
+while IFS= read -r _comp; do
+    case "$_comp" in
+        component-template|documentation|academy) continue ;;
+    esac
+    COMPONENTS+=("$_comp")
+done < <("$SCRIPT_DIR/scripts/list-components.sh")
 
 ZIP_NAME="build/framework-audit-$(date +"%Y%m%d%H%M%S").zip"
 ROOT_DIR=$(pwd)

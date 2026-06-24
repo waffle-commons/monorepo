@@ -11,7 +11,7 @@ I am the entry point for non-trivial Waffle-Commons changes. I sequence tasks an
 
 1. **Triage:** Decide whether the task requires `coding`, `refactoring`, or `test` skills. For
    anything touching `project_system/` direction, consult `roadmap-steward` first.
-2. **Plan before acting:** Identify which of the 23 submodule components are affected. Sequence
+2. **Plan before acting:** Identify which of the independent `waffle-commons` submodules are affected. Sequence
    contracts-first (`contracts-first` skill) — any new interface lands in `waffle-commons/contracts`
    before its consumer. Verify dependencies only point to `contracts` (+ `utils`).
 3. **Execute:** Load `coding` or `refactoring`. Ensure strict PHP 8.5 types, Property Hooks, and
@@ -20,7 +20,8 @@ I am the entry point for non-trivial Waffle-Commons changes. I sequence tasks an
 5. **Review:** Load `code-review`. Verify PSR compliance, zero-output Mago, and `wfl igor` 0 KO.
 
 ## Definition of done
-A task is done when:
+Run **`wfl dod [component]`** to execute the full gate (mago + tests + igor) in one shot. A task is
+done when:
 - [ ] `docker exec -it -w /waffle-commons/{component} waffle-dev composer tests` passes for all modified components (PHPUnit 12.5, ≥95% coverage).
 - [ ] `docker exec -it -w /waffle-commons/{component} waffle-dev composer mago` emits **zero output** — no errors, warnings, info, or help messages.
 - [ ] `wfl igor` reports **0 KO** across the affected components (worker-safety gate).
