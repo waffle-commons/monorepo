@@ -3,6 +3,7 @@ title: "Waffle Evolutions — Is waffle-commons the Future of PHP?"
 type: article
 author: Leslie Petrimaux
 date: 2026-05-29
+date_updated: 2026-06-26
 status: beta
 tags:
   - php
@@ -15,7 +16,7 @@ tags:
 
 # Waffle Evolutions — Is `waffle-commons` the Future of PHP?
 
-> **Scope.** A deep, evidence-based analysis of the `waffle-commons` monorepo (release `0.1.0-beta4`, June 2026) against the question: *does this project represent the future of PHP?* — accepting the deliberate constraint that Waffle does **not** aim to replace Symfony or Laravel. **Method.** Direct reading of `AGENTS.md`, `CLAUDE.md`, both Diátaxis trees (`/docs` for contributors, `/documentation` for framework users), the 22 RFCs in `project_system/RFCs/`, the canonical middleware order in `AppKernelFactory`, and the live source of the load-bearing components (`AbstractKernel`, `WaffleRuntime`, `CsrfTokenManager`, `Router`, `MiddlewareStack`, `Client`).
+> **Scope.** A deep, evidence-based analysis of the `waffle-commons` monorepo (release `0.1.0-beta5`, June 2026) against the question: *does this project represent the future of PHP?* — accepting the deliberate constraint that Waffle does **not** aim to replace Symfony or Laravel. **Method.** Direct reading of `AGENTS.md`, `CLAUDE.md`, both Diátaxis trees (`/docs` for contributors, `/documentation` for framework users), the 22 RFCs in `project_system/RFCs/`, the canonical middleware order in `AppKernelFactory`, and the live source of the load-bearing components (`AbstractKernel`, `WaffleRuntime`, `CsrfTokenManager`, `Router`, `MiddlewareStack`, `Client`, and the Beta-5 additions: `ContainerCompiler`/`RouteTrie` for AOT, `DeferredTaskRunner` for async, the PDO/Redis connection pools, and the contract-first `TracerInterface`).
 >
 > **Author position.** None — this document audits Waffle on its own terms, not Symfony's or Laravel's.
 
@@ -25,15 +26,15 @@ tags:
 
 `waffle-commons` is **not** "the future of PHP" if that phrase is read as *"the framework most PHP applications will run on in five years."* Symfony and  Laravel will continue to define mainstream PHP for the simple reason that they  own the ecosystems — the ORMs, the queue layers, the admin generators, the  mailers, the community. Waffle ships none of that, and the maintainers say so: the README opens with *"Strict, Secure, Fast"*, not *"replace your framework"*.
 
-What Waffle *is* — and this is the load-bearing claim of this document — is **a working proof of five evolutions that PHP, as a language and as a runtime,  is currently undergoing**. Each evolution is real, each is happening  independently of Waffle, and each is something that Symfony and Laravel are  slower to adopt natively because they cannot afford to break their installed  base. Waffle ships these evolutions today, in 18 lockstep-released Packagist  packages, with `composer mago && composer tests` green at every commit and `wfl igor` worker-safety at 0 KO:
+What Waffle *is* — and this is the load-bearing claim of this document — is **a working proof of five evolutions that PHP, as a language and as a runtime,  is currently undergoing**. Each evolution is real, each is happening  independently of Waffle, and each is something that Symfony and Laravel are  slower to adopt natively because they cannot afford to break their installed  base. Waffle ships these evolutions today, in 21 lockstep-released Packagist  packages, with `composer mago && composer tests` green at every commit and `wfl igor` worker-safety at 0 KO:
 
 1. **PHP 8.5 as a strict, hookable, ergonomically-typed language** — Property  Hooks replacing external validators; Asymmetric Visibility replacing  getter/setter ceremony; typed constants replacing string-keyed magic; `final readonly` replacing builder-pattern DTOs.
 2. **FrankenPHP resident-worker as the default deploy target** — no `$_SESSION`, no `session_start()`, no static singletons, no `sys_get_temp_dir()`, no per-request boot. The kernel boots once and stays  in memory; statelessness is enforced architecturally, not by convention.
 3. **Zero-Debt static analysis as a baseline expectation** — the *Mago Purge  Protocol*: zero errors, zero warnings, zero notices, zero hints, zero  baseline files. Twin-ruled by ≥95% PHPUnit coverage. This is the kind of  discipline the Rust and Haskell ecosystems take for granted, ported to PHP  without compromise.
-4. **AI-cognitive tooling as a first-class repository artifact** — `.opencode/skills/`, `AGENTS.md`, and `CLAUDE.md` are committed code, not  adjunct knowledge. The 27 named skills (`tech-lead`, `coding`, `mago-purge`, `security-audit`, `auth-bridge-audit`, `data-persistence`, `maker-scaffold`, `worker-safety`, `contracts-first`, …) and 9 subagents encode operating procedures that override generic AI  defaults at the project boundary.
-5. **Component Agnosticism as a mechanical invariant** — every component  depends only on `waffle-commons/contracts`. Enforced by `mago guard`,  refused by CI. The result is 18 components, each individually composable  into someone else's framework, with no hidden coupling between them.
+4. **AI-cognitive tooling as a first-class repository artifact** — `.opencode/skills/`, `AGENTS.md`, and `CLAUDE.md` are committed code, not  adjunct knowledge. The 29 named skills (`tech-lead`, `coding`, `mago-purge`, `security-audit`, `auth-bridge-audit`, `data-persistence`, `observability`, `aot-compilation`, `async-concurrency`, `reactive-broadcast`, `webauthn-passkeys`, …) and 14 subagents encode operating procedures that override generic AI  defaults at the project boundary.
+5. **Component Agnosticism as a mechanical invariant** — every component  depends only on `waffle-commons/contracts`. Enforced by `mago guard`,  refused by CI. The result is 21 components, each individually composable  into someone else's framework, with no hidden coupling between them.
 
-These five evolutions are the **Waffle thesis**. Whether you adopt Waffle or  not, the language and the runtime are moving in this direction; Symfony and  Laravel will continue to adapt; Waffle is simply the place where each evolution is already executed without compromise. In that narrow sense — Waffle as *evolutionary pressure*, not as displacement — yes, it is *a* future of PHP.
+These five evolutions are the **Waffle thesis**. The Beta-5 wave (June 2026) is where the thesis stops being mostly about *correctness* and starts being about *runtime maturity*: it transitions Waffle from a high-performance HTTP runner toward an **event-driven, reactive, AOT-optimized application runtime** — shipping Ahead-of-Time compilation, Fiber finish-request task deferral, reactive `#[Broadcast]` write-hooks, memory-resident connection pooling, contract-first telemetry, and native WebAuthn passkeys, all under the same statelessness and Zero-Debt mandates. Whether you adopt Waffle or  not, the language and the runtime are moving in this direction; Symfony and  Laravel will continue to adapt; Waffle is simply the place where each evolution is already executed without compromise. In that narrow sense — Waffle as *evolutionary pressure*, not as displacement — yes, it is *a* future of PHP.
 
 The rest of this document defends that claim with the evidence.
 
@@ -43,11 +44,11 @@ The rest of this document defends that claim with the evidence.
 
 ### 1.1 The umbrella shape
 
-The `waffle-commons` monorepo is an umbrella Git repository containing **23  submodules**: 18 framework components, a `skeleton` (app template), a `workspace` (live FrankenPHP dev app), an `academy` (itself a nested monorepo of three submodules — `obsidian` lessons, `labs` TDD exercises, and a `sandbox` worker app), a `component-template` (scaffold for new  components), and a `documentation` tree (framework user docs). Each submodule is its own independent Git repository, released  independently to Packagist on a coordinated release-wave cadence. The umbrella's  own purpose is to pin each at a specific SHA and ship cross-component tooling (`bin/wfl`, `igor.sh`, `scripts/install-git-hooks.sh`, `.opencode/`, `.github/workflows/`).
+The `waffle-commons` monorepo is an umbrella Git repository containing **26 submodules**: 21 framework components, a `skeleton` (app template), a `workspace` (live FrankenPHP dev app), an `academy` (itself a nested monorepo of three submodules — `obsidian` lessons, `labs` TDD exercises, and a `sandbox` worker app), a `component-template` (scaffold for new  components), and a `documentation` tree (framework user docs). Each submodule is its own independent Git repository, released  independently to Packagist on a coordinated release-wave cadence. The umbrella's  own purpose is to pin each at a specific SHA and ship cross-component tooling (`bin/wfl`, `igor.sh`, `scripts/install-git-hooks.sh`, `.opencode/`, `.github/workflows/`).
 
 This shape is deliberate and documented in [`docs/explanation/why-monorepo-of-submodules.md`](docs/explanation/why-monorepo-of-submodules.md): true monorepos cannot publish to Packagist (no subpath publication); pure  poly-repos lose the coordinated "what versions go together" state. The  umbrella-with-submodules pattern keeps both Packagist independence and ecosystem  coherence.
 
-### 1.2 The 18 framework components
+### 1.2 The 21 framework components
 
 | Layer        | Component(s)                                                   | Purpose                                                                                                                          |
 |--------------|--------------------------------------------------------------- |----------------------------------------------------------------------------------------------------------------------------------|
@@ -59,24 +60,26 @@ This shape is deliberate and documented in [`docs/explanation/why-monorepo-of-su
 | Persistence  | `data`                                                         | Universal Data & Persistence Layer (RFC-022): stateless SQR query AST, worker-safe connection pooling, 7 backends, immutable-VO CRUD mappers. |
 | DI & Config  | `container`, `config`                                          | PSR-11 autowire container with `ResettableInterface`; native YAML (ext-yaml) loader with `%env(VAR)%` interpolation.             |
 | Cross-cutting| `cache`, `event-dispatcher`, `log`, `error-handler`, `console` | PSR-6/16 + stampede protection; PSR-14; PSR-3; RFC 7807; zero-magic CLI runtime.                                                 |
+| Concurrency  | `async`                                                        | **(Beta-5)** Fiber-based finish-request deferred task runner (RFC-015): bounded post-response work — mail, audit logs, webhooks — off the latency path. |
+| Observability| `telemetry`, `telemetry-otel`                                  | **(Beta-5)** Contract-first observability (RFC-005): SDK-free Prometheus `/waffle-metrics` + stateless collectors; the opt-in OpenTelemetry tracing bridge (the sole OTel-SDK importer). |
 
 Every one of these is **PSR-anchored**: PSR-3 (logging), PSR-6 (cache pool),  PSR-7 (HTTP messages), PSR-11 (container), PSR-14 (events), PSR-15 (middleware), PSR-16 (simple cache), PSR-17 (HTTP factories), PSR-18 (HTTP  client). The framework does not invent new abstractions for problems PSR  already solved.
 
-### 1.3 The Beta-4 canonical pipeline
+### 1.3 The Beta-5 canonical pipeline
 
 Every request through a Waffle app traverses this order, wired by `AppKernelFactory` (verbatim from `skeleton/src/Factory/AppKernelFactory.php`):
 
 ```text
-ErrorHandler → TrustedHost → CORS → AnonymousSession → Authentication → Routing → CSRF → Security → SecureHeaders → Dispatcher
-   RFC 7807       Host     fail-closed   WAFFLE_SID     Universal Auth     attr     HMAC   fail-closed  defensive    controller
-  on errors     allowlist  cross-origin + _anon_sid     Bridge (RFC-021) _classname + SID      ABAC      headers        call
+ErrorHandler → Tracing → TrustedHost → CORS → AnonymousSession → Authentication → Routing → CSRF → Security → TransactionIsolation → SecureHeaders → Dispatcher
+   RFC 7807    server span    Host     fail-closed   WAFFLE_SID     Universal Auth   attr/Trie  HMAC  context-aware   commit/rollback   defensive   controller
+  on errors  + traceparent  allowlist  cross-origin + _anon_sid    Bridge (RFC-021) _classname + SID  ABAC (IDOR)  on write (DBAL)  headers       call
 ```
 
-Ten middleware, every one of them PSR-15-compliant, every one of them  stateless across requests, every one of them locked-in at boot time so the  order cannot mutate under load. (Beta-4 added the fail-closed `CORS` stage (SEC-04); the `Authentication` stage landed with the Beta-3 `auth` component.)
+Twelve middleware, every one of them PSR-15-compliant, every one of them  stateless across requests, every one of them locked-in at boot time so the  order cannot mutate under load. (Beta-5 added the `Tracing` stage — the OpenTelemetry/Prometheus server span, no-op until a tracer is wired (RFC-005) — and the `TransactionIsolation` stage, which wraps write requests in a DB transaction and rolls back on any uncaught error (RFC-022/DBAL); Beta-4 added the fail-closed `CORS` stage (SEC-04); the `Authentication` stage landed with the Beta-3 `auth` component.) Beyond the request pipeline, Beta-5 adds **finish-request** work that runs after the response is emitted and before the worker takes its next request: deferred tasks (`async`) and reactive `#[Broadcast]` SSE flushes, both fired on the `TerminateEvent`.
 
 ### 1.4 The release cadence
 
-Components release in **lockstep waves**: each `0.1.0-betaN` is a coherent set of  tags across every component, advancing along the release train (`beta1 → beta2 → beta3 → beta4 → … → 1.0`). Tags carry **no `v` prefix** — the tag-format gate rejects it. The `self.version` Composer trick (`waffle-commons/contracts: self.version` in  each component's `composer.json`) means a user installing `waffle-commons/security@0.1.0-beta4` automatically gets `waffle-commons/contracts@0.1.0-beta4`. The trade-off is documented and accepted: consumers cannot  mix-and-match versions within a wave. This is the **coordinated waves over  fine-grained interop** trade.
+Components release in **lockstep waves**: each `0.1.0-betaN` is a coherent set of  tags across every component, advancing along the release train (`beta1 → beta2 → beta3 → beta4 → beta5 → … → 1.0`). Tags carry **no `v` prefix** — the tag-format gate rejects it. The `self.version` Composer trick (`waffle-commons/contracts: self.version` in  each component's `composer.json`) means a user installing `waffle-commons/security@0.1.0-beta5` automatically gets `waffle-commons/contracts@0.1.0-beta5`. The trade-off is documented and accepted: consumers cannot  mix-and-match versions within a wave. This is the **coordinated waves over  fine-grained interop** trade.
 
 ### 1.5 The Docker-first constraint
 
@@ -157,6 +160,8 @@ A controller method then asks for `HelloInput` by type, and the `ControllerArgum
 
 The evolution is not Property Hooks. The evolution is the **realization** that once Property Hooks exist, every external validator becomes a workaround for a missing language feature. Waffle has internalized that realization and built the rest of the framework around it.
 
+**Beta-5 extends Property Hooks from *validation* to *reactivity*.** The new `#[Broadcast(channel:)]` attribute (RFC-018) sits on a PHP 8.5 **write** hook (`set`): mutating the property records a `MutationRecord` into a request-scoped buffer — the hook itself performs *no* I/O — and a finish-request listener flushes that buffer over Server-Sent Events after the response cycle. It is the same language feature as the validation hook above, pointed at a different problem: state changes become observable without an ORM event system or an external message bus, and (because hooked properties cannot be `readonly` in 8.5) the pattern is scoped precisely to mutable `final class … public private(set)` DTOs, never the `final readonly` value objects. Where the validation hook proves an object *cannot physically exist invalid*, the broadcast hook proves a mutation *cannot go unobserved* — both guarantees carried by the language, not bolted on beside it.
+
 ### 2.2 FrankenPHP resident-worker as the default deploy target
 
 `AGENTS.md` §2 is titled *"FrankenPHP Statelessness Mandate"* and reads, in full:
@@ -182,6 +187,8 @@ The net effect is a **fixed, predictable per-worker memory ceiling regardless of
 
 Symfony 7 *can* run under FrankenPHP worker mode (and does, increasingly). Laravel Octane offers similar functionality. But both must paper over decades of stateful libraries, third-party bundles, and ORM connection lifecycles written before the worker model existed. Waffle ships zero such legacy.
 
+**Beta-5 deepens this evolution from *survival* to *exploitation*.** Once a framework is genuinely worker-resident, the resident process is an asset to exploit, not merely a constraint to respect — and Beta-5 cashes that in. **Ahead-of-Time compilation** (RFC-019) compiles the DI graph into a `CompiledContainer` and the `#[Route]` table into a `RouteTrie`, both loaded at worker boot behind `WAFFLE_AOT=1` with a transparent reflection fallback, removing runtime reflection from the hot path; a snapshot test proves the compiled service graph identical to the runtime one. **Fiber-based finish-request deferral** (RFC-015, the new `async` component) runs short post-response work — mail, audit writes, webhooks — after the response is flushed but before the worker takes its next request, under a bounded budget that explicitly refuses to masquerade as a real queue. **Memory-resident connection pooling** (RFC-022 / DBAL) borrows a PDO or Redis handle at request start and returns it at request end, healing severed connections on lease (`SELECT 1` / ping before dispense), with a transaction-isolation middleware that rolls back on any uncaught error so no lock leaks between worker iterations. None of these make sense under classic boot-per-request PHP; every one of them is a dividend of having committed to the worker model *first* — and the same `wfl igor` 0-KO audit that polices statelessness polices them too.
+
 ### 2.3 Zero-Debt static analysis as a baseline expectation
 
 The *Mago Purge Protocol* (`docs/explanation/mago-purge-protocol.md`) is unusually severe for the PHP world:
@@ -204,14 +211,15 @@ This is the most unusual feature of the Waffle umbrella. Open the repo and you f
 
 - **`AGENTS.md`** — the central operating spec for *any* AI assistant. Defines the PHP 8.5 coding standards, the FrankenPHP statelessness mandate, the Mago Purge Protocol, the language policy (English for framework, French for `skeleton/` and `workspace/` template apps), and the Skills Routing Table.
 - **`CLAUDE.md`** — a thin CLI router that redirects to `AGENTS.md` and the skill files. Does not duplicate standards.
-- **`.opencode/skills/`** — **27 specialized skill prompts**, each in its own `SKILL.md`, grouped by intent (the full Routing Table lives in `AGENTS.md`):
+- **`.opencode/skills/`** — **29 specialized skill prompts**, each in its own `SKILL.md`, grouped by intent (the full Routing Table lives in `AGENTS.md`):
   - **Core workflow:** `tech-lead` (the orchestrator entry point), `coding`, `refactoring`, `test`, `code-review`, `maker-scaffold` (RFC-020 — controllers, DTOs, middleware, voters, commands, HTTP clients, event pairs).
   - **Quality gates & worker-mode:** `mago-purge` (Zero Baseline enforcement), `worker-safety` (`wfl igor` remediation), `contracts-first` (interface sequencing + `mago guard` perimeter), `benchmark-gate` (GC/memory/AOT/pool gates).
   - **Security:** `security-audit` (statelessness, ABAC, SSRF, CORS, traversal, `#[PublicAccess]`), `auth-bridge-audit` (RFC-021 — JWT, OAuth2/OIDC, HMAC assertions, API keys; fail-closed, stateless).
   - **Data & persistence:** `data-persistence` (RFC-022 — SQR, stateless pools, Firestore paths, atomic flat-file, CRUD mappers).
   - **Docs, scaffolding & release:** `diataxis-doc`, `component-scaffold`, `release-manager`, `release-wave`, `demo-app-wiring`, `roadmap-steward`.
-  - **Roadmap-forward** (operating procedures staged *ahead* of the code, each flagged "not yet built"): `aot-compilation`, `async-concurrency`, `observability` (beta5); `resilience-net`, `queue-worker`, `api-surface`, `k8s-ops`, `testing-bridge` (beta6).
-- **`.opencode/agents/`** — **9 focused subagents** (`mode: subagent`) the skills dispatch as single-component workers: `coding-worker`, `coding-integrator`, `docgen-worker`, `gate-runner` (runs `composer mago && composer tests` + `composer igor`), `mago-fixer`, `test-author`, `worker-safety-auditor`, `security-auditor`, `contracts-sync`.
+  - **Runtime maturity (Beta-5 — now shipped):** `aot-compilation` (RFC-019), `async-concurrency` (RFC-015), `observability` (RFC-005), `reactive-broadcast` (RFC-018), `webauthn-passkeys` (RFC-021 / AUTH-01) — these five were the "not yet built" roadmap-forward skills of the Beta-4 reading and are now backed by shipped components.
+  - **Roadmap-forward** (operating procedures staged *ahead* of the code, each still flagged "not yet built"): `resilience-net`, `queue-worker`, `api-surface`, `k8s-ops`, `testing-bridge` (beta6).
+- **`.opencode/agents/`** — **14 focused subagents** (`mode: subagent`) the skills dispatch as single-component workers: `coding-worker`, `coding-integrator`, `docgen-worker`, `gate-runner` (runs `composer mago && composer tests` + `composer igor`), `mago-fixer`, `test-author`, `worker-safety-auditor`, `security-auditor`, `contracts-sync`, and the Beta-5 additions `aot-verifier`, `benchmark-runner`, `demo-wiring-worker`, `flake-hunter`, `webauthn-auditor`.
 
 Each skill encodes operating procedures that override generic AI defaults. The routing directive in `CLAUDE.md` is binding: *"if the user's request matches a specialised skill, the assistant MUST read the corresponding `SKILL.md` before planning or acting."*
 
@@ -245,7 +253,7 @@ This is documented in [`docs/explanation/component-agnosticism.md`](docs/explana
 
 The rule has one deliberate exception: `RouteNotFoundException` is concrete and lives in `contracts`, because `CoreRoutingMiddleware` (in `pipeline`) needs to *throw* it, and the only alternative places (a sibling component) would re-create the dependency loop. Hoisting one concrete exception into `contracts` is the smallest possible violation; it pays for itself by letting every component throw and catch the same class. Beta-2 extends this exception to `MethodNotAllowedException` for the same reason (typed `405` handling end- to-end).
 
-**Why this is an evolution.** Most frameworks declare independence as aspiration. Waffle declares it as **a build-time CI gate**. A graph of 18 components, each releasable independently to Packagist, each individually composable into someone else's framework — that's a genuinely different shape from a Symfony bundle ecosystem or a Laravel package collection. Symfony bundles depend on the kernel; Laravel packages tend to depend on Illuminate. Waffle components depend on nothing concrete from each other, ever, by construction.
+**Why this is an evolution.** Most frameworks declare independence as aspiration. Waffle declares it as **a build-time CI gate**. A graph of 21 components, each releasable independently to Packagist, each individually composable into someone else's framework — that's a genuinely different shape from a Symfony bundle ecosystem or a Laravel package collection. Symfony bundles depend on the kernel; Laravel packages tend to depend on Illuminate. Waffle components depend on nothing concrete from each other, ever, by construction.
 
 The trade-off: every shared symbol must justify its existence in `contracts`. Adding to `contracts` is an ecosystem-wide event. This is friction, and it is the right kind of friction.
 
@@ -257,7 +265,7 @@ A clear-eyed picture of any framework requires being explicit about what it *isn
 
 ### 3.1 It is not a Symfony replacement
 
-Symfony's value proposition includes Twig, Doctrine, the Form component, the Messenger system, the Mailer, the Security bundle's firewall ladder, Maker bundle, Symfony Console (with autoload-aware commands), the Validator, Notifier, Translator, Workflow, and a 20-year ecosystem of bundles. Waffle ships **none** of those. Its `console` component is intentionally "zero-magic" — commands are registered explicitly, not auto-discovered from random bundles. There is no Twig analog. There is no Doctrine analog: `waffle-commons/data` (RFC-022) *has* shipped — it landed in the Beta-3 wave and is part of the Beta-4 surface — but it is a stateless query/persistence layer that explicitly rejects Active Record and Identity Map, not an ORM.
+Symfony's value proposition includes Twig, Doctrine, the Form component, the Messenger system, the Mailer, the Security bundle's firewall ladder, Maker bundle, Symfony Console (with autoload-aware commands), the Validator, Notifier, Translator, Workflow, and a 20-year ecosystem of bundles. Waffle ships **none** of those. Its `console` component is intentionally "zero-magic" — commands are registered explicitly, not auto-discovered from random bundles. There is no Twig analog. There is no Doctrine analog: `waffle-commons/data` (RFC-022) *has* shipped — it landed in the Beta-3 wave and gained worker-resident PDO/Redis connection pooling + transaction-isolation middleware in Beta-5 — but it is a stateless query/persistence layer that explicitly rejects Active Record and Identity Map, not an ORM.
 
 If you're building a CMS, a B2B SaaS with role-based admin, an internal tool that needs forms-and-views, Symfony is the answer. Waffle would force you to build half a framework on top.
 
@@ -273,7 +281,7 @@ If you want to ship a SaaS in two weeks with batteries-included tooling, Laravel
 
 ### 3.4 It is not a one-person-can-maintain-all-of-it framework
 
-The release wave is documented as essentially mechanical (`./loop.sh composer mago && ./loop.sh composer tests && ./coverage.sh && tag each component in topological order → bump umbrella submodule pointers → tag the umbrella → `release-wave.yml` fans out`), but it still touches 18 components. One contributor running the full wave is feasible; one contributor running the *entire* ecosystem long-term is not. Waffle needs an organization, and at beta its CODEOWNERS is `@waffle-commons/waffle-core` — a team identifier, not an individual.
+The release wave is documented as essentially mechanical (`./loop.sh composer mago && ./loop.sh composer tests && ./coverage.sh && tag each component in topological order → bump umbrella submodule pointers → tag the umbrella → `release-wave.yml` fans out`), but it still touches 21 components. One contributor running the full wave is feasible; one contributor running the *entire* ecosystem long-term is not. Waffle needs an organization, and at beta its CODEOWNERS is `@waffle-commons/waffle-core` — a team identifier, not an individual.
 
 This is not a critique of the design; it is a structural fact. The umbrella exists *because* the project is too big for a single repository to be ergonomic, and the submodule shape buys explicit per-component velocity. But it does mean evaluating Waffle as "the future of PHP" includes evaluating whether its organizational shape will scale.
 
@@ -372,9 +380,9 @@ A "future of PHP" claim requires interrogating the risks. Here are the real ones
 
 ### 5.1 Ecosystem mass
 
-Waffle has 18 framework components plus skeleton, workspace, academy, template, and documentation. Symfony has 50+ bundles, hundreds of community packages, and a 20-year compounding flywheel. Laravel has Cashier, Scout, Horizon, Telescope, Sanctum, Passport, Nova, Filament, Octane, and an order-of-magnitude bigger community-package marketplace.
+Waffle has 21 framework components plus skeleton, workspace, academy, template, and documentation. Symfony has 50+ bundles, hundreds of community packages, and a 20-year compounding flywheel. Laravel has Cashier, Scout, Horizon, Telescope, Sanctum, Passport, Nova, Filament, Octane, and an order-of-magnitude bigger community-package marketplace.
 
-For Waffle to succeed in any market beyond the edge/gateway niche, it needs either (a) deeper batteries — the RFC-022 data layer and the RFC-021 auth bridge (incl. OAuth2/OIDC) have *shipped*, but RFC-015 async, RFC-016 OpenAPI auto-doc + serializer, RFC-017 rate limiter/circuit breaker, RFC-019 AOT compilation, and the RFC-012 testing bridge are still roadmap-forward (beta5–beta6), not yet shipped — or (b) explicit interoperability with Symfony/Laravel components where the use case allows. Both paths are slow.
+For Waffle to succeed in any market beyond the edge/gateway niche, it needs either (a) deeper batteries — the RFC-022 data layer and the RFC-021 auth bridge (incl. OAuth2/OIDC, and now WebAuthn passkeys) have *shipped*, and the Beta-5 wave added RFC-015 async, RFC-005 observability (the `telemetry` Prometheus endpoint + the `telemetry-otel` OpenTelemetry bridge), RFC-019 AOT compilation, RFC-018 reactive broadcast, and the RFC-022 connection-pooling / transaction-isolation layer; what remains roadmap-forward is RFC-016 OpenAPI auto-doc + serializer, RFC-017 rate limiter / circuit breaker, the RFC-015-boundary queue/worker, and the RFC-012 testing bridge (all beta6) — or (b) explicit interoperability with Symfony/Laravel components where the use case allows. Both paths are slow.
 
 ### 5.2 The single-author signal
 
@@ -440,7 +448,7 @@ The honest framing is this: **Waffle is not a destination; it is a direction. It
 
 In that sense — Waffle as **evolutionary pressure** on the rest of the PHP ecosystem, not as displacement — yes, `waffle-commons` is part of the future of PHP. Whether you adopt it, or whether you adopt the pieces of it that suit your context, the direction is correct: PHP is becoming stricter, PHP is becoming worker-native, PHP is becoming zero-debt-by-default, PHP is becoming AI-tool-aware, PHP is becoming component-agnostic.
 
-Symfony and Laravel will get there too, on different timelines. Waffle is already there, in a single, lockstep-released, beta-quality, eighteen-component proof — and, with the `academy`, it now ships those five evolutions as a teachable, test-gated curriculum, so the direction is not merely demonstrated but transmissible.
+Symfony and Laravel will get there too, on different timelines. Waffle is already there, in a single, lockstep-released, beta-quality, twenty-one-component proof — and, with the `academy`, it ships those five evolutions as a teachable, test-gated curriculum, so the direction is not merely demonstrated but transmissible. The Beta-5 wave is the inflection where the proof stops being only about *strictness* and starts being about *runtime maturity*: AOT compilation, Fiber finish-request concurrency, reactive write-hook broadcasting, memory-resident pooling, contract-first telemetry, and native passkeys — the high-performance HTTP runner has become an event-driven, reactive, AOT-optimized application runtime, without surrendering a single line of the statelessness or Zero-Debt mandate.
 
 That is not "the future of PHP." That is **a future of PHP**, demonstrated. And it is enough.
 
@@ -477,8 +485,9 @@ This document was assembled by direct reading of, at minimum:
 - `routing/src/Router.php`
 - `skeleton/README.md`, `skeleton/src/Kernel.php`, `skeleton/src/Factory/AppKernelFactory.php`, `skeleton/public/index.php`, `skeleton/docker/Dockerfile`
 - `workspace/README.md`
-- `AGENTS.md` §1–§5b (coding standards, statelessness mandate, Mago Purge Protocol, worker-safety gate, Skills Routing Table), `.opencode/skills/tech-lead/SKILL.md`, and the `.opencode/skills/` + `.opencode/agents/` inventory (27 skills, 9 subagents)
+- `AGENTS.md` §1–§5b (coding standards, statelessness mandate, Mago Purge Protocol, worker-safety gate, Skills Routing Table), `.opencode/skills/tech-lead/SKILL.md`, and the `.opencode/skills/` + `.opencode/agents/` inventory (29 skills, 14 subagents)
 - The full `academy` monorepo: `academy/README.md`, `academy/obsidian/index.md` and the 50 lessons across `Level_1_Rookie` → `Level_5_Master`; `academy/labs/README.md` + `composer.json` (the 50 executable-spec tests, the `solve`/`unsolve`/`verify` scripts) and a sample lab test; `academy/sandbox/` (`PlaygroundController`, DTOs, PSR-14 event/listener, `CorrelationIdMiddleware`, `RookieVoter`, `igor.json`); `academy/docs/` (Diátaxis); and the `wfl academy:*` command surface (`bin/wfl`)
-- `project_system/RFCs/RFC_001` (Core & Runtime), `RFC_002` (Security & ABAC), `RFC_003` (HTTP & Middlewares), `RFC_011` (Data Integrity & DTOs), `RFC_013` (Caching System), `RFC_015` (Asynchronous Execution), `RFC_016` (OpenAPI), `RFC_017` (Advanced Security), `RFC_018` (DX & Tooling), `RFC_019` (AOT Compilation), `RFC_020` (Waffle Maker), `RFC_021` (Universal Auth Bridge), `RFC_022` (Universal Data & Persistence Layer)
+- The **Beta-5** components and their `documentation/` pages: `async/src/DeferredTaskRunner.php`; `telemetry/` (`MetricsRegistry`, `MetricsMiddleware`, the memory/GC/pool collectors, `PrometheusExporter`) and `telemetry-otel/` (`OtelTracer`, `W3CTraceContextPropagator`); `container`'s `ContainerCompiler` + `routing`'s `RouteTrie` (AOT, `WAFFLE_AOT=1`); `data`'s `PDOConnectionPool`/`RedisConnectionPool` + `TransactionIsolationMiddleware`; `auth`'s `WebAuthnLibAdapter`; and the reactive `#[Broadcast]` buffer + finish-request flush in `waffle` — together with the matching `documentation/explanation`, `reference`, and `how-to` pages authored in the Beta-5 wave
+- `project_system/RFCs/RFC_001` (Core & Runtime), `RFC_002` (Security & ABAC), `RFC_003` (HTTP & Middlewares), `RFC_005` (Logging & Observability), `RFC_011` (Data Integrity & DTOs), `RFC_013` (Caching System), `RFC_015` (Asynchronous Execution), `RFC_016` (OpenAPI), `RFC_017` (Advanced Security), `RFC_018` (DX & Tooling), `RFC_019` (AOT Compilation), `RFC_020` (Waffle Maker), `RFC_021` (Universal Auth Bridge), `RFC_022` (Universal Data & Persistence Layer)
 
-Where this document quotes Waffle's source or documentation, the quotes are verbatim from the listed files at the `0.1.0-beta4` release.
+Where this document quotes Waffle's source or documentation, the quotes are verbatim from the listed files at the `0.1.0-beta5` release.
