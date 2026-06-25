@@ -1,7 +1,7 @@
 # Tutorial — Make your first cross-component change
 
 > **Diátaxis quadrant:** Tutorial (learning-oriented).
-> **Release:** `0.1.0-beta4`.
+> **Release:** `0.1.0-beta5`.
 > **You'll end with:** a tiny feature that touches `contracts` and `security`, all checks green, two per-submodule commits prepared, and a clean understanding of the umbrella pointer bump.
 > **Time:** ~30 minutes.
 > **Prerequisites:** the [workspace setup tutorial](setup-your-monorepo-workspace.md).

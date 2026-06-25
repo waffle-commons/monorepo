@@ -1,7 +1,7 @@
 # Explanation — The Mago Purge Protocol
 
 > **Diátaxis quadrant:** Explanation.
-> **Release:** `0.1.0-beta4`.
+> **Release:** `0.1.0-beta5`.
 
 ## The rule
 

@@ -1,6 +1,6 @@
 # Reference — `AGENTS.md` (the central brain)
 
-> **Release:** `0.1.0-beta4`.
+> **Release:** `0.1.0-beta5`.
 > **Scope:** `<umbrella>/AGENTS.md`.
 > **Purpose:** the single source of truth for how any AI assistant must behave in the monorepo — the binding operating standards that [`CLAUDE.md`](claude-md.md) (the thin CLI router) redirects to.
 

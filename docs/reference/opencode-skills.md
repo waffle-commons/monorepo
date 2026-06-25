@@ -1,6 +1,6 @@
 # Reference — `.opencode/skills/`
 
-> **Release:** `0.1.0-beta4`.
+> **Release:** `0.1.0-beta5`.
 > **Scope:** `<umbrella>/.opencode/skills/`.
 > **Purpose:** the project-specific AI prompt library. Each subdirectory contains a single `SKILL.md` that an AI assistant must consult before performing a matching task.
 
@@ -10,7 +10,7 @@
 
 ## Available skills
 
-**27 skills**, grouped by intent. Each lives at `.opencode/skills/<name>/SKILL.md`.
+**29 skills**, grouped by intent. Each lives at `.opencode/skills/<name>/SKILL.md`.
 
 ### Core workflow
 
@@ -38,6 +38,7 @@
 | :--- | :--- |
 | **security-audit** | Statelessness, fail-closed ABAC, SSRF (SEC-02), CORS, traversal, `#[PublicAccess]`, SEC-03 compare-audit. |
 | **auth-bridge-audit** | Universal Authentication Bridge (RFC-021, `auth`): JWT, OAuth2/OIDC, HMAC assertions, API keys. |
+| **webauthn-passkeys** | WebAuthn / passkeys (RFC-021 AUTH-01, `auth`): `WebAuthnLibAdapter` (sole `webauthn-lib` importer), stateless authenticator with app-provided challenge store, configurable UV, fail-closed. |
 
 ### Data & persistence
 
@@ -56,13 +57,19 @@
 | **demo-app-wiring** | Wire a shipped feature into `skeleton` / `workspace` / `academy` (vendor skew, French, routes). |
 | **roadmap-steward** | Maintain `project_system/` RFCs & Roadmaps as the direction source of truth. |
 
+### Beta5 — shipped capability skills (live operating procedures, code exists)
+
+| Skill | Trigger | Source |
+| :--- | :--- | :--- |
+| **aot-compilation** | Build-time compiled container + router-trie preheat; `WAFFLE_AOT=1` fast-path + reflection fallback. | beta5 (RFC-019) |
+| **async-concurrency** | Fiber finish-request deferral (`async`); concurrent HTTP-client promise fan-out. | beta5 (RFC-015) |
+| **observability** | Contract-first `TracerInterface` + OTel bridge (`telemetry-otel`); Prometheus `/waffle-metrics` (`telemetry`). | beta5 (RFC-005) |
+| **reactive-broadcast** | `#[Broadcast]` write-hooks → request-scoped buffer → finish-request SSE flush; no I/O in the hook. | beta5 (RFC-018) |
+
 ### Roadmap-forward (operating procedures staged *ahead* of the code — flagged "not yet built")
 
 | Skill | Trigger | Roadmap |
 | :--- | :--- | :--- |
-| **aot-compilation** | Build-time compiled container + router preheat. | beta5 (RFC-019) |
-| **async-concurrency** | Fiber deferred runner; concurrent HTTP-client promises. | beta5 (RFC-015) |
-| **observability** | OTel tracer contract + bridge; Prometheus `/waffle-metrics`. | beta5 (RFC-005) |
 | **resilience-net** | Rate limiter, retry/backoff, circuit breaker. | beta6 (RFC-017) |
 | **queue-worker** | Background processing (`queue` component, Redis Streams). | beta6 (RFC-015) |
 | **api-surface** | OpenAPI generation + DTO serializer / content negotiation. | beta6 (RFC-016) |
@@ -71,7 +78,7 @@
 
 ## Subagents (`.opencode/agents/<name>.md`, `mode: subagent`)
 
-Skills dispatch **9 focused single-component workers**: `coding-worker`, `coding-integrator`, `docgen-worker`, `gate-runner` (run `composer mago && composer tests` + `composer igor`), `mago-fixer` (purge to zero output), `test-author` (PHPUnit 12.5 ≥95%), `worker-safety-auditor` (`wfl igor` remediation), `security-auditor` (security checklist), and `contracts-sync` (mirror fresh `contracts/src` into a consumer `vendor/`).
+Skills dispatch **14 focused single-component workers**: `coding-worker`, `coding-integrator`, `docgen-worker`, `gate-runner` (run `composer mago && composer tests` + `composer igor`), `mago-fixer` (purge to zero output), `test-author` (PHPUnit 12.5 ≥95%), `worker-safety-auditor` (`wfl igor` remediation + DBAL-pool reset/affinity audit), `security-auditor` (security checklist + SSE-injection + WebAuthn checks), and `contracts-sync` (mirror fresh `contracts/src` into a consumer `vendor/`). **Beta5 additions:** `benchmark-runner` (baseline → load → `…-GATE-RESULT.md`), `flake-hunter` (loop phpunit, isolate the flaky testcase from JUnit), `demo-wiring-worker` (wire one shipped feature into one app), `aot-verifier` (`container:compile` / `route:compile` + graph-identity snapshot + `WAFFLE_AOT` fast-path/fallback), and `webauthn-auditor` (passkey UV / challenge-binding / sign-counter clone-detection / statelessness audit).
 
 ## How a skill is loaded
 

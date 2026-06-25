@@ -7,6 +7,114 @@ submodule (see `docs/reference/workflows/release-wave.md`).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-beta5] — 2026-06-26
+
+**Theme: event-driven, reactive & AOT-optimized enterprise runtime (Roadmap_Beta5).**
+
+Three new components join the ecosystem — `async` (Fiber finish-request deferral),
+`telemetry` (SDK-free Prometheus metrics) and `telemetry-otel` (the OpenTelemetry
+bridge) — alongside contract-first distributed tracing, ahead-of-time container
+compilation, reactive write-hook broadcasting, memory-resident connection pooling,
+WebAuthn/passkeys, and a Gate-0 security-hardening pass. Every addition stays inside
+the "contracts + utils only" perimeter and the `wfl igor` 0-KO worker-safety gate.
+
+### Added
+- **`async` (NEW component)** — Fiber-based finish-request deferred-task runner
+  (ASYNC-01 / RFC-015): `DeferredTaskRunner` implements the new contract
+  `Async\TaskRunnerInterface`; tasks deferred during a request via `defer()` run
+  after the response is flushed (before the worker takes its next request), each
+  inside its own native `Fiber` isolation boundary so a thrown task — or a throwing
+  destructor on an abandoned, still-suspended task — is caught and logged without
+  aborting its siblings. A bounded per-request budget (`DEFAULT_BUDGET = 64`) raises
+  `DeferralBudgetExceededException` past the limit and `InvalidBudgetException` for a
+  budget below 1. The pending queue is the only state, so the runner implements
+  `ResettableInterface` directly. See [`async/CHANGELOG.md`](async/CHANGELOG.md).
+- **`telemetry` (NEW component)** — SDK-free worker metrics + Prometheus exposition
+  (OBS-02 / RFC-005): a `MetricsRegistry` (counters / gauges / histograms) backed by
+  an `ApcuMetricStore` that keeps all metric state in APCu shared memory rather than
+  the resettable worker heap (falling back to the contract `NullMetricsRegistry` when
+  APCu is absent); stateless `Memory` / `Gc` / `PoolUtilization` collectors; a
+  `PrometheusExporter`; and a fail-closed `MetricsMiddleware` serving `/waffle-metrics`
+  — 404 unless a bearer token or allow-listed client IP matches. Adds a
+  `TracingMiddleware` (per-request server span, inbound W3C `traceparent` extraction)
+  and `MeteredCache` / `TracingRepositoryDecorator` decorators, all defaulting to the
+  contract no-ops so they install unconditionally. See [`telemetry/CHANGELOG.md`](telemetry/CHANGELOG.md).
+- **`telemetry-otel` (NEW component)** — OpenTelemetry SDK bridge (OBS-01 / RFC-005):
+  `OtelTracer` / `OtelSpan` / `OtelSpanContext` adapt the OpenTelemetry PHP SDK to the
+  contract-first `Telemetry\TracerInterface` / `SpanInterface` / `SpanContextInterface`,
+  with a `W3CTraceContextPropagator` injecting/extracting `traceparent` + `tracestate`
+  for cross-service distributed tracing and an `OtelTracerFactory` that isolates every
+  `OpenTelemetry\SDK\*` symbol here. It is the **only** Waffle package permitted to
+  require `open-telemetry/*` — `mago guard` allows the SDK in this adapter and nowhere
+  else, keeping the SDK out of core. See [`telemetry-otel/CHANGELOG.md`](telemetry-otel/CHANGELOG.md).
+- **`contracts`** — the Beta-5 surface: the `Async`, `Reactive` (`#[Broadcast]`,
+  `MutationRecord`, buffer/transport markers), `Telemetry` (tracer + metrics
+  interfaces, enums, and no-op defaults — `NullTracer` / `NullSpan` /
+  `NullMetricsRegistry`), WebAuthn (`WebAuthnVerifierInterface` and friends),
+  `Container\CompiledContainerInterface`, generalized connection-pool interfaces
+  (relational + Redis), and the concurrent HTTP-client `PromiseInterface`.
+  `Security\VoterInterface::decide()` now takes a `SecurityContextInterface` and an
+  optional `$subject`. See [`contracts/CHANGELOG.md`](contracts/CHANGELOG.md).
+- **AOT compilation (AXE 1 / RFC-019)** — `console`'s `ContainerCompiler` +
+  `container:compile` command emit a graph-identical compiled container; `routing`
+  gains a `RouteTrie` for reflection-free route resolution; `waffle`'s
+  `CompiledContainerLoader` takes the fast path only when `WAFFLE_AOT=1` and a
+  compiled artifact exists, falling back to reflection otherwise. See
+  [`console/CHANGELOG.md`](console/CHANGELOG.md), [`routing/CHANGELOG.md`](routing/CHANGELOG.md)
+  and [`waffle/CHANGELOG.md`](waffle/CHANGELOG.md).
+- **Reactive broadcasting (AXE 3 / RFC-018)** — `waffle` adds the `#[Broadcast]`
+  write-hook path: a request-scoped `RequestBroadcastBuffer` accumulates mutations
+  (no I/O in the hook) and a `BroadcastFlushListener` flushes them over the
+  `SseBroadcastTransport` at finish-request. See [`waffle/CHANGELOG.md`](waffle/CHANGELOG.md).
+- **Connection pooling (AXE 4)** — `data` adds a memory-resident `RedisConnectionPool`
+  (alongside the hardened `PDOConnectionPool`) and a `TransactionIsolationMiddleware`
+  that pins a request to a single pooled connection for transaction affinity, against
+  the generalized contract pool interfaces. See [`data/CHANGELOG.md`](data/CHANGELOG.md).
+- **WebAuthn / passkeys (AXE 6 / AUTH-01)** — `auth` ships registration and
+  authentication ceremonies behind the new contract `WebAuthnVerifierInterface`, with
+  the `webauthn-lib` import isolated to a single stateless adapter (app-provided
+  challenge store, fail-closed). See [`auth/CHANGELOG.md`](auth/CHANGELOG.md).
+- **Native DB tracing (OBS-01)** — every `data` repository emits `waffle.db.query`
+  spans through the contract `TracerInterface`, defaulting to the no-op tracer so
+  tracing is zero-cost until the OTel bridge is wired. `http-client`, `routing`,
+  `security` and `waffle` likewise thread spans through their hot paths. See
+  [`data/CHANGELOG.md`](data/CHANGELOG.md).
+- **Concurrent HTTP client (AXE 2)** — `http-client` adds promise-based fan-out
+  (`ConcurrentClientInterface` / `PromiseInterface`) for parallel outbound requests
+  over the existing non-blocking `curl_multi` core. See [`http-client/CHANGELOG.md`](http-client/CHANGELOG.md).
+
+### Changed
+- **Context-aware ABAC (AUTHZ-01)** — voters now receive a request-scoped
+  `SecurityContext` (authenticated identity, roles, client IP) via DI, so ownership /
+  IDOR rules can be expressed; `security`'s `SecureContainer` resolves request-aware
+  voters and forwards the context. The previous parameter-less `decide()` is replaced
+  by `decide(SecurityContextInterface $ctx, mixed $subject = null)`. See
+  [`security/CHANGELOG.md`](security/CHANGELOG.md).
+- **Kernel constructor injection (ARCH-03)** — `AbstractKernel` now requires all
+  collaborators through its constructor (no `set*()` setters / `validateState()`); the
+  event dispatcher remains a boot-time `#[WorkerSafe]` setter. See
+  [`waffle/CHANGELOG.md`](waffle/CHANGELOG.md).
+- **`: never` return types (MODERN-02)** — fail-only helpers across `waffle`, `http`,
+  `data` and `telemetry` adopt the `never` return type for always-throwing paths.
+- **Cyclomatic-complexity lint (CPLX-04)** — the `cyclomatic-complexity` linter is
+  enabled repo-wide with a `threshold = 50` ratchet across every component `mago.toml`.
+
+### Security
+- **AXE 0 Gate-0 hardening** — `error-handler` masks 4xx client-error detail by default
+  so a `403`/`404` cannot leak controller FQCN/method in production (LEAK-03);
+  `http`'s stream-backed `UploadedFile` keeps content in `php://temp` and never writes
+  to the shared system temp dir, honouring the statelessness mandate (STATE-02); `data`
+  applies a NUL/control-character identifier allow-list alongside quote-escaping on
+  every SQL identifier (HARDEN-03); `config` and others drop the last analyzer
+  suppressions natively rather than via baseline (POLICY-05).
+
+### Dependencies
+- **CI** — `umbrella-ci` runs `composer audit` per component as a dependency-vulnerability
+  gate (DEP-04); `async`, `telemetry` and `telemetry-otel` join the `release-wave`
+  `RELEASE_INCLUDE` allowlist and the change matrix.
+- `telemetry-otel` requires `open-telemetry/*`; `auth` requires `web-auth/webauthn-lib`
+  — each isolated to a single adapter and permitted by `mago guard` only there.
+
 ## [0.1.0-beta4] — 2026-06-13
 
 **Theme: security hardening & worker-mode stability — RC-readiness groundwork (Roadmap_Beta4).**
