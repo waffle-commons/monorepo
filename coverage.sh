@@ -1,26 +1,17 @@
 #!/bin/bash
 
-# List of components
-COMPONENTS=(
-    "auth"
-    "cache"
-    "config"
-    "console"
-    "container"
-    "contracts"
-    "data"
-    "error-handler"
-    "event-dispatcher"
-    "http"
-    "http-client"
-    "log"
-    "pipeline"
-    "routing"
-    "runtime"
-    "security"
-    "utils"
-    "waffle"
-)
+# Component list — sourced from .gitmodules via scripts/list-components.sh
+# (single source of truth), so it never drifts. The template apps, the scaffold
+# and the docs submodule are not coverage-gated framework packages, so they are
+# filtered out here.
+SCRIPT_DIR="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+COMPONENTS=()
+while IFS= read -r _comp; do
+    case "$_comp" in
+        component-template|documentation|skeleton|workspace|academy) continue ;;
+    esac
+    COMPONENTS+=("$_comp")
+done < <("$SCRIPT_DIR/scripts/list-components.sh")
 
 THRESHOLD=95
 

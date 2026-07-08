@@ -76,11 +76,12 @@ Services must be **stateless and resettable** across requests (resident-memory w
 
 ## 4. Architecture & PSR
 
-- **Monorepo of submodules** — each its own Git repo / Packagist release. **23 submodules today**
-  (the master roadmap counts **22 packages → 26 in beta6**):
+- **Monorepo of submodules** — each its own Git repo / Packagist release. The set grows each wave, so
+  enumerate the live list with `scripts/list-components.sh` (parsed from `.gitmodules`) rather than a
+  hardcoded count. Beta5 added `telemetry`, `telemetry-otel`, and the local `async` component:
   - **Framework:** `contracts`, `utils`, `waffle`, `runtime`, `pipeline`, `routing`, `http`,
     `http-client`, `security`, `auth`, `data`, `cache`, `container`, `config`, `console`, `log`,
-    `event-dispatcher`, `error-handler`.
+    `event-dispatcher`, `error-handler`, `telemetry`, `telemetry-otel`, `async`.
   - **Template / docs:** `skeleton`, `workspace`, `academy`, `documentation`, `component-template`.
   - **Planned (beta6):** `queue`, `openapi`, `serializer`, `testing` — each scaffolded from
     `component-template` (see the `component-scaffold` skill).
@@ -161,12 +162,13 @@ When unsure, default to **`tech-lead`** (it orchestrates the others). All skill 
 |-------|---------------------|
 | `security-audit` | Statelessness, fail-closed ABAC, SSRF (SEC-02), CORS, traversal, `#[PublicAccess]`, SEC-03 compare-audit. |
 | `auth-bridge-audit` | Universal Authentication Bridge (RFC-021, `auth`): JWT, OAuth2/OIDC, HMAC assertions, API keys. |
+| `webauthn-passkeys` | WebAuthn / passkeys (RFC-021 AUTH-01, `auth`): `WebAuthnLibAdapter` (sole lib importer), stateless authenticator, app-provided challenge store, configurable UV, fail-closed. |
 
 **Data & persistence**
 
 | Skill | Trigger / Use when… |
 |-------|---------------------|
-| `data-persistence` | Universal Data & Persistence Layer (RFC-022): SQR, stateless pools, Firestore paths, atomic flat-file, CRUD mappers. |
+| `data-persistence` | Universal Data & Persistence Layer (RFC-022): SQR, CRUD mappers, atomic flat-file, Firestore paths, and the shipped DBAL pooling (generalized pool contract, PDO/Redis pools, request-scoped connection affinity, `TransactionIsolationMiddleware`). |
 
 **Docs, scaffolding & release**
 
@@ -179,13 +181,19 @@ When unsure, default to **`tech-lead`** (it orchestrates the others). All skill 
 | `demo-app-wiring` | Wire a shipped feature into `skeleton` / `workspace` / `academy` (vendor skew, French, routes). |
 | `roadmap-steward` | Maintain `project_system/` RFCs & Roadmaps as the direction source of truth. |
 
+**Beta5 — shipped capability skills (live operating procedures, code exists)**
+
+| Skill | Trigger / Use when… | Source |
+|-------|---------------------|--------|
+| `aot-compilation` | AOT build: graph-identical compiled container + router-trie preheat; `WAFFLE_AOT=1` fast-path + reflection fallback. | beta5 AOT (RFC-019) |
+| `async-concurrency` | Fiber finish-request deferral (`async`) + concurrent HTTP-client fan-out (`ConcurrentClientInterface`). | beta5 ASYNC (RFC-015) |
+| `observability` | Contract-first `TracerInterface` + OTel bridge (`telemetry-otel`) + Prometheus `/waffle-metrics` (`telemetry`). | beta5 OBS (RFC-005) |
+| `reactive-broadcast` | `#[Broadcast]` write-hooks → request-scoped buffer → finish-request SSE flush; no I/O in the hook. | beta5 REACTIVE (RFC-018) |
+
 **Roadmap-forward (operating procedures staged ahead of the code — flagged "not yet built")**
 
 | Skill | Trigger / Use when… | Roadmap |
 |-------|---------------------|---------|
-| `aot-compilation` | Build-time compiled container + router preheat. | beta5 AOT (RFC-019) |
-| `async-concurrency` | Fiber deferred runner; concurrent HTTP-client promises. | beta5 ASYNC (RFC-015) |
-| `observability` | OTel tracer contract + bridge; Prometheus `/waffle-metrics`. | beta5 OBS (RFC-005) |
 | `resilience-net` | Rate limiter, retry/backoff, circuit breaker. | beta6 NET (RFC-017) |
 | `queue-worker` | Background processing (`queue` component, Redis Streams). | beta6 QUEUE (RFC-015) |
 | `api-surface` | OpenAPI generation + DTO serializer / content negotiation. | beta6 API (RFC-016) |
@@ -197,5 +205,11 @@ When unsure, default to **`tech-lead`** (it orchestrates the others). All skill 
 Skills dispatch focused single-component workers. Available: `coding-worker`, `coding-integrator`,
 `docgen-worker`, **`gate-runner`** (run `composer mago && composer tests` + `composer igor`, report
 green/red), **`mago-fixer`** (purge to zero output), **`test-author`** (PHPUnit 12.5 ≥95%),
-**`worker-safety-auditor`** (`wfl igor` remediation), **`security-auditor`** (security checklist),
-**`contracts-sync`** (mirror fresh `contracts/src` into a consumer `vendor/`).
+**`worker-safety-auditor`** (`wfl igor` remediation + DBAL-pool reset/affinity audit), **`security-auditor`**
+(security checklist + SSE-injection + WebAuthn checks), **`contracts-sync`** (mirror fresh `contracts/src`
+into a consumer `vendor/`; see `wfl sync:contracts`).
+**Beta5 additions:** **`benchmark-runner`** (baseline → load → `…-GATE-RESULT.md`), **`flake-hunter`** (loop
+phpunit, isolate the flaky testcase from JUnit; knows the leading-zero-keypair class), **`demo-wiring-worker`**
+(wire one shipped feature into one app — workspace symlink / skeleton rsync), **`aot-verifier`**
+(`container:compile`/`route:compile` + graph-identity snapshot + `WAFFLE_AOT` fast-path/fallback),
+**`webauthn-auditor`** (passkey UV / challenge-binding / sign-counter clone-detection / statelessness audit).

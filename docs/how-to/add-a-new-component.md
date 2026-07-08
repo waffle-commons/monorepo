@@ -1,7 +1,7 @@
 # How-To: Add a new component
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `0.1.0-beta4`.
+> **Release:** `0.1.0-beta5`.
 > **Answers:** I want to ship a new `waffle-commons/<thing>` package. What's the process?
 
 ## When to add a component vs extend an existing one
@@ -81,7 +81,7 @@ The umbrella now tracks `my-thing` at its initial commit.
 
 ## 5. Register it in the cross-component scripts
 
-Both `loop.sh` and `coverage.sh` carry a hardcoded `COMPONENTS=( … )` array. Append your component:
+Both `loop.sh` and `coverage.sh` derive the component set (today, via `scripts/list-components.sh`, which discovers every `waffle-commons/*` directory). The set grows over time — Beta5 added three new releasable packages: `async`, `telemetry`, and `telemetry-otel`. If your scripts still carry a hardcoded `COMPONENTS=( … )` array, append your component:
 
 ```bash
 # loop.sh + coverage.sh, alphabetical insertion

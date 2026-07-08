@@ -136,10 +136,20 @@ ${C_DIM}EXECUTION${C_RST}
   shell [comp]          open a bash shell inside the container (optionally cd into a component)
   run [comp] <cmd...>   run an arbitrary command inside a component or monorepo root
   mago [comp]           run 'composer mago' for a component (defaults to cwd)
-  test [comp]           run 'composer tests' for a component (defaults to cwd)
+  test [comp] [--filter=PAT]  run 'composer tests' for a component (--filter passes through to phpunit)
   igor [args...]        run the Igor memory-leak/state audit across all components (igor.sh)
   compare-audit [comp...]  SEC-03 gate: ban naive === / !== on secret/token/hmac sites (hash_equals)
   check:all [--with-tests]  parallel 'composer mago' across all components (add --with-tests for PHPUnit)
+  dod <comp> [--compare-audit]  full Definition of Done (mago 0 + tests + coverage ≥95 + igor 0 KO)
+  coverage <comp>       print line-coverage % from clover.xml (parses var/data/phpunit-coverage)
+  flake-hunt <comp> [N=20] [--filter=PAT]  loop phpunit N× to surface flaky tests
+
+${C_DIM}DIAGNOSTICS / AGENT HELPERS${C_RST}
+  coverage:gaps <comp> [thr=95]  list source files below the coverage threshold (+ uncovered count)
+  xref <Symbol> [--tests]  find references to a PHP symbol across component src (vendor excluded, sanity-checked)
+  changed               list the umbrella + submodules with uncommitted git changes (review/commit prep)
+  boot-smoke <app>      boot a template app's kernel without HTTP (runs its Boot/Smoke test)
+  wf-report <file>      summarize a workflow/agent JSON output file (per-item findings/created/updated)
 
 ${C_DIM}ACADEMY${C_RST}
   academy:test [--lab=N_MM]   run the labs TDD suite + render the progress card (academy/labs, in container)
@@ -164,6 +174,12 @@ ${C_DIM}DEVELOPMENT${C_RST}
   csrf-init [token-id]          generate matching WAFFLE_SID & CSRF token for testing (defaults to '_default')
   secret-gen                    generate a fresh 32-byte cryptographically secure application secret
   monorepo:sync [--fix]         report (or with --fix, align) waffle-commons/* version constraints across components
+  sync:contracts [comp|--all]   mirror fresh contracts/src into a consumer's vendored copy (skew fix)
+  sync:demos [workspace|skeleton|--all]  refresh template apps' vendored framework src + dump-autoload
+  new-component <PascalName> <git-url>  scaffold a new submodule from component-template, then run dod
+  pre-release [comp|--all]      release-readiness: dod + version stamp (0.1.0-betaN) + CHANGELOG entry
+  docker:reset                  recreate the dev stack: compose down + prune + up --build
+  mcp:check                     verify MCP prereqs (npx/docker/postgres/mongo/redis/GitHub token)
 
 ${C_DIM}ENV${C_RST}
   Containers : $CONTAINER, $CONTAINER_LEGACY, $CONTAINER_REDIS
@@ -179,7 +195,7 @@ cmd_init() {
 
   _ensure_compose
   info "booting docker stack..."
-  (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" up -d)
+  (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" up --build -d)
   ok "docker stack up"
 
   if [ -x "$REPO_ROOT/scripts/install-git-hooks.sh" ]; then
@@ -250,8 +266,23 @@ cmd_mago() {
 }
 
 cmd_test() {
-  local comp; comp="$(_resolve_component "${1:-}")"
+  # Optional --filter=PAT (or --filter PAT) is forwarded to PHPUnit via Composer's
+  # post-script arg pass-through ('composer tests -- --filter PAT'). A leading
+  # positional component name is still honored; the filter may appear anywhere.
+  local comp_arg="" filter=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --filter=*) filter="${1#--filter=}"; shift ;;
+      --filter)   shift; if [ $# -gt 0 ]; then filter="$1"; shift; fi ;;
+      *)          [ -z "$comp_arg" ] && comp_arg="$1"; shift ;;
+    esac
+  done
+
+  local comp; comp="$(_resolve_component "$comp_arg")"
   _ensure_running
+  if [ -n "$filter" ]; then
+    exec docker exec -it -w "/waffle-commons/$comp" "$CONTAINER" composer tests -- --filter "$filter"
+  fi
   exec docker exec -it -w "/waffle-commons/$comp" "$CONTAINER" composer tests
 }
 
@@ -512,7 +543,7 @@ if (!\$secret || strlen(\$secret) < 32) {
 \$nonce = random_bytes(16);
 \$expiresAtTimestamp = time() + 3600;
 \$timestampBytes = pack('J', \$expiresAtTimestamp);
-\$hmac = hash_hmac('sha256', \$nonce . \$timestampBytes . \$tokenId . \$sid, \$secret, true);
+\$hmac = hash_hmac('sha256', \$nonce . \$timestampBytes . \$tokenId . 'anon:' . \$sid, \$secret, true);
 \$token = rtrim(strtr(base64_encode(\$nonce . \$timestampBytes . \$hmac), '+/', '-_'), '=');
 
 echo 'SECRET:' . \$secret . \"\n\";
@@ -838,6 +869,117 @@ cmd_monorepo_sync() {
 }
 
 # ---------------------------------------------------------------------------
+# Beta5 DX — quality gates, skew fixes, scaffolding & MCP prereqs
+# These are thin host-side wrappers around the runners in scripts/ (single
+# source of truth: scripts/list-components.sh ← .gitmodules). docker:reset is
+# the one inline command (compose lifecycle, no script needed).
+# ---------------------------------------------------------------------------
+
+# Full Definition of Done for one component (mago 0 + tests + coverage ≥95 +
+# igor 0 KO + optional SEC-03 compare-audit). See scripts/dod.sh.
+cmd_dod() {
+  [ -x "$REPO_ROOT/scripts/dod.sh" ] || die "scripts/dod.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/dod.sh" "$@"
+}
+
+# Print a component's line-coverage % parsed from its clover.xml (replaces the
+# brittle HTML aria-valuenow scraping). See scripts/coverage-percent.php.
+cmd_coverage() {
+  local comp; comp="$(_resolve_component "${1:-}")"
+  _ensure_running
+  exec docker exec -w /waffle-commons "$CONTAINER" php scripts/coverage-percent.php "$comp"
+}
+
+# Loop a component's PHPUnit suite N times to surface flaky tests. See
+# scripts/flake-hunt.sh.
+cmd_flake_hunt() {
+  [ -x "$REPO_ROOT/scripts/flake-hunt.sh" ] || die "scripts/flake-hunt.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/flake-hunt.sh" "$@"
+}
+
+# Mirror fresh contracts/src into a consumer's vendored copy (the mago-green ≠
+# PHPUnit-green skew fix). See scripts/sync-contracts.sh.
+cmd_sync_contracts() {
+  [ -x "$REPO_ROOT/scripts/sync-contracts.sh" ] || die "scripts/sync-contracts.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/sync-contracts.sh" "$@"
+}
+
+# Refresh the template apps' vendored framework src (+ dump-autoload for the
+# copied skeleton snapshot). See scripts/sync-demos.sh.
+cmd_sync_demos() {
+  [ -x "$REPO_ROOT/scripts/sync-demos.sh" ] || die "scripts/sync-demos.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/sync-demos.sh" "$@"
+}
+
+# Release-readiness for a component: dod + version stamp + CHANGELOG entry.
+# See scripts/pre-release.sh.
+cmd_pre_release() {
+  [ -x "$REPO_ROOT/scripts/pre-release.sh" ] || die "scripts/pre-release.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/pre-release.sh" "$@"
+}
+
+# Scaffold a brand-new submodule from component-template, then run the DoD.
+# See scripts/new-component.sh.
+cmd_new_component() {
+  [ -x "$REPO_ROOT/scripts/new-component.sh" ] || die "scripts/new-component.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/new-component.sh" "$@"
+}
+
+# Recreate the dev stack from scratch: stop & remove it, prune dangling docker
+# artifacts, then rebuild and start. Inline (compose lifecycle, no script).
+cmd_docker_reset() {
+  _ensure_compose
+  info "tearing down the dev stack..."
+  (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" down --remove-orphans)
+  info "pruning dangling docker artifacts (containers, networks, images, build cache)..."
+  docker system prune -f >/dev/null || warn "docker system prune reported an issue (continuing)"
+  info "rebuilding & starting the dev stack..."
+  (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" up --build -d)
+  ok "docker stack reset (down + prune + up --build)"
+}
+
+# Verify MCP server prerequisites (read-only; never starts anything).
+# See scripts/mcp-check.sh.
+cmd_mcp_check() {
+  [ -x "$REPO_ROOT/scripts/mcp-check.sh" ] || die "scripts/mcp-check.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/mcp-check.sh" "$@"
+}
+
+# --- Diagnostics / agent helpers (durable scripts for recurrent checks) ---------
+
+# List source files below the coverage threshold for a component (+ uncovered count).
+cmd_coverage_gaps() {
+  local comp; comp="$(_resolve_component "${1:-}")"
+  local thr="${2:-95}"
+  _ensure_running
+  exec docker exec -w /waffle-commons "$CONTAINER" php scripts/coverage-gaps.php "$comp" "$thr"
+}
+
+# Cross-reference a PHP symbol across component src (vendor excluded, sanity-checked).
+cmd_xref() {
+  [ -x "$REPO_ROOT/scripts/xref.sh" ] || die "scripts/xref.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/xref.sh" "$@"
+}
+
+# Report the umbrella + submodules with uncommitted git changes (review/commit prep).
+cmd_changed() {
+  [ -x "$REPO_ROOT/scripts/changed-components.sh" ] || die "scripts/changed-components.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/changed-components.sh" "$@"
+}
+
+# Boot a template app's kernel without HTTP (runs its Boot/Smoke test).
+cmd_boot_smoke() {
+  [ -x "$REPO_ROOT/scripts/boot-smoke.sh" ] || die "scripts/boot-smoke.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/boot-smoke.sh" "$@"
+}
+
+# Summarize a Workflow / background-agent JSON output file.
+cmd_wf_report() {
+  command -v python3 >/dev/null 2>&1 || die "python3 is required for wf-report"
+  exec python3 "$REPO_ROOT/scripts/wf-report.py" "$@"
+}
+
+# ---------------------------------------------------------------------------
 # Dispatch
 # ---------------------------------------------------------------------------
 main() {
@@ -853,6 +995,9 @@ main() {
     igor)        cmd_igor        "$@" ;;
     compare-audit) cmd_compare_audit "$@" ;;
     check:all)   cmd_check_all   "$@" ;;
+    dod)         cmd_dod         "$@" ;;
+    coverage)    cmd_coverage    "$@" ;;
+    flake-hunt)  cmd_flake_hunt  "$@" ;;
     academy:test)   cmd_academy_test   "$@" ;;
     academy:solve)  cmd_academy_solve  "$@" ;;
     academy:reset)  cmd_academy_reset  "$@" ;;
@@ -867,6 +1012,17 @@ main() {
     csrf-init)   cmd_csrf_init   "$@" ;;
     secret-gen)  cmd_secret_gen  "$@" ;;
     monorepo:sync) cmd_monorepo_sync "$@" ;;
+    sync:contracts) cmd_sync_contracts "$@" ;;
+    sync:demos)    cmd_sync_demos    "$@" ;;
+    new-component) cmd_new_component "$@" ;;
+    pre-release)   cmd_pre_release   "$@" ;;
+    docker:reset)  cmd_docker_reset  "$@" ;;
+    mcp:check)     cmd_mcp_check     "$@" ;;
+    coverage:gaps) cmd_coverage_gaps "$@" ;;
+    xref)          cmd_xref          "$@" ;;
+    changed)       cmd_changed       "$@" ;;
+    boot-smoke)    cmd_boot_smoke    "$@" ;;
+    wf-report)     cmd_wf_report     "$@" ;;
     logs)
       local logsub="${1:-}"; shift || true
       case "$logsub" in

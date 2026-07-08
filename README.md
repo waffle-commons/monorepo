@@ -15,7 +15,7 @@
 
 ---
 
-> **Release:** `0.1.0-beta4` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
+> **Release:** `0.1.0-beta5` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
 > **Status:** beta software — production use requires an independent security audit.
 
 ## 🧠 Mission
@@ -118,28 +118,30 @@ Or fan a command out across **all** components:
 
 See [`docs/tutorials/setup-your-monorepo-workspace.md`](docs/tutorials/setup-your-monorepo-workspace.md) for the full setup walkthrough.
 
-## 🏗️ Pipeline at a glance (Beta-4)
+## 🏗️ Pipeline at a glance (Beta-5)
 
 Every request through a Waffle application traverses this canonical PSR-15 middleware order:
 
 ```
-ErrorHandler → TrustedHost → CORS → AnonymousSession → Authentication → Routing → CSRF → Security → SecureHeaders → Dispatcher
+ErrorHandler → Tracing → TrustedHost → CORS → AnonymousSession → Authentication → Routing → CSRF → Security → TransactionIsolation → SecureHeaders → Dispatcher
 ```
 
 | Stage | Role |
 | :--- | :--- |
-| **ErrorHandler** | RFC 7807 problem-details on any thrown error. |
+| **ErrorHandler** | RFC 7807 problem-details on any thrown error; masks 4xx internals (LEAK-03). |
+| **Tracing** | *(Beta-5)* Opens the server span + request metrics (OBS-01/02); propagates W3C `traceparent`. No-op unless a tracer is wired. |
 | **TrustedHost** | Host-header allowlist (anti-poisoning). |
 | **CORS** | Fail-closed cross-origin policy (SEC-04): rejects un-allowlisted origins, answers preflight. |
 | **AnonymousSession** | Mints / propagates the per-browser `WAFFLE_SID` (`_anon_sid`). |
-| **Authentication** | Universal Auth Bridge — verifies credentials, publishes `_auth_identity` (fail-closed). |
-| **Routing** | Resolves the route, publishes `_classname` / `_method`. |
+| **Authentication** | Universal Auth Bridge — verifies credentials (now incl. WebAuthn passkeys), publishes `_auth_identity` (fail-closed). |
+| **Routing** | Resolves the route (RouteTrie under `WAFFLE_AOT=1`), publishes `_classname` / `_method`. |
 | **CSRF** | Stateless HMAC double-submit, bound to the per-browser SID. |
-| **Security** | Fail-closed ABAC (`#[Voter]` / `#[PublicAccess]`). |
+| **Security** | Fail-closed ABAC with context-aware `#[Voter]` (ownership / IDOR) / `#[PublicAccess]` (AUTHZ-01). |
+| **TransactionIsolation** | *(Beta-5)* Wraps write requests in a DB transaction (DBAL-02): commit on success, rollback + rethrow on any error. |
 | **SecureHeaders** | Hardened security headers on the response. |
 | **Dispatcher** | Invokes the controller. |
 
-Each stage is a standalone PSR-15 middleware; the order is wired by `AppKernelFactory` in the [`skeleton`](skeleton/) component. The middleware stack locks on first request (no mutation under load) and is FrankenPHP-safe.
+Each stage is a standalone PSR-15 middleware; the order is wired by `AppKernelFactory` in the [`skeleton`](skeleton/) component. The middleware stack locks on first request (no mutation under load) and is FrankenPHP-safe. Post-response work — deferred tasks (`waffle-commons/async`) and reactive `#[Broadcast]` SSE flushes — runs on the finish-request `TerminateEvent`, after the response is emitted and before the worker accepts its next request.
 
 ## 🧹 Quality bar
 

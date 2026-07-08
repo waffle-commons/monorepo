@@ -20,6 +20,8 @@ All tests must be run via the standard Docker dev container:
 docker exec -it -w /waffle-commons/{component} waffle-dev composer tests
 # Or specifically:
 docker exec -it -w /waffle-commons/{component} waffle-dev vendor/bin/phpunit --filter {TestName}
+# Coverage gate (enforces the ≥95% bar and reports the per-class shortfall):
+wfl coverage {component}
 ```
 
 ## Testing rules

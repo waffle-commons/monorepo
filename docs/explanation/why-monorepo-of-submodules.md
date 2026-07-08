@@ -1,7 +1,7 @@
 # Explanation — Why a monorepo of submodules?
 
 > **Diátaxis quadrant:** Explanation (understanding-oriented).
-> **Release:** `0.1.0-beta4`.
+> **Release:** `0.1.0-beta5`.
 
 The Waffle ecosystem is **19 independent Git repositories** stitched together by **one umbrella repository** that pins each at a specific commit. Each component is also its own Packagist package, released on its own cadence. This shape surprises newcomers used to either (a) a true monorepo (single repo, single version, single CI) or (b) a poly-repo (many repos, no umbrella).
 
@@ -40,7 +40,7 @@ Many repos. No umbrella. Each contributor figures out which repos to clone.
 | Independent CI, independent releases. | Cross-component refactors require N coordinated PRs with no umbrella PR to gate them. |
 | | The dependency graph is invisible at the repo level. |
 
-Workable for small ecosystems. Doesn't scale to 18 framework components plus skeleton + workspace + template.
+Workable for small ecosystems. Doesn't scale to 21 framework components plus skeleton + workspace + template.
 
 ### Option C — Umbrella with submodules (the path we picked)
 

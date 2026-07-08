@@ -1,7 +1,7 @@
 # How-To: Install Git hooks
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `0.1.0-beta4`.
+> **Release:** `0.1.0-beta5`.
 > **Answers:** How do I install the Project Graphify pre-commit / post-checkout / post-merge / post-rewrite hooks in every submodule?
 
 ## The one-liner
@@ -10,7 +10,7 @@
 ./scripts/install-git-hooks.sh
 ```
 
-The script walks every submodule (any directory whose `.git` exists at depth 2-3), creates the four hooks, and chmod-+x's them. See the [reference](../reference/scripts/install-git-hooks.md) for the exact script.
+The script walks every submodule (any directory whose `.git` exists at depth 2-3), creates the four hooks, and chmod-+x's them. The script itself is `scripts/install-git-hooks.sh`.
 
 ## What the hooks do
 
@@ -61,5 +61,5 @@ This removes the *entire* hook files, not just the Graphify blocks. If you have 
 
 ## Related
 
-- [`install-git-hooks.sh` reference](../reference/scripts/install-git-hooks.md) — the exact script.
+- [Repository layout](../reference/repository-layout.md) — where `scripts/install-git-hooks.sh` lives.
 - [Set up your monorepo workspace](../tutorials/setup-your-monorepo-workspace.md) — installing hooks is step 7.

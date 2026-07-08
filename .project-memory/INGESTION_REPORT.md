@@ -1,6 +1,6 @@
 # Knowledge Ingestion Report
 
-**Generated:** 2026-06-14 07:11:34Z
+**Generated:** 2026-07-02 09:40:38Z
 
 ## Components Ingested
 
@@ -8,6 +8,7 @@
 |-----------|--------|-------|
 | labs | ✅ Success | graphify-out/labs/graph.json |
 | sandbox | ✅ Success | graphify-out/sandbox/graph.json |
+| async | ✅ Success | graphify-out/async/graph.json |
 | auth | ✅ Success | graphify-out/auth/graph.json |
 | cache | ✅ Success | graphify-out/cache/graph.json |
 | component-template | ✅ Success | graphify-out/component-template/graph.json |
@@ -16,6 +17,7 @@
 | container | ✅ Success | graphify-out/container/graph.json |
 | contracts | ✅ Success | graphify-out/contracts/graph.json |
 | igor-php | ✅ Success | graphify-out/igor-php/graph.json |
+| waffle-serverless | ✅ Success | graphify-out/waffle-serverless/graph.json |
 | data | ✅ Success | graphify-out/data/graph.json |
 | error-handler | ✅ Success | graphify-out/error-handler/graph.json |
 | event-dispatcher | ✅ Success | graphify-out/event-dispatcher/graph.json |
@@ -27,6 +29,8 @@
 | runtime | ✅ Success | graphify-out/runtime/graph.json |
 | security | ✅ Success | graphify-out/security/graph.json |
 | skeleton | ✅ Success | graphify-out/skeleton/graph.json |
+| telemetry-otel | ✅ Success | graphify-out/telemetry-otel/graph.json |
+| telemetry | ✅ Success | graphify-out/telemetry/graph.json |
 | utils | ✅ Success | graphify-out/utils/graph.json |
 | waffle | ✅ Success | graphify-out/waffle/graph.json |
 | workspace | ✅ Success | graphify-out/workspace/graph.json |
@@ -44,7 +48,7 @@
 
 ## Ingestion Metrics
 
-- **Total Components:** 24
+- **Total Components:** 28
 - **Failed Ingestions:** 0
 - **Output Directory:** graphify-out
 - **Project Memory:** /Users/lesliepetrimaux/Git/Perso/waffle-commons/.project-memory

@@ -1,6 +1,6 @@
 # Reference — `release-wave.yml`
 
-> **Release:** `0.1.0-beta4`.
+> **Release:** `0.1.0-beta5`.
 > **Scope:** `.github/workflows/release-wave.yml` — the umbrella's release fan-out workflow.
 
 ## Purpose
@@ -16,7 +16,7 @@ on:
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'      # stable: 0.1.0
-      - '[0-9]+.[0-9]+.[0-9]+-*'    # pre-release: 0.1.0-beta4, 1.2.3-rc.4
+      - '[0-9]+.[0-9]+.[0-9]+-*'    # pre-release: 0.1.0-beta5, 1.2.3-rc.4
   workflow_dispatch:
     inputs:
       tag:      { required: true,  type: string  }   # must already exist on the umbrella
@@ -50,11 +50,11 @@ The tag-format gate is a separate, non-configurable safety check (`TAG_FORMAT_RE
 
 | Tag | Pre-release? |
 | :--- | :--- |
-| `0.1.0-beta4` | yes |
+| `0.1.0-beta5` | yes |
 | `0.1.0-alpha1` | yes |
 | `1.2.3-rc.4` | yes |
 | `1.2.3` | no (stable) |
-| `v0.1.0-beta4` | **rejected** by the tag-format gate (no `v` prefix) |
+| `v0.1.0-beta5` | **rejected** by the tag-format gate (no `v` prefix) |
 | `0.1.0-hotfix.1` | rejected (suffix not in the regex) |
 
 ## Authentication model
@@ -119,6 +119,6 @@ A failed mid-flight run is recovered by re-running on the same tag — no manual
 
 ## Related
 
-- [`umbrella-ci.yml`](umbrella-ci.md) — the gate that runs on PR and umbrella `main` pushes.
-- [`scripts/install-git-hooks.sh`](../scripts/install-git-hooks.md) — local pre-push gate that catches the failures `release-wave` would otherwise surface in CI.
+- [`umbrella-ci.yml`](../../../.github/workflows/umbrella-ci.yml) — the gate that runs on PR and umbrella `main` pushes.
+- [`scripts/install-git-hooks.sh`](../../how-to/install-git-hooks.md) — local pre-push gate that catches the failures `release-wave` would otherwise surface in CI.
 - [Release a component](../../how-to/release-a-component.md) — how-to from the contributor's perspective.

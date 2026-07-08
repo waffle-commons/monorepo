@@ -1,7 +1,7 @@
 # How-To: Work on multiple components locally
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `0.1.0-beta4`.
+> **Release:** `0.1.0-beta5`.
 > **Answers:** I'm changing `contracts` and need `security` to see those changes before I publish. How?
 
 ## The problem

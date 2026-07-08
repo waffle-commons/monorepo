@@ -13,6 +13,13 @@ Given a consumer component, mirror fresh contracts into its vendor and rebuild t
 is safe to gate the consumer.
 
 ```bash
+wfl sync:contracts {consumer}   # the wrapped form: same rsync + dump-autoload as below
+```
+
+`wfl sync:contracts` is the supported wrapper — prefer it; it performs exactly the mirror + autoloader
+dump below (and skips symlinked consumers). The raw form, if you need it explicitly:
+
+```bash
 # from the umbrella root
 rsync -a --delete contracts/src/ {consumer}/vendor/waffle-commons/contracts/src/
 docker exec -i -w /waffle-commons/{consumer} waffle-dev composer dump-autoload

@@ -5,8 +5,8 @@ compatibility: opencode
 ---
 
 ## What I do
-Guide the implementation of new features and bug fixes across the 23 independent `waffle-commons`
-submodule components. I enforce strict PHP 8.5 types, PSR compliance, stateless resident worker
+Guide the implementation of new features and bug fixes across the independent `waffle-commons`
+submodules. I enforce strict PHP 8.5 types, PSR compliance, stateless resident worker
 architecture (FrankenPHP — see `[[worker-safety]]`), contracts-first sequencing (`[[contracts-first]]`),
 and the Mago Purge Protocol (zero output). For complex tasks, I orchestrate parallel `coding-worker`
 subagents and dispatch a `coding-integrator`.

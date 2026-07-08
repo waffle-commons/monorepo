@@ -1,6 +1,6 @@
 # Reference — `project_system/` (governance & roadmap)
 
-> **Release:** `0.1.0-beta4`
+> **Release:** `0.1.0-beta5`
 > **Scope:** the `project_system/` directory — the project's authoritative governance, roadmap, and historical record.
 
 `project_system/` is the **single source of truth for how the Waffle ecosystem is planned, decided, shipped, and reviewed.** It is read by maintainers and contributors alike.
@@ -36,7 +36,7 @@ Work flows through these artifacts in order — this is the project's operating 
 
 ## Conventions
 
-- **Naming:** `<Category>_<Token>.md` — `RFC_NNN_Title`, `Roadmap_<Release>`, `Log_<Release>`, `Retro_<Release>`. Release tokens are PascalCase: `Alpha5`, `Beta0`, `Beta4`, `RC1`, `V1_Gold`, `V1_Master`, `Post_V1`.
+- **Naming:** `<Category>_<Token>.md` — `RFC_NNN_Title`, `Roadmap_<Release>`, `Log_<Release>`, `Retro_<Release>`. Release tokens are PascalCase: `Alpha5`, `Beta0`, `Beta4`, `Beta5`, `RC1`, `V1_Gold`, `V1_Master`, `Post_V1`.
 - **Frontmatter:** every file begins with a YAML frontmatter block (`title`, `type`, `tags`, …).
 - **Plain Markdown only:** standard relative Markdown links — **no** Obsidian `[[wikilinks]]`.
 - **Release names:** the canonical line is `alpha3` → `alpha5` → **`beta0`** (which *superseded and replaced* the planned "alpha6") → `beta1` … `beta7` → `rc1` → `v1`. There is no standalone `alpha6` release.
@@ -45,7 +45,7 @@ Work flows through these artifacts in order — this is the project's operating 
 
 | Question | Go to |
 | :--- | :--- |
-| *What's the plan / what's next?* | `Roadmaps/` — current: [`Roadmap_Beta4.md`](../../project_system/Roadmaps/Roadmap_Beta4.md) |
+| *What's the plan / what's next?* | `Roadmaps/` — current: [`Roadmap_Beta5.md`](../../project_system/Roadmaps/Roadmap_Beta5.md) |
 | *Why is component X designed this way?* | the matching [`RFCs/RFC_NNN_*.md`](../../project_system/RFCs/) |
 | *What shipped in a release?* | [`Logs/Releases/Log_<Release>.md`](../../project_system/Logs/Releases/) |
 | *What did we learn from a release?* | [`Logs/Retrospectives/Retro_<Release>.md`](../../project_system/Logs/Retrospectives/) |

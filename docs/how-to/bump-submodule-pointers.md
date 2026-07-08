@@ -1,7 +1,7 @@
 # How-To: Bump submodule pointers in the umbrella
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `0.1.0-beta4`.
+> **Release:** `0.1.0-beta5`.
 > **Answers:** A component released a new version. How do I make the umbrella point at it?
 
 ## The umbrella's job
@@ -29,13 +29,13 @@ Push when ready.
 
 ## Many submodules at once
 
-After a release pass:
+After a release pass — including the three packages Beta5 added (`async`, `telemetry`, `telemetry-otel`), each now tracked as its own submodule pointer:
 
 ```bash
 git submodule foreach 'git fetch origin && git switch main && git pull --ff-only'
 git diff --submodule
 git add .
-git commit -m "Bump submodule pointers to 0.1.0-beta4"
+git commit -m "Bump submodule pointers to 0.1.0-beta5"
 ```
 
 Verify before pushing:
@@ -73,11 +73,11 @@ git commit --amend --no-edit
 When two components must move together (e.g. `contracts` adds a method that `security` consumes), bump both pointers in **one umbrella commit**:
 
 ```bash
-# Both contracts and security have been released to 0.1.0-beta4.
+# Both contracts and security have been released to 0.1.0-beta5.
 cd contracts && git pull --ff-only && cd ..
 cd security  && git pull --ff-only && cd ..
 git add contracts security
-git commit -m "Bump contracts + security to 0.1.0-beta4"
+git commit -m "Bump contracts + security to 0.1.0-beta5"
 ```
 
 Anyone cloning the umbrella at this commit sees the coherent pair.

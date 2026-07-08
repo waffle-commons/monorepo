@@ -1,0 +1,63 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/lesliepetrimaux/Git/Perso/waffle-commons"
+      ]
+    },
+    "postgres": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@henkey/postgres-mcp-server",
+        "--connection-string",
+        "${WAFFLE_PG_DSN:-postgresql://waffle:waffle@localhost:5432/waffle}"
+      ]
+    },
+    "mongo": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mongodb-mcp-server"
+      ],
+      "env": {
+        "MDB_MCP_CONNECTION_STRING": "${WAFFLE_MONGO_URI:-mongodb://localhost:27017}"
+      }
+    },
+    "redis": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "--network=host",
+        "-e",
+        "REDIS_HOST",
+        "-e",
+        "REDIS_PORT",
+        "mcp/redis"
+      ],
+      "env": {
+        "REDIS_HOST": "${WAFFLE_REDIS_HOST:-localhost}",
+        "REDIS_PORT": "${WAFFLE_REDIS_PORT:-6379}"
+      }
+    },
+    "github": {
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+      }
+    }
+  }
+}

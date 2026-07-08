@@ -19,5 +19,72 @@
     "build": {
       "model": "opencode/nemotron-3-super-free"
     }
+  },
+  "mcp": {
+    "filesystem": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/Users/lesliepetrimaux/Git/Perso/waffle-commons"
+      ],
+      "enabled": true
+    },
+    "postgres": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@henkey/postgres-mcp-server",
+        "--connection-string",
+        "postgresql://waffle:waffle@localhost:5432/waffle"
+      ],
+      "enabled": true
+    },
+    "mongo": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "mongodb-mcp-server"
+      ],
+      "environment": {
+        "MDB_MCP_CONNECTION_STRING": "mongodb://localhost:27017"
+      },
+      "enabled": true
+    },
+    "redis": {
+      "type": "local",
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "--network=host",
+        "-e",
+        "REDIS_HOST=localhost",
+        "-e",
+        "REDIS_PORT=6379",
+        "mcp/redis"
+      ],
+      "enabled": true
+    },
+    "github": {
+      "type": "local",
+      "command": [
+        "docker",
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "GITHUB_PERSONAL_ACCESS_TOKEN",
+        "ghcr.io/github/github-mcp-server"
+      ],
+      "environment": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}"
+      },
+      "enabled": true
+    }
   }
 }

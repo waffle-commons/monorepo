@@ -42,6 +42,7 @@ jobs:
         with:
           list-files: none
           filters: |
+            async:            'async/**'
             auth:             'auth/**'
             cache:            'cache/**'
             config:           'config/**'
@@ -58,6 +59,8 @@ jobs:
             routing:          'routing/**'
             runtime:          'runtime/**'
             security:         'security/**'
+            telemetry:        'telemetry/**'
+            telemetry-otel:   'telemetry-otel/**'
             utils:            'utils/**'
             waffle:           'waffle/**'
 
@@ -150,6 +153,10 @@ jobs:
         working-directory: ${{ matrix.component }}
         run: vendor/bin/mago guard
 
+      - name: composer audit (DEP-04)
+        working-directory: ${{ matrix.component }}
+        run: composer audit
+
       - name: igor-php
         if: |
           matrix.component != 'config' &&
@@ -188,15 +195,15 @@ jobs:
           fetch-depth: 1
 
       # 'console' holds the SensitiveComparisonScanner sources the audit require()s;
-      # the other six are the scanned components (keep in sync with the audit args
+      # the other seven are the scanned components (keep in sync with the audit args
       # below). Never the private 'academy' submodule. HTTPS rewrite → anonymous read.
-      # NB: a missing scan-target is silently skipped, so all six must be present or
+      # NB: a missing scan-target is silently skipped, so all seven must be present or
       # the gate would falsely pass having scanned nothing.
       - name: Init audit scanner (console) + scanned components
         run: |
           git config --global url."https://github.com/".insteadOf "git@github.com:"
-          git submodule sync -- console auth security http http-client data cache
-          git submodule update --init --depth=1 -- console auth security http http-client data cache
+          git submodule sync -- console auth security http http-client data cache telemetry
+          git submodule update --init --depth=1 -- console auth security http http-client data cache telemetry
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
@@ -206,7 +213,7 @@ jobs:
           extensions: mbstring, tokenizer
 
       - name: SEC-03 audit (security-sensitive components)
-        run: php scripts/sec03-compare-audit.php auth security http http-client data cache
+        run: php scripts/sec03-compare-audit.php auth security http http-client data cache telemetry
 
   # --------------------------------------------------------------------------
   # 4. Single aggregating gate so branch protection can pin one required check.
