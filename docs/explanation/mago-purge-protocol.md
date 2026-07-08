@@ -61,7 +61,7 @@ find . -name "mago-*-baseline.toml" -not -path "*/vendor/*" -not -path "*/node_m
 The Mago Purge Protocol covers code quality. The coverage twin is:
 
 - Every component: PHPUnit coverage ≥ 95%.
-- Enforced by [`coverage.sh`](../reference/scripts/check-coverage.md).
+- Enforced by [`coverage.sh`](../how-to/check-coverage-across-components.md).
 - Reported per-component, with a per-line drill-down available in `var/data/phpunit-coverage/index.html`.
 
 The two together form Waffle's "Zero-Debt" guarantee: no static-analysis issues, high test coverage, no slipping standard.
@@ -110,4 +110,4 @@ Common situations:
 
 - [The Component Agnosticism rule](component-agnosticism.md) — `mago guard` enforces this.
 - [Check coverage across components](../how-to/check-coverage-across-components.md) — the 95% twin rule.
-- [`loop.sh` reference](../reference/scripts/run-all.md) — how to run the four Mago phases everywhere at once.
+- [Run checks across components](../how-to/run-checks-across-components.md) — how to run the four Mago phases everywhere at once.

@@ -10,7 +10,7 @@
 ./loop.sh composer mago
 ```
 
-The script iterates over the hardcoded `COMPONENTS=( … )` array, `cd`s into each, runs the command, and reports a per-component pass/fail summary at the end. See the [`loop.sh` reference](../reference/scripts/run-all.md) for the exact signature.
+The script builds its `COMPONENTS` list from `.gitmodules` (via `scripts/list-components.sh`, excluding the template apps, scaffold, and docs submodule), `cd`s into each, runs the command, and reports a per-component pass/fail summary at the end.
 
 > **Note.** `loop.sh` runs the command on the host shell (it does `cd $COMP && <cmd>`). It does **not** wrap the command in `docker exec`. For commands that require the dev container (like `composer mago`, which runs through the locally-installed `vendor/bin/mago`), the script assumes either (a) PHP is available on the host *or* (b) every component's `composer` script delegates to the container — whichever your team has set up. The skeleton workflow is to run commands explicitly via `docker exec` inside the container; `loop.sh` is for shell-level operations.
 
@@ -77,7 +77,7 @@ A skipped component (directory missing) does **not** count as a failure. The sum
 
 ```bash
 ./loop.sh composer mago
-# [13/18] security             ❌ FAIL (exit 1)
+# [13/21] security             ❌ FAIL (exit 1)
 # ...
 # Failed components: security
 ```
@@ -96,6 +96,6 @@ docker exec -it -w /waffle-commons/security waffle-dev composer mago
 
 ## Related
 
-- [`loop.sh` reference](../reference/scripts/run-all.md) — full flag table and behavior.
+- [Repository layout](../reference/repository-layout.md) — where `loop.sh` and the other top-level scripts live.
 - [Check coverage across components](check-coverage-across-components.md) — the coverage-specific equivalent.
 - [The Mago Purge Protocol](../explanation/mago-purge-protocol.md) — why we run mago everywhere, always.

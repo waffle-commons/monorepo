@@ -19,7 +19,7 @@ You do **not** need a local PHP install. The container ships PHP 8.5 + Xdebug + 
 
 ## 1. Clone the umbrella with submodules
 
-The monorepo is 19 Git submodules in a trench coat. Clone with `--recurse-submodules` so every component is checked out at the commit the umbrella pins:
+The monorepo is 26 Git submodules in a trench coat. Clone with `--recurse-submodules` so every component is checked out at the commit the umbrella pins:
 
 ```bash
 git clone --recurse-submodules git@github.com:waffle-commons/monorepo.git waffle-commons
@@ -102,7 +102,7 @@ The `loop.sh` script wraps `cd $COMP && <command>` over every component. Try a r
 ./loop.sh ls composer.json
 ```
 
-That should print 18 ✅ lines (one per component). Now the real one:
+That should print 21 ✅ lines (one per component). Now the real one:
 
 ```bash
 ./loop.sh composer mago
@@ -110,7 +110,7 @@ That should print 18 ✅ lines (one per component). Now the real one:
 
 This takes 1–3 minutes the first time (composer installs hit the network for every component). The summary at the bottom should say `🎉 Final state: SUCCESS`.
 
-> **If a component fails**, run `./loop.sh --verbose composer mago` to see per-component output. See the [`loop.sh` reference](../reference/scripts/run-all.md) for flags.
+> **If a component fails**, run `./loop.sh --verbose composer mago` to see per-component output. See [Run checks across components](../how-to/run-checks-across-components.md) for flags.
 
 ## 6. Verify coverage
 
@@ -128,11 +128,11 @@ If you'll be authoring commits, install the Project Graphify hooks so they trigg
 ./scripts/install-git-hooks.sh
 ```
 
-Hooks land in **each submodule's** `.git/hooks/` directory (`pre-commit`, `pre-push`, `post-checkout`, `post-merge`, `post-rewrite`). See [`scripts/install-git-hooks.sh` reference](../reference/scripts/install-git-hooks.md).
+Hooks land in **each submodule's** `.git/hooks/` directory (`pre-commit`, `pre-push`, `post-checkout`, `post-merge`, `post-rewrite`). See [Install Git hooks](../how-to/install-git-hooks.md).
 
 ## What you've accomplished
 
-- 21 submodules cloned and initialised;
+- 26 submodules cloned and initialised;
 - `waffle-dev` container running;
 - one component (`contracts`) installed, lint-clean, and test-green;
 - familiarity with the canonical `docker exec -it -w /waffle-commons/<comp> waffle-dev <cmd>` invocation;

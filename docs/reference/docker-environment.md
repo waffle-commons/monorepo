@@ -109,4 +109,4 @@ docker compose -f workspace/docker-compose.yml down --volumes --rmi all
 
 - [Set up your monorepo workspace](../tutorials/setup-your-monorepo-workspace.md) — boots `waffle-dev` in step 2.
 - [Docker-first development](../explanation/docker-first-development.md) — *why* the framework refuses to run natively on the host.
-- [`loop.sh` reference](scripts/run-all.md) — note that `loop.sh` runs on the host, not inside the container.
+- [Run checks across components](../how-to/run-checks-across-components.md) — note that `loop.sh` runs on the host, not inside the container.

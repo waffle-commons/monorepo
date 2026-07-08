@@ -20,10 +20,10 @@
 
 ### Scripts (top-level)
 
-- [**`loop.sh`**](scripts/run-all.md) — fan a command across every component.
-- [**`coverage.sh`**](scripts/check-coverage.md) — read PHPUnit coverage and enforce the 95% bar.
-- [**`scripts/install-git-hooks.sh`**](scripts/install-git-hooks.md) — install pre-commit Mago + pre-push sanity hooks (and Project Graphify hooks) in every submodule.
-- [**`zip-project.sh`**](scripts/zip-project.md) — package the umbrella for distribution.
+- [**`loop.sh`**](../how-to/run-checks-across-components.md) — fan a command across every component.
+- [**`coverage.sh`**](../how-to/check-coverage-across-components.md) — read PHPUnit coverage and enforce the 95% bar.
+- [**`scripts/install-git-hooks.sh`**](../how-to/install-git-hooks.md) — install pre-commit Mago + pre-push sanity hooks (and Project Graphify hooks) in every submodule.
+- **`zip-project.sh`** — package the umbrella for distribution.
 
 ### CI / release workflows
 

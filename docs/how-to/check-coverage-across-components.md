@@ -20,7 +20,7 @@ The script reads `<component>/var/data/phpunit-coverage/index.html` for every re
 | ❌ | <85% — critical. |
 | ❓ | No coverage report on disk — tests haven't been run. |
 
-See the [`coverage.sh` reference](../reference/scripts/check-coverage.md) for the exact output format and exit codes.
+The exact output format and exit codes are covered in the sections below.
 
 ## Generate the reports first
 
@@ -67,6 +67,6 @@ If a component genuinely cannot reach it (for instance, a class doing low-level 
 
 ## Related
 
-- [`coverage.sh` reference](../reference/scripts/check-coverage.md) — exact output and tier boundaries.
+- [Repository layout](../reference/repository-layout.md) — where `coverage.sh` and the top-level scripts live.
 - [Run checks across components](run-checks-across-components.md) — the general-purpose multiplexer.
 - [The Mago Purge Protocol](../explanation/mago-purge-protocol.md) — why 95% is the bar.

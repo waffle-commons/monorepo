@@ -52,7 +52,7 @@ clean. Work is **uncommitted, pending review** — no commits, tags, or release 
   object-**integrity / structural** check (a build/boot-time scan of resolved services), **not** access
   control; the context-aware `#[Voter]` ABAC is the single runtime access-control entry point. The two
   layers serve different purposes and intentionally coexist — see
-  `documentation/explanation/security-two-layer-abac.md`. `SecureContainer` exposes one documented
+  `documentation/explanation/security-two-layer-authorization.md`. `SecureContainer` exposes one documented
   `analyze()` signature; the prior dual-signature ambiguity is resolved.
 - **`CPLX-04` — calibrated complexity ratchet.** `AbstractKernel` was already reduced (356 LOC) by
   ARCH-03/MODERN-02, and `GlobalsFactory`'s `$_SERVER` parsing was already split into focused mappers

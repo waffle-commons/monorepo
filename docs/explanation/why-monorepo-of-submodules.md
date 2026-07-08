@@ -40,7 +40,7 @@ Many repos. No umbrella. Each contributor figures out which repos to clone.
 | Independent CI, independent releases. | Cross-component refactors require N coordinated PRs with no umbrella PR to gate them. |
 | | The dependency graph is invisible at the repo level. |
 
-Workable for small ecosystems. Doesn't scale to 18 framework components plus skeleton + workspace + template.
+Workable for small ecosystems. Doesn't scale to 21 framework components plus skeleton + workspace + template.
 
 ### Option C — Umbrella with submodules (the path we picked)
 

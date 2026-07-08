@@ -36,14 +36,14 @@ Documentation is organised by what you're trying to do, following the [Diátaxis
 ### Looking up a specific tool?
 - [**Repository layout**](reference/repository-layout.md) — every directory explained.
 - [**Docker dev environment**](reference/docker-environment.md) — `waffle-dev` container.
-- [**`loop.sh`**](reference/scripts/run-all.md), [**`coverage.sh`**](reference/scripts/check-coverage.md), [**`scripts/install-git-hooks.sh`**](reference/scripts/install-git-hooks.md), [**`zip-project.sh`**](reference/scripts/zip-project.md).
+- [**`loop.sh`**](how-to/run-checks-across-components.md), [**`coverage.sh`**](how-to/check-coverage-across-components.md), [**`scripts/install-git-hooks.sh`**](how-to/install-git-hooks.md), **`zip-project.sh`**.
 - [**`CLAUDE.md` conventions**](reference/claude-md.md) — the canonical project rules.
 - [**OpenCode skills**](reference/opencode-skills.md) — `.opencode/skills/*` AI prompts.
 - [**`component-ruleset.json`**](reference/component-ruleset.md) — GitHub branch protection ruleset.
 - [**`CODEOWNERS`**](reference/codeowners.md) — review routing.
 
 ### Planning a change or proposing a feature?
-- [**`project_system/` — governance & roadmap**](reference/project-system.md) — the **official roadmap**, the RFC design specs, and per-release logs & retrospectives. Align your proposal with the current [roadmap](../project_system/Roadmaps/Roadmap_Beta4.md) and the relevant RFC **before** you build.
+- [**`project_system/` — governance & roadmap**](reference/project-system.md) — the **official roadmap**, the RFC design specs, and per-release logs & retrospectives. Align your proposal with the current [roadmap](../project_system/Roadmaps/Roadmap_Beta5.md) and the relevant RFC **before** you build.
 
 ### Why is it like this?
 - [**Why a monorepo of submodules?**](explanation/why-monorepo-of-submodules.md) — the rationale and trade-offs.

@@ -3,7 +3,7 @@ title: "Waffle Evolutions — Is waffle-commons the Future of PHP?"
 type: article
 author: Leslie Petrimaux
 date: 2026-05-29
-date_updated: 2026-06-26
+date_updated: 2026-07-08
 status: beta
 tags:
   - php
@@ -16,7 +16,7 @@ tags:
 
 # Waffle Evolutions — Is `waffle-commons` the Future of PHP?
 
-> **Scope.** A deep, evidence-based analysis of the `waffle-commons` monorepo (release `0.1.0-beta5`, June 2026) against the question: *does this project represent the future of PHP?* — accepting the deliberate constraint that Waffle does **not** aim to replace Symfony or Laravel. **Method.** Direct reading of `AGENTS.md`, `CLAUDE.md`, both Diátaxis trees (`/docs` for contributors, `/documentation` for framework users), the 22 RFCs in `project_system/RFCs/`, the canonical middleware order in `AppKernelFactory`, and the live source of the load-bearing components (`AbstractKernel`, `WaffleRuntime`, `CsrfTokenManager`, `Router`, `MiddlewareStack`, `Client`, and the Beta-5 additions: `ContainerCompiler`/`RouteTrie` for AOT, `DeferredTaskRunner` for async, the PDO/Redis connection pools, and the contract-first `TracerInterface`).
+> **Scope.** A deep, evidence-based analysis of the `waffle-commons` monorepo (release `0.1.0-beta5`, July 2026) against the question: *does this project represent the future of PHP?* — accepting the deliberate constraint that Waffle does **not** aim to replace Symfony or Laravel. **Method.** Direct reading of `AGENTS.md`, `CLAUDE.md`, both Diátaxis trees (`/docs` for contributors, `/documentation` for framework users), the 22 RFCs in `project_system/RFCs/`, the canonical middleware order in `AppKernelFactory`, and the live source of the load-bearing components (`AbstractKernel`, `WaffleRuntime`, `CsrfTokenManager`, `Router`, `MiddlewareStack`, `Client`, and the Beta-5 additions: `ContainerCompiler`/`RouteTrie` for AOT, `DeferredTaskRunner` for async, the PDO/Redis connection pools, and the contract-first `TracerInterface`).
 >
 > **Author position.** None — this document audits Waffle on its own terms, not Symfony's or Laravel's.
 
@@ -34,7 +34,7 @@ What Waffle *is* — and this is the load-bearing claim of this document — is 
 4. **AI-cognitive tooling as a first-class repository artifact** — `.opencode/skills/`, `AGENTS.md`, and `CLAUDE.md` are committed code, not  adjunct knowledge. The 29 named skills (`tech-lead`, `coding`, `mago-purge`, `security-audit`, `auth-bridge-audit`, `data-persistence`, `observability`, `aot-compilation`, `async-concurrency`, `reactive-broadcast`, `webauthn-passkeys`, …) and 14 subagents encode operating procedures that override generic AI  defaults at the project boundary.
 5. **Component Agnosticism as a mechanical invariant** — every component  depends only on `waffle-commons/contracts`. Enforced by `mago guard`,  refused by CI. The result is 21 components, each individually composable  into someone else's framework, with no hidden coupling between them.
 
-These five evolutions are the **Waffle thesis**. The Beta-5 wave (June 2026) is where the thesis stops being mostly about *correctness* and starts being about *runtime maturity*: it transitions Waffle from a high-performance HTTP runner toward an **event-driven, reactive, AOT-optimized application runtime** — shipping Ahead-of-Time compilation, Fiber finish-request task deferral, reactive `#[Broadcast]` write-hooks, memory-resident connection pooling, contract-first telemetry, and native WebAuthn passkeys, all under the same statelessness and Zero-Debt mandates. Whether you adopt Waffle or  not, the language and the runtime are moving in this direction; Symfony and  Laravel will continue to adapt; Waffle is simply the place where each evolution is already executed without compromise. In that narrow sense — Waffle as *evolutionary pressure*, not as displacement — yes, it is *a* future of PHP.
+These five evolutions are the **Waffle thesis**. The Beta-5 wave (July 2026) is where the thesis stops being mostly about *correctness* and starts being about *runtime maturity*: it transitions Waffle from a high-performance HTTP runner toward an **event-driven, reactive, AOT-optimized application runtime** — shipping Ahead-of-Time compilation, Fiber finish-request task deferral, reactive `#[Broadcast]` write-hooks, memory-resident connection pooling, contract-first telemetry, and native WebAuthn passkeys, all under the same statelessness and Zero-Debt mandates. Whether you adopt Waffle or  not, the language and the runtime are moving in this direction; Symfony and  Laravel will continue to adapt; Waffle is simply the place where each evolution is already executed without compromise. In that narrow sense — Waffle as *evolutionary pressure*, not as displacement — yes, it is *a* future of PHP.
 
 The rest of this document defends that claim with the evidence.
 

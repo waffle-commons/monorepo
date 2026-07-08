@@ -119,6 +119,6 @@ A failed mid-flight run is recovered by re-running on the same tag — no manual
 
 ## Related
 
-- [`umbrella-ci.yml`](umbrella-ci.md) — the gate that runs on PR and umbrella `main` pushes.
-- [`scripts/install-git-hooks.sh`](../scripts/install-git-hooks.md) — local pre-push gate that catches the failures `release-wave` would otherwise surface in CI.
+- [`umbrella-ci.yml`](../../../.github/workflows/umbrella-ci.yml) — the gate that runs on PR and umbrella `main` pushes.
+- [`scripts/install-git-hooks.sh`](../../how-to/install-git-hooks.md) — local pre-push gate that catches the failures `release-wave` would otherwise surface in CI.
 - [Release a component](../../how-to/release-a-component.md) — how-to from the contributor's perspective.

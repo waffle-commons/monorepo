@@ -72,7 +72,7 @@ If you need a PHP command run across all components from the host, wrap explicit
 ./loop.sh bash -c 'docker exec -w "/waffle-commons/$(basename "$PWD")" waffle-dev composer mago'
 ```
 
-See [`loop.sh` reference](../reference/scripts/run-all.md).
+See [Run checks across components](../how-to/run-checks-across-components.md).
 
 ## When this rule will probably loosen
 
