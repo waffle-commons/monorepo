@@ -123,8 +123,20 @@ components — **zero CRITICAL** findings; the MUST block gated the tag.
   `telemetry-otel`), umbrella-CI change-matrix + SEC-03 timing-scan updated to match.
 - [x] `async` composer path-repo trip resolved (missing `version` / malformed `installed.json` dist
   block); `skeleton` `composer install` verified clean.
-- [ ] Superproject gitlinks bumped (20 dirty + `async`/`telemetry`/`telemetry-otel` added) → umbrella tag
-  **0.1.0-beta5** (no `v` prefix) pushed → dispatch dry-run on the pushed tag → **LIVE** release wave.
+- [x] **Missing umbrella gitlinks fixed.** The three new component repos were built, committed and pushed
+  (`async`@`0dc815b`, `telemetry`@`6c5e320`, `telemetry-otel`@`7bf8b4b` — all on `origin/main`, all
+  matching the `composer.lock` references), and were correctly declared in `.gitmodules`, the umbrella-ci
+  change-matrix, the SEC-03 scan args, and the release-wave `RELEASE_INCLUDE` — **but their gitlinks were
+  never committed to the superproject** (`async` was mis-staged as plain files; `telemetry` /
+  `telemetry-otel` were untracked). Every `git submodule update --init -- <name>` in CI therefore failed
+  with `pathspec '<name>' did not match any file(s) known to git`; the **SEC-03 timing-safe comparison
+  gate** surfaced it first (`telemetry` is hard-coded in its init list), and the per-component `check`
+  matrix + the LIVE release-wave would have hit the identical error. Resolved by staging all three as
+  proper submodule gitlinks (mode `160000`) at their pushed SHAs. No workflow YAML change was needed — the
+  wiring was already correct and only waiting on the gitlinks.
+- [ ] Commit the three gitlinks on `pre-release/0.1.0-beta5` + bump the remaining dirty gitlinks → push
+  branch (umbrella-ci re-runs green) → umbrella tag **0.1.0-beta5** (no `v` prefix) pushed → dispatch
+  dry-run on the pushed tag → **LIVE** release wave.
 
 ## 4. Post-Mortem & Next Steps
 
@@ -140,10 +152,16 @@ components — **zero CRITICAL** findings; the MUST block gated the tag.
   `POLICY-05` — three `event-dispatcher` ignores are irreducible PSR-14 stub friction (documented scoped
   ignores, not a baseline); `AUTH-01` — verification validated against an equivalent self-signing W3C
   ceremony fixture (real CBOR/COSE/ES256), an accepted deviation from the literal FIDO vectors.
-- **Caught at release prep:** `async`, being newly scaffolded, lacked a composer `version` and had a
-  malformed `installed.json` dist entry in the `skeleton` vendor — which crashed `composer install` with
-  a null-download-type `TypeError`. Fixed by mirroring the lock entry so composer treats it as
-  up-to-date; recorded as a lesson for onboarding a brand-new component into the template-app vendors.
+- **Caught at release prep (two new-component onboarding gaps).** Both traced to the same root — a
+  brand-new component was treated as "done" once its own repo was green, before it was fully integrated:
+  (1) `async` lacked a composer `version` and had a malformed `installed.json` dist entry in the
+  `skeleton` vendor, crashing `composer install` with a null-download-type `TypeError` — fixed by
+  mirroring the lock entry; (2) the umbrella superproject never committed **gitlinks** for `async` /
+  `telemetry` / `telemetry-otel`, so `.gitmodules` + CI referenced submodules that didn't exist in the
+  tree — the SEC-03 gate failed on `git submodule update --init -- telemetry`, and the `check` matrix +
+  release-wave would have followed. Fixed by staging the three gitlinks at their pushed SHAs. Lesson:
+  onboarding a new component isn't complete until (a) every template app can `composer install` it clean
+  **and** (b) its gitlink is committed in the umbrella — both belong on the `wfl new-component` checklist.
 - **Next step:** [Roadmap Beta 6](../../Roadmaps/Roadmap_Beta6.md) — the production-surface wave (queue
   workers, OpenAPI generation, serializer, and the in-process testing bridge) on the road to RC1 and V1
   Gold.

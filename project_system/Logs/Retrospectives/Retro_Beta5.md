@@ -63,12 +63,19 @@ without breaching the `contracts` + `utils` dependency perimeter.
 
 ## 4. What To Improve
 
-- **Onboarding a *new* component into the template-app vendors needs a checklist.** `async` shipped
-  without a composer `version` and with a malformed `installed.json` dist entry in `skeleton`'s vendor —
-  which crashed `composer install` with a null-download-type `TypeError` on release day. It was a
-  five-minute fix, but it surfaced *at the tag*, not when the component was scaffolded. Lesson: a
-  brand-new component isn't "done" until every template app can `composer install` it clean; add that to
-  the `new-component` path.
+- **Onboarding a *new* component is not "done" when its own repo is green.** Adding three components at
+  once (`async`, `telemetry`, `telemetry-otel`) exposed two integration gaps, both surfacing *at release
+  day* rather than at scaffold time. (1) `async` shipped without a composer `version` and with a
+  malformed `installed.json` dist entry in `skeleton`'s vendor — crashing `composer install` with a
+  null-download-type `TypeError`. (2) The umbrella superproject never committed **gitlinks** for the three
+  — `async` was mis-staged as plain files, the other two left untracked — even though `.gitmodules`, the
+  umbrella-ci change-matrix, the SEC-03 scan args and the release-wave `RELEASE_INCLUDE` all already
+  named them. The result: `git submodule update --init -- telemetry` failed with a `pathspec … did not
+  match` error, taking down the SEC-03 gate (and it would have taken the `check` matrix and the LIVE wave
+  next). Both were quick fixes, but each cost a red CI run first. Lesson: a new component is only
+  integrated when (a) every template app can `composer install` it clean **and** (b) its gitlink is
+  committed in the umbrella. Both belong on the `wfl new-component` checklist — the wiring is easy to
+  *declare* (`.gitmodules`, filters, `RELEASE_INCLUDE`) and easy to forget to *commit*.
 - **Decide the ambiguous designs explicitly, and write them down.** `ARCH-01` (two authorization layers),
   `CPLX-04` (complexity ratchet threshold), `POLICY-05` (irreducible PSR-14 ignores), and `AUTH-01` (test
   -vector deviation) were all resolved as *recorded decisions* with rationale, not silent choices — but
