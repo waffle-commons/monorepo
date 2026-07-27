@@ -26,17 +26,19 @@ aliases: []
 
 _Beta4 and beta5 each ran a single-engine audit (OWASP Top 10 + Modern-PHP). Beta6 raises the bar to **three independent audit engines**, cross-checked, across **all 21 decoupled components**. Different model families surface different classes of defect; agreement raises confidence, disagreement exposes blind spots. No single tool is trusted as ground truth._
 
-> **Execution status (2026-07-27): 2 of 3 engines complete.** All results landed in a single
-> `project_system/Audits/Beta6/consolidated.md` (gitignored, local-only per `project_system/.gitignore`
-> — no separate `audit-opus.md` / `audit-aistudio.md` / `audit-antigravity2.md` files exist; the
-> table below is updated to point at the real location).
+> **Execution status (2026-07-27): AXE 1 CLOSED.** 2 of 3 engines executed; triage complete; the
+> Antigravity2 gap is formally accepted as a documented residual (not a beta6 blocker — see
+> `[AUDIT-03]`). All results live in a single `project_system/Audits/Beta6/consolidated.md`
+> (gitignored, local-only per `project_system/.gitignore` — no separate `audit-opus.md` /
+> `audit-aistudio.md` / `audit-antigravity2.md` files exist; the table below points at the real
+> location). **AXE 2 (remediation) has not started — that's tonight's next scope, not this pass.**
 
 | Pass | Engine | Primary lens | Status | Deliverable |
 |---|---|---|---|---|
 | `[AUDIT-01]` | Claude Code — 42-agent adversarial-verification workflow | OWASP Top 10 + PHP 8.5 modern-idiom + statelessness | ✅ Done | `project_system/Audits/Beta6/consolidated.md` (§ Claude Code Audit) |
 | `[AUDIT-02]` | Google AI Studio | Injection / crypto / auth surface, independent model family | ✅ Done | `project_system/Audits/Beta6/consolidated.md` (§ Google AI Studio Audit) |
-| `[AUDIT-03]` | Antigravity2 | Data-flow / taint / worker-safety, third independent family | ⛔ Unavailable | `project_system/Audits/Beta6/consolidated.md` (§ Antigravity2 Audit — "model unable to audit due to internal restrictions") |
-| `[AUDIT-04]` | Cross-engine triage | Dedupe, severity reconciliation, remediation scheduling | 🔜 In progress (this update) | `project_system/Audits/Beta6/consolidated.md` |
+| `[AUDIT-03]` | Antigravity2 | Data-flow / taint / worker-safety, third independent family | ⛔ Unavailable — accepted residual | `project_system/Audits/Beta6/consolidated.md` (§ Antigravity2 Audit — "model unable to audit due to internal restrictions") |
+| `[AUDIT-04]` | Cross-engine triage | Dedupe, severity reconciliation, remediation scheduling | ✅ Done (2026-07-27) | `project_system/Audits/Beta6/consolidated.md` + this roadmap's `[FIX-01]` ledger |
 
 ### `[AUDIT-01]` Pass 1 — Claude Code ✅
 
@@ -62,17 +64,21 @@ _Beta4 and beta5 each ran a single-engine audit (OWASP Top 10 + Modern-PHP). Bet
 - **Focus lens:** injection (A03), cryptographic/deserialization failures (A02/A08), and
   authentication/authorization/ABAC (A01/A07) — the highest-blast-radius classes, as specced.
 
-### `[AUDIT-03]` Pass 3 — Antigravity2 ⛔
+### `[AUDIT-03]` Pass 3 — Antigravity2 ⛔ (closed as accepted residual, 2026-07-27)
 
 - **Result:** did not execute — "the model was unable to audit the codebase due to internal
   restrictions" (verbatim, `consolidated.md`). No data-flow/taint/worker-safety pass ran through
   `.antigravitycli`.
-- **Disposition:** documented gap, not silently dropped from the Gate criteria (see
-  Acceptance Criteria below). `[AUDIT-04]` proceeds on the two completed engines; re-running Antigravity2
-  (or substituting an equivalent third engine) is carried as a residual item rather than a beta6 blocker,
-  since both completed engines independently swept worker-safety/statelessness without raising findings.
+- **Disposition (final):** `.antigravitycli` is a standalone desktop/CLI application config
+  (`.antigravitycli/mcp_config.json` + symlinked agents/commands/skills) — it is not a tool invocable
+  from within another agent's session, so it cannot be retried as part of this triage pass; only the
+  user can re-run it via the standalone AntigravityCLI app. **Formal decision: proceed to beta6 on the
+  two completed engines.** This is a documented gap against the "three independent engines" Gate
+  language, not a silent drop — re-running Antigravity2 before the tag (if the internal restriction
+  lifts) stays open as a nice-to-have, not a blocker, since both completed engines independently swept
+  worker-safety/statelessness (`wfl igor` semantics) without raising findings.
 
-### `[AUDIT-04]` Cross-Engine Triage & Consolidation
+### `[AUDIT-04]` Cross-Engine Triage & Consolidation ✅ (closed 2026-07-27)
 
 - **Coverage split:** the two engines were largely complementary rather than duplicative — AI Studio's
   MUST tier concentrated on `data`/`console`/`http`/`container`/`security` (SQL identifier quoting,
@@ -80,17 +86,34 @@ _Beta4 and beta5 each ran a single-engine audit (OWASP Top 10 + Modern-PHP). Bet
   Claude Code's Medium tier concentrated on `auth`/`waffle`/`data`(Cassandra)/`skeleton`/`workspace`
   (audit logging, timing side-channels, JWT key floor, Docker hardening, env-guard, codegen injection).
   17 distinct MUST-tier items in total once merged — see `[FIX-01]`.
-- **⚠️ One direct disagreement, unresolved:** AI Studio's `WAFFLE-SEC-02` flags `RouteCompileCommand`'s
-  `unserialize(base64_decode(...))` in route-cache generation as an unrestricted-deserialization
-  RCE/POP-gadget risk (MUST HAVE). Claude Code's independent 12-dimension OWASP sweep explicitly reports
-  A08 (deserialization) as "swept clean." Per this AXE's own reconciliation rule (highest severity wins
-  unless demonstrably a false positive), this is **not** auto-dismissed — `[FIX-01]` treats it as MUST
-  and fixes natively; if remediation review determines it was already a false positive, that becomes the
-  demonstrable evidence to downgrade, recorded in `[FIX-01]`'s sign-off rather than silently dropped here.
+- **✅ The one direct disagreement — resolved with evidence, not auto-dismissed:** AI Studio's
+  `WAFFLE-SEC-02` flags `RouteCompileCommand`'s `unserialize(base64_decode(...))` in route-cache
+  generation as an unrestricted-deserialization RCE/POP-gadget risk (MUST HAVE). Claude Code's
+  independent 12-dimension OWASP sweep reports A08 (deserialization) as "swept clean." Direct code
+  read to adjudicate (2026-07-27):
+    - `MatchedRoute` (`contracts/src/Routing/MatchedRoute.php:15-37`) — the only class in the
+      unserialized payload — is `final readonly` with purely scalar/array properties: no `__wakeup`,
+      `__destruct`, `__toString`, or `Serializable`, so it carries **zero object-injection gadget
+      surface** on its own.
+    - Its own docblock states construction happens "exclusively at the Router boundary (a trusted
+      producer)" — `RouteCompileCommand`'s payload comes from `RouterInterface::getRoutes()`
+      (`console/src/Command/RouteCompileCommand.php:87-88`), never from request/runtime input.
+    - The generated artifact embeds the base64 string as a literal PHP source string, deployed through
+      the same pipeline as the rest of the app; anyone with write access to tamper with that string
+      already has write access to inject arbitrary PHP directly, making the missing `allowed_classes`
+      restriction add no *practical* attack surface in the shipped pipeline today.
+    - **Verdict:** Claude Code's "swept clean" is correct for *current exploitability* — no
+      untrusted-input path reaches this `unserialize()` call. AI Studio's finding is **not a false
+      positive** either: it's a real, currently-inert hardening gap (defense-in-depth against a future
+      change that introduces an untrusted-data path, or a future DTO gaining dangerous magic methods).
+      **Disposition: stays in `[FIX-01]`'s MUST backlog, reclassified from "critical RCE" to "hardening
+      / defense-in-depth"** — the native fix (scope `allowed_classes` or switch to `var_export()`) is
+      cheap and the zero-compromise policy fixes it regardless of live exploitability.
 - **Agreement:** neither engine raised HIGH/CRITICAL findings on ABAC fail-closed behavior, CSRF HMAC
   binding, or JWT algorithm allow-listing — independent corroboration these core controls hold.
-- **Remaining `[AUDIT-04]` work:** produce the written risk-accept sign-off (if any MUST item is triaged
-  as won't-fix) and close out the Antigravity2 gap disposition above before the beta6 tag.
+- **Written triage ledger (the `[AUDIT-04]` deliverable):** all 17 MUST-tier findings — including the
+  reclassified deserialization item — are **scheduled for remediation in AXE 2**; none are risk-accepted
+  as won't-fix. No further `[AUDIT-04]` work remains open; AXE 1 is closed.
 
 ## 🛠️ AXE 2: ZERO-COMPROMISE REMEDIATION
 
@@ -108,7 +131,7 @@ _A finding surfaced is not a finding fixed. Every issue from the audit wave is r
     | # | Finding | Target | Source |
     |---|---|---|---|
     | 1 | ⚠️ SQL/identifier injection: loosen-then-tighten `IDENTIFIER_PATTERN`, escape backslashes in `quoteSegment()` | `data/src/Compiler/SQLDialect.php` | AI Studio SEC-01 |
-    | 2 | ⚠️ *Contested* — unrestricted `unserialize()` in route-cache codegen; replace with `var_export()` or `allowed_classes` | `console/src/Command/RouteCompileCommand.php` | AI Studio SEC-02 (Claude Code swept A08 clean — see `[AUDIT-04]`) |
+    | 2 | Unrestricted `unserialize()` in route-cache codegen (hardening, not a live RCE — resolved in `[AUDIT-04]`); replace with `var_export()` or `allowed_classes` | `console/src/Command/RouteCompileCommand.php` | AI Studio SEC-02 |
     | 3 | Path traversal: enforce `Assert::within()` containment on upload moves | `http/src/UploadedFile.php` | AI Studio SEC-03 |
     | 4 | Container reset / singleton lifecycle parity between interpreted and AOT-compiled modes | `container/src/Container.php`, `console/src/Compiler/ContainerCompiler.php` | AI Studio SEC-04 |
     | 5 | Class-level `#[PublicAccess]` override risk; pass real subjects into ABAC voters | `security/src/Container/SecureContainer.php` | AI Studio SEC-05 |
@@ -125,8 +148,8 @@ _A finding surfaced is not a finding fixed. Every issue from the audit wave is r
     | 16 | Route-parameter scalar coercion silently normalizes invalid input instead of rejecting (`(int)'abc'` → `0`) | `waffle/src/Handler/ControllerArgumentResolver.php` | Claude Code |
     | 17 | Waffle Maker interpolates unsanitized CLI tokens into generated PHP (codegen injection); allow-list + `php -l` pre-write check | `console/src/Maker/Generator/PropertyHookGenerator.php`, `AbstractMakerCommand::writeFile()` | Claude Code |
 
-    Item 2 is the contested finding from `[AUDIT-04]` — fix natively per the reconciliation rule; only
-    downgrade with recorded, demonstrable evidence. Not on this list: rate-limiting/lockout on
+    Item 2 was the one cross-engine disagreement — resolved in `[AUDIT-04]` (not a live RCE in the
+    shipped pipeline, still fixed as defense-in-depth). Not on this list: rate-limiting/lockout on
     authentication (Claude Code confirmed this is correctly already scheduled as beta7 `NET-01`, not a
     beta6 gap).
 
@@ -225,7 +248,7 @@ _Engine **B** isolates the combined framework + runtime delta versus the classic
 
 ## ✅ ACCEPTANCE CRITERIA
 
-- **AUDIT:** two of three independent engine passes complete across all 21 decoupled components (Claude Code, Google AI Studio — ✅); Antigravity2 documented as unavailable rather than silently dropped (`[AUDIT-03]`); findings consolidated and severity-reconciled in `project_system/Audits/Beta6/consolidated.md`; zero un-triaged findings, including the one contested cross-engine disagreement (`[AUDIT-04]`).
+- **AUDIT:** ✅ **closed 2026-07-27.** Two of three independent engine passes complete across all 21 decoupled components (Claude Code, Google AI Studio); Antigravity2 formally accepted as a documented residual, not silently dropped (`[AUDIT-03]`); findings consolidated and severity-reconciled in `project_system/Audits/Beta6/consolidated.md`; zero un-triaged findings — the one cross-engine disagreement (`[AUDIT-04]`, the `RouteCompileCommand` deserialization item) is resolved with code-level evidence, not just deferred.
 - **REMEDIATION:** all 17 gate-blocking `[FIX-01]` findings fixed natively or formally risk-accepted with sign-off; **zero** Mago baselines/suppressions introduced; `composer mago` zero output, `composer tests` $\geq 95\%$ coverage, `wfl igor` **0 KO** on every modified component.
 - **DOCS:** `documentation/` and every component `docs/` tree strictly Diátaxis-partitioned (Tutorials / How-To / Reference / Explanation); reference pages verified against the current public API.
 - **ECOSHIELD:** the `ecoshield-gateway` POC proxies traffic on the FrankenPHP worker runtime with $8\,\text{KiB}$ streaming buffers, built only on public APIs, `wfl igor` **0 KO**.
