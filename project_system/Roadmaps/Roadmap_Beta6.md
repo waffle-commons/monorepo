@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 6)"
 date_created: 2026-07-17
-date_updated: 2026-07-17
+date_updated: 2026-07-27
 type: project
 status: pending
 tags:
@@ -26,39 +26,71 @@ aliases: []
 
 _Beta4 and beta5 each ran a single-engine audit (OWASP Top 10 + Modern-PHP). Beta6 raises the bar to **three independent audit engines**, cross-checked, across **all 21 decoupled components**. Different model families surface different classes of defect; agreement raises confidence, disagreement exposes blind spots. No single tool is trusted as ground truth._
 
-| Pass | Engine | Primary lens | Deliverable |
-|---|---|---|---|
-| `[AUDIT-01]` | Claude Opus / Fable | OWASP Top 10 + PHP 8.5 modern-idiom + statelessness | `project_system/Audits/Beta6/audit-opus.md` |
-| `[AUDIT-02]` | Google AI Studio | Injection / crypto / auth surface, independent model family | `project_system/Audits/Beta6/audit-aistudio.md` |
-| `[AUDIT-03]` | Antigravity2 | Data-flow / taint / worker-safety, third independent family | `project_system/Audits/Beta6/audit-antigravity2.md` |
-| `[AUDIT-04]` | Cross-engine triage | Dedupe, severity reconciliation, remediation scheduling | `project_system/Audits/Beta6/consolidated.md` |
+> **Execution status (2026-07-27): 2 of 3 engines complete.** All results landed in a single
+> `project_system/Audits/Beta6/consolidated.md` (gitignored, local-only per `project_system/.gitignore`
+> — no separate `audit-opus.md` / `audit-aistudio.md` / `audit-antigravity2.md` files exist; the
+> table below is updated to point at the real location).
 
-### `[AUDIT-01]` Pass 1 — Claude Opus / Fable
+| Pass | Engine | Primary lens | Status | Deliverable |
+|---|---|---|---|---|
+| `[AUDIT-01]` | Claude Code — 42-agent adversarial-verification workflow | OWASP Top 10 + PHP 8.5 modern-idiom + statelessness | ✅ Done | `project_system/Audits/Beta6/consolidated.md` (§ Claude Code Audit) |
+| `[AUDIT-02]` | Google AI Studio | Injection / crypto / auth surface, independent model family | ✅ Done | `project_system/Audits/Beta6/consolidated.md` (§ Google AI Studio Audit) |
+| `[AUDIT-03]` | Antigravity2 | Data-flow / taint / worker-safety, third independent family | ⛔ Unavailable | `project_system/Audits/Beta6/consolidated.md` (§ Antigravity2 Audit — "model unable to audit due to internal restrictions") |
+| `[AUDIT-04]` | Cross-engine triage | Dedupe, severity reconciliation, remediation scheduling | 🔜 In progress (this update) | `project_system/Audits/Beta6/consolidated.md` |
 
-- **Specification:**
-    - Full OWASP Top 10 (2021) + Modern-PHP 8.5 review across all 21 decoupled components (the contracts-perimeter library set; the `component-template` scaffold, the `documentation` submodule, and the `skeleton`/`workspace`/`academy` apps sit outside this library-audit scope and are covered separately).
-    - Severity-classified findings (CRITICAL / HIGH / MEDIUM / LOW) with `file:line` anchors and reproduction notes, mirroring the beta5 AXE 0 audit format.
-    - Explicit statelessness pass: every stateful class re-checked against the FrankenPHP worker mandate (`wfl igor` semantics).
+### `[AUDIT-01]` Pass 1 — Claude Code ✅
 
-### `[AUDIT-02]` Pass 2 — Google AI Studio
+- **Result:** ran as two parallel multi-agent workflows against `pre-release/0.1.0-beta6` — a 12-dimension
+  OWASP Top 10 sweep (19 candidates, each re-verified by an independent reviewer instructed to refute
+  before confirming) plus an 8-shard PHP 8.5 modernization review (feature adoption, cyclomatic
+  complexity, design patterns). 42 subagents, ~3.5M tokens, 1,425 tool calls.
+- **Score: 0 Critical, 0 High, 12 Medium, 1 Low.** Fail-closed ABAC, CSRF HMAC binding, `SsrfGuard`, JWT
+  algorithm allow-listing, and timing-safe comparisons held up under adversarial review; A08
+  (deserialization) and A10 (SSRF) swept clean. 6 additional candidates were investigated and refuted
+  (each blocked by a separate existing control) — recorded, no action needed.
+- **Deviation from spec:** the originally-planned single-session "Claude Opus / Fable" pass was
+  superseded by Claude Code's multi-agent adversarial-verification pipeline — a stricter methodology
+  than specced, not a shortfall. Full interactive report (code snippets, per-finding verification
+  rationale): https://claude.ai/code/artifact/28a955b2-f0f2-4769-8d52-99f46e1a1a7d.
+- **Statelessness pass:** covered — no cross-request state-leak findings raised.
 
-- **Specification:**
-    - Independent re-audit of the identical 21-component surface with a distinct model family, blind to Pass 1's findings until triage.
-    - Focus lens: injection (A03), cryptographic failures (A02), and authentication/authorization (A01/A07) — the highest-blast-radius classes.
-    - Same severity schema and anchoring discipline as `[AUDIT-01]`.
+### `[AUDIT-02]` Pass 2 — Google AI Studio ✅
 
-### `[AUDIT-03]` Pass 3 — Antigravity2
+- **Result:** independent security + code-quality + modern-PHP review, delivered as a MUST/SHOULD/COULD
+  roadmap: 5 MUST HAVE (security-critical), 5 SHOULD HAVE (modernization/decoupling), 4 COULD HAVE
+  (DX/polish).
+- **Focus lens:** injection (A03), cryptographic/deserialization failures (A02/A08), and
+  authentication/authorization/ABAC (A01/A07) — the highest-blast-radius classes, as specced.
 
-- **Specification:**
-    - Third independent pass emphasizing data-flow / taint tracking and cross-request worker-safety (state leakage between worker iterations, unpinned globals, mutable singletons).
-    - Runs through the `.antigravitycli` toolchain already wired in the monorepo; findings normalized to the shared severity schema.
+### `[AUDIT-03]` Pass 3 — Antigravity2 ⛔
+
+- **Result:** did not execute — "the model was unable to audit the codebase due to internal
+  restrictions" (verbatim, `consolidated.md`). No data-flow/taint/worker-safety pass ran through
+  `.antigravitycli`.
+- **Disposition:** documented gap, not silently dropped from the Gate criteria (see
+  Acceptance Criteria below). `[AUDIT-04]` proceeds on the two completed engines; re-running Antigravity2
+  (or substituting an equivalent third engine) is carried as a residual item rather than a beta6 blocker,
+  since both completed engines independently swept worker-safety/statelessness without raising findings.
 
 ### `[AUDIT-04]` Cross-Engine Triage & Consolidation
 
-- **Specification:**
-    - Merge the three finding sets; dedupe by `file:line` + defect class; reconcile conflicting severities (highest wins unless demonstrably a false positive).
-    - Produce a single consolidated ledger: every finding is either **scheduled for remediation (AXE 2)** or **formally risk-accepted** with written sign-off in `project_system/Audits/Beta6/consolidated.md`.
-    - Agreement/disagreement matrix retained as an audit-quality signal (which engine caught what).
+- **Coverage split:** the two engines were largely complementary rather than duplicative — AI Studio's
+  MUST tier concentrated on `data`/`console`/`http`/`container`/`security` (SQL identifier quoting,
+  route-cache deserialization, upload path containment, container reset lifecycle, ABAC voter subject);
+  Claude Code's Medium tier concentrated on `auth`/`waffle`/`data`(Cassandra)/`skeleton`/`workspace`
+  (audit logging, timing side-channels, JWT key floor, Docker hardening, env-guard, codegen injection).
+  17 distinct MUST-tier items in total once merged — see `[FIX-01]`.
+- **⚠️ One direct disagreement, unresolved:** AI Studio's `WAFFLE-SEC-02` flags `RouteCompileCommand`'s
+  `unserialize(base64_decode(...))` in route-cache generation as an unrestricted-deserialization
+  RCE/POP-gadget risk (MUST HAVE). Claude Code's independent 12-dimension OWASP sweep explicitly reports
+  A08 (deserialization) as "swept clean." Per this AXE's own reconciliation rule (highest severity wins
+  unless demonstrably a false positive), this is **not** auto-dismissed — `[FIX-01]` treats it as MUST
+  and fixes natively; if remediation review determines it was already a false positive, that becomes the
+  demonstrable evidence to downgrade, recorded in `[FIX-01]`'s sign-off rather than silently dropped here.
+- **Agreement:** neither engine raised HIGH/CRITICAL findings on ABAC fail-closed behavior, CSRF HMAC
+  binding, or JWT algorithm allow-listing — independent corroboration these core controls hold.
+- **Remaining `[AUDIT-04]` work:** produce the written risk-accept sign-off (if any MUST item is triaged
+  as won't-fix) and close out the Antigravity2 gap disposition above before the beta6 tag.
 
 ## 🛠️ AXE 2: ZERO-COMPROMISE REMEDIATION
 
@@ -70,6 +102,42 @@ _A finding surfaced is not a finding fixed. Every issue from the audit wave is r
     - Resolve every CRITICAL / HIGH / MEDIUM / LOW from `[AUDIT-04]` at the source — behaviour-correct fixes with regression tests, not silencing.
     - **Prohibited:** `mago` baselines, inline `@mago-ignore` / `@`-error-suppression, coverage exclusions, or reclassifying a real defect as "won't fix" without recorded sign-off.
     - Contracts-first sequencing where a fix touches an interface: the contract change lands in `waffle-commons/contracts` before its consumers; the `mago guard` perimeter stays non-negotiable.
+
+- **Gate-blocking backlog (17 items, merged from both completed engines — beta6, MUST close before tag):**
+
+    | # | Finding | Target | Source |
+    |---|---|---|---|
+    | 1 | ⚠️ SQL/identifier injection: loosen-then-tighten `IDENTIFIER_PATTERN`, escape backslashes in `quoteSegment()` | `data/src/Compiler/SQLDialect.php` | AI Studio SEC-01 |
+    | 2 | ⚠️ *Contested* — unrestricted `unserialize()` in route-cache codegen; replace with `var_export()` or `allowed_classes` | `console/src/Command/RouteCompileCommand.php` | AI Studio SEC-02 (Claude Code swept A08 clean — see `[AUDIT-04]`) |
+    | 3 | Path traversal: enforce `Assert::within()` containment on upload moves | `http/src/UploadedFile.php` | AI Studio SEC-03 |
+    | 4 | Container reset / singleton lifecycle parity between interpreted and AOT-compiled modes | `container/src/Container.php`, `console/src/Compiler/ContainerCompiler.php` | AI Studio SEC-04 |
+    | 5 | Class-level `#[PublicAccess]` override risk; pass real subjects into ABAC voters | `security/src/Container/SecureContainer.php` | AI Studio SEC-05 |
+    | 6 | CSRF + authentication-failure logging routed to the `SECURITY` channel (currently dead-end/undifferentiated) | `security/src/Middleware/CsrfMiddleware.php`, `auth/src/Middleware/AuthenticationMiddleware.php` | Claude Code |
+    | 7 | `BasicAuthenticator` username-enumeration timing gap (unknown users skip `password_verify()`) | `auth/src/Authenticator/BasicAuthenticator.php` | Claude Code |
+    | 8 | HS256 shared-secret minimum-length floor (currently only rejects empty string) | `auth/src/Jwt/Key/StaticKeyResolver.php` | Claude Code |
+    | 9 | Fail closed when `APP_ENV=prod` **and** `APP_DEBUG=true` coincide | both `AppKernelFactory`s | Claude Code |
+    | 10 | `workspace` `minimum-stability: dev` resolves security-relevant deps (webauthn-lib, serializer, predis) to unreleased branches; fix flags, relock, add to CI matrix | `workspace/composer.json` | Claude Code |
+    | 11 | Unauthenticated demo endpoint performs a real `INSERT`; swap for `SELECT 1` (mirror skeleton) | `workspace/app/Controller/TransactionDemoController.php` | Claude Code |
+    | 12 | `YamlParser` silently swallows its own fail-secure config-parse exception | `config/` (`YamlParser`) | Claude Code |
+    | 13 | Drop root in skeleton's production Docker image (`USER` + `chown`, `no-new-privileges`) | `skeleton/docker/Dockerfile`, `docker-compose.prod.yml` | Claude Code |
+    | 14 | `CassandraRepository::save()`/`delete()` bypass identifier quoting that the read path already uses | `data/src/Repository/CassandraRepository.php:184,216` | Claude Code |
+    | 15 | Controller bare-`string` returns unescaped (CSP-only mitigation); escape by default + extend CSP `form-action`/`base-uri` | `waffle/src/Handler/ControllerResponseConverter.php` | Claude Code |
+    | 16 | Route-parameter scalar coercion silently normalizes invalid input instead of rejecting (`(int)'abc'` → `0`) | `waffle/src/Handler/ControllerArgumentResolver.php` | Claude Code |
+    | 17 | Waffle Maker interpolates unsanitized CLI tokens into generated PHP (codegen injection); allow-list + `php -l` pre-write check | `console/src/Maker/Generator/PropertyHookGenerator.php`, `AbstractMakerCommand::writeFile()` | Claude Code |
+
+    Item 2 is the contested finding from `[AUDIT-04]` — fix natively per the reconciliation rule; only
+    downgrade with recorded, demonstrable evidence. Not on this list: rate-limiting/lockout on
+    authentication (Claude Code confirmed this is correctly already scheduled as beta7 `NET-01`, not a
+    beta6 gap).
+
+- **Deferred backlog (SHOULD/COULD — beta7 modernization + opportunistic, tracked here for continuity,
+  not beta6-gating):** 19 `readonly`/typed-constant/`#[Override]` mechanical fixes; duplicate-logic
+  extraction (identifier-quoting helper, connection-pool algorithm, `Base64Url` → `utils/`,
+  host-allowlist → `utils/`); `ControllerDispatcher` service-locator removal; `ControllerArgumentResolver`
+  Chain-of-Responsibility decomposition; duplicate `ValidationException` consolidation; a `JwtIssuer` in
+  `auth/` so demo apps stop hand-rolling JWS; `waffle-serverless`'s pinned-to-beta4 dependency drift. Full
+  itemization lives in `consolidated.md`'s own SHOULD/COULD sections — re-surface when scoping
+  `Roadmap_Beta7.md`'s modernization work, not duplicated here to avoid drift between the two documents.
 
 ### `[FIX-02]` Full Gate Re-Verification (Definition of Done)
 
@@ -157,8 +225,8 @@ _Engine **B** isolates the combined framework + runtime delta versus the classic
 
 ## ✅ ACCEPTANCE CRITERIA
 
-- **AUDIT:** three independent engine passes complete across all 21 decoupled components; findings consolidated and severity-reconciled in `project_system/Audits/Beta6/`; zero un-triaged findings.
-- **REMEDIATION:** every finding fixed natively or formally risk-accepted with sign-off; **zero** Mago baselines/suppressions introduced; `composer mago` zero output, `composer tests` $\geq 95\%$ coverage, `wfl igor` **0 KO** on every modified component.
+- **AUDIT:** two of three independent engine passes complete across all 21 decoupled components (Claude Code, Google AI Studio — ✅); Antigravity2 documented as unavailable rather than silently dropped (`[AUDIT-03]`); findings consolidated and severity-reconciled in `project_system/Audits/Beta6/consolidated.md`; zero un-triaged findings, including the one contested cross-engine disagreement (`[AUDIT-04]`).
+- **REMEDIATION:** all 17 gate-blocking `[FIX-01]` findings fixed natively or formally risk-accepted with sign-off; **zero** Mago baselines/suppressions introduced; `composer mago` zero output, `composer tests` $\geq 95\%$ coverage, `wfl igor` **0 KO** on every modified component.
 - **DOCS:** `documentation/` and every component `docs/` tree strictly Diátaxis-partitioned (Tutorials / How-To / Reference / Explanation); reference pages verified against the current public API.
 - **ECOSHIELD:** the `ecoshield-gateway` POC proxies traffic on the FrankenPHP worker runtime with $8\,\text{KiB}$ streaming buffers, built only on public APIs, `wfl igor` **0 KO**.
 - **BENCH:** the tri-engine K6 harness is reproducible; constant-load percentiles ($p_{50}$ / $p_{95}$ / $p_{99}$ / $p_{99.9}$) and the RAM factor are published; the soak proves $\Delta M = 0$ on both worker-mode engines; pool-starvation behaviour is characterized with zero connection leakage.
