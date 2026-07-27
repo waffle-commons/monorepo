@@ -11,7 +11,7 @@ tags:
   - release
 aliases: []
 ---
-# 🧇 WAFFLE-COMMONS — RELEASE CANDIDATE ROADMAP v1.0.0-RC1
+# 🧇 WAFFLE-COMMONS — RELEASE CANDIDATE ROADMAP 1.0.0-RC1
 
 > **Status:** Pending Validation — Draft
 > 

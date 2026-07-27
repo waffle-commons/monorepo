@@ -1,10 +1,10 @@
 ---
 name: testing-bridge
-description: "[Beta6 / RFC-012 — NOT YET BUILT] New waffle-commons/testing: WaffleTestCase that boots the kernel in-process and dispatches simulated PSR-7 requests, plus time/queue/mailer/http test doubles"
+description: "[Beta7 / RFC-012 — NOT YET BUILT] New waffle-commons/testing: WaffleTestCase that boots the kernel in-process and dispatches simulated PSR-7 requests, plus time/queue/mailer/http test doubles"
 compatibility: opencode
 ---
 
-> **Status: planned (beta6 AXE 5). New component `waffle-commons/testing`. No code exists yet.**
+> **Status: planned (beta7 AXE 5). New component `waffle-commons/testing`. No code exists yet.**
 > Dev-only (`require-dev` in userland).
 
 ## What I do
@@ -14,7 +14,7 @@ a web server. EcoShield-Gateway and the Academy labs are the first consumers. Se
 
 ## When to use
 "WaffleTestCase", "boot the kernel in a test", "simulate a request", "in-memory queue/mailer/http test
-double", beta6 TEST-01.
+double", beta7 TEST-01.
 
 ## Mandates
 - **TEST-01 — `WaffleTestCase`:** boots the kernel **in-process**, dispatches simulated PSR-7 requests

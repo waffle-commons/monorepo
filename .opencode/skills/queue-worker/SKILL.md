@@ -1,10 +1,10 @@
 ---
 name: queue-worker
-description: "[Beta6 / RFC-015 boundary — NOT YET BUILT] Background processing: new waffle-commons/queue (contracts + Redis Streams driver + queue:work worker), SIGTERM drain, dead-letter, Igor-clean between messages"
+description: "[Beta7 / RFC-015 boundary — NOT YET BUILT] Background processing: new waffle-commons/queue (contracts + Redis Streams driver + queue:work worker), SIGTERM drain, dead-letter, Igor-clean between messages"
 compatibility: opencode
 ---
 
-> **Status: planned (beta6 AXE 2). New component `waffle-commons/queue`. No code exists yet.** Scope
+> **Status: planned (beta7 AXE 2). New component `waffle-commons/queue`. No code exists yet.** Scope
 > is deliberately minimal — contracts + one solid driver + a worker, **not** a Messenger clone.
 
 ## What I do
@@ -13,7 +13,7 @@ I design **real background job processing** — distinct from beta5 finish-reque
 `[[component-scaffold]]`, `[[worker-safety]]`, `[[k8s-ops]]`.
 
 ## When to use
-"queue / job / worker", "dispatch a background task", "dead-letter / retry", "queue:work", beta6 QUEUE.
+"queue / job / worker", "dispatch a background task", "dead-letter / retry", "queue:work", beta7 QUEUE.
 
 ## Mandates
 - **QUEUE-01 — contracts:** `Waffle\Contracts\Queue\` — `MessageInterface`, `QueueDispatcherInterface`,

@@ -10,9 +10,9 @@ tags:
   - waffle
 aliases: []
 ---
-# 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP v0.1.0-beta5
+# 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta5
 
-> **Status:** Pending Validation — Active Draft (Subject to revision during v0.1.0-beta4 development)
+> **Status:** Pending Validation — Active Draft (Subject to revision during 0.1.0-beta4 development)
 > 
 > **Target Release:** Summer 2026 (Post-BBL Core Expansion)
 > 

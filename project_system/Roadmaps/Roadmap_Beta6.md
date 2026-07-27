@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 6)"
-date_created: 2026-06-07
-date_updated: 2026-06-07
+date_created: 2026-07-17
+date_updated: 2026-07-17
 type: project
 status: pending
 tags:
@@ -10,186 +10,156 @@ tags:
   - waffle
 aliases: []
 ---
-# 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP v0.1.0-beta6
+# 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta6
 
-> **Status:** Pending Validation — Draft (Subject to revision after beta5 retrospective)
+> **Status:** Pending Validation — Draft (validated post-BBL strategic pivot, July 2026)
 > 
-> **Target Release:** Late November 2026
+> **Target Release:** **August 2, 2026**
 > 
-> **Core Mandate:** Close every gap between "high-performance framework" and **full production-ready API ecosystem**: traffic protection, outbound resilience, background processing, Kubernetes operability, API tooling, and testability. This is the release where the missing components get built — beta7 then freezes, so anything not landed here is post-v1.
+> **Primary Theme:** **Deep Multi-Engine Security Audits · Documentation Modernization · EcoShield-Gateway POC · Scientific Telemetry Benchmarking (K6)**.
 > 
-> **Commitment Tiers:** Committed — AXE 1 (NET), AXE 2 (QUEUE contracts + driver), AXE 3 (OPS), AXE 5 (TEST) · High — AXE 4 (API) · Stretch — `[DXP-01]`, `[GATE-01]`.
+> **Core Mandate:** Beta5 shipped the runtime power (AOT, connection pooling, telemetry, WebAuthn). Before the ecosystem grows another feature surface — the OpenAPI / Serializer / Testing-bridge components are now scheduled for beta7 — we **stop and harden**. The validated post-BBL pivot pulls stabilization and audit work forward into beta6: three independent AI-driven security audits across all 21 decoupled components, zero-compromise remediation, a full Diátaxis documentation pass, the first `ecoshield-gateway` reverse-proxy POC, and a scientific K6 benchmark that converts the "$5\text{–}10\times$ RAM vs PHP-FPM" claim into published, reproducible numbers. This is the release that earns trust — the conference-ready proof (API Platform Conference, Lille · September 17–18, 2026) that Waffle is not merely fast, but **audited, documented, and measured**.
+> 
+> **Commitment Tiers:** **Gate (blocks the tag) — AXE 1 (AUDIT) + AXE 2 (REMEDIATION): zero open findings.** · Committed — AXE 3 (DOCS), AXE 5 (BENCH) · High — AXE 4 (EcoShield POC).
 
-## 🛡️ AXE 1: TRAFFIC PROTECTION & OUTBOUND RESILIENCE
+## 🔬 AXE 1: DEEP MULTI-ENGINE SECURITY AUDIT WAVE
 
-_An API ecosystem that cannot defend its inbound edge or survive flaky upstreams is not production-ready. These are also hard prerequisites for EcoShield-Gateway._
+_Beta4 and beta5 each ran a single-engine audit (OWASP Top 10 + Modern-PHP). Beta6 raises the bar to **three independent audit engines**, cross-checked, across **all 21 decoupled components**. Different model families surface different classes of defect; agreement raises confidence, disagreement exposes blind spots. No single tool is trusted as ground truth._
 
-### `[NET-01]` Token-Bucket Rate Limiter Middleware
+| Pass | Engine | Primary lens | Deliverable |
+|---|---|---|---|
+| `[AUDIT-01]` | Claude Opus / Fable | OWASP Top 10 + PHP 8.5 modern-idiom + statelessness | `project_system/Audits/Beta6/audit-opus.md` |
+| `[AUDIT-02]` | Google AI Studio | Injection / crypto / auth surface, independent model family | `project_system/Audits/Beta6/audit-aistudio.md` |
+| `[AUDIT-03]` | Antigravity2 | Data-flow / taint / worker-safety, third independent family | `project_system/Audits/Beta6/audit-antigravity2.md` |
+| `[AUDIT-04]` | Cross-engine triage | Dedupe, severity reconciliation, remediation scheduling | `project_system/Audits/Beta6/consolidated.md` |
 
-- **Specification:**
-    
-    - Introduce `Waffle\Contracts\RateLimit\RateLimiterInterface` + `LimiterStateStorageInterface` in contracts (contracts-first).
-        
-    - Implement a Token Bucket limiter as a `security/` middleware, keyed by IP, authenticated subject (`UserIdentityInterface`), or API token.
-        
-    - Storage backends through the existing cache contracts (Redis for multi-worker correctness; in-memory fallback documented as single-worker only).
-        
-    - Emit standard `RateLimit-*` response headers and a fail-closed `429` with `Retry-After`.
-        
-    - **Statelessness compliance:** limiter state lives exclusively in the storage backend, never in worker memory; `wfl igor` must stay 0 KO.
-        
-
-### `[NET-02]` HTTP Client Resilience Policies
+### `[AUDIT-01]` Pass 1 — Claude Opus / Fable
 
 - **Specification:**
-    
-    - Extend `waffle-commons/http-client` with declarative per-request policies: connect/total timeout (mandatory defaults — no infinite timeouts anywhere), bounded retry with exponential backoff + jitter, and idempotency awareness (never auto-retry non-idempotent methods unless explicitly opted in).
-        
-    - Policies are immutable DTOs; configuration lives in config, not code.
-        
-    - Compose with the beta4 `[SEC-02]` SSRF guardrail (resolve → validate → pin runs on every retry attempt).
-        
+    - Full OWASP Top 10 (2021) + Modern-PHP 8.5 review across all 21 decoupled components (the contracts-perimeter library set; the `component-template` scaffold, the `documentation` submodule, and the `skeleton`/`workspace`/`academy` apps sit outside this library-audit scope and are covered separately).
+    - Severity-classified findings (CRITICAL / HIGH / MEDIUM / LOW) with `file:line` anchors and reproduction notes, mirroring the beta5 AXE 0 audit format.
+    - Explicit statelessness pass: every stateful class re-checked against the FrankenPHP worker mandate (`wfl igor` semantics).
 
-### `[NET-03]` Circuit Breaker
+### `[AUDIT-02]` Pass 2 — Google AI Studio
 
 - **Specification:**
-    
-    - Implement a circuit breaker (closed/open/half-open) wrapping outbound calls, with failure-rate thresholds and cool-down windows.
-        
-    - State storage through the same `LimiterStateStorageInterface` family as `[NET-01]` — shared across workers via Redis, never in-process.
-        
-    - Expose breaker state transitions as events (kernel lifecycle hooks from beta4 `[ARCH-04]`) and as metrics on `/waffle-metrics` (beta5 `[OBS-02]`).
-        
+    - Independent re-audit of the identical 21-component surface with a distinct model family, blind to Pass 1's findings until triage.
+    - Focus lens: injection (A03), cryptographic failures (A02), and authentication/authorization (A01/A07) — the highest-blast-radius classes.
+    - Same severity schema and anchoring discipline as `[AUDIT-01]`.
 
-## 📨 AXE 2: BACKGROUND PROCESSING (NEW COMPONENT `waffle-commons/queue`)
-
-_Beta5 `[ASYNC-01]` is finish-request deferral and explicitly **not** background processing. Production APIs need real job dispatch. Scope is deliberately minimal: contracts + one solid driver + a worker — not a Symfony Messenger clone._
-
-### `[QUEUE-01]` Queue Contracts
+### `[AUDIT-03]` Pass 3 — Antigravity2
 
 - **Specification:**
-    
-    - `Waffle\Contracts\Queue\`: `MessageInterface`, `QueueDispatcherInterface`, `QueueConsumerInterface`, `FailedMessageStoreInterface`.
-        
-    - Messages are strictly-typed, serializable DTOs (no closures, no object graphs); envelope carries id, attempts, available-at, and trace context (W3C propagation from beta5 `[OBS-01]`).
-        
+    - Third independent pass emphasizing data-flow / taint tracking and cross-request worker-safety (state leakage between worker iterations, unpinned globals, mutable singletons).
+    - Runs through the `.antigravitycli` toolchain already wired in the monorepo; findings normalized to the shared severity schema.
 
-### `[QUEUE-02]` Redis Streams Driver + Console Worker
+### `[AUDIT-04]` Cross-Engine Triage & Consolidation
 
 - **Specification:**
-    
-    - One reference driver on Redis Streams (consumer groups give ack/retry semantics for free); additional drivers are post-v1.
-        
-    - `bin/waffle queue:work` console command (lives in `console/`, depends only on contracts per the established perimeter): bounded retries, dead-letter via `FailedMessageStoreInterface`, graceful SIGTERM drain (ties into `[OPS-02]`).
-        
-    - Worker is itself a long-running FrankenPHP-style process: must pass the Igor statelessness audit between messages.
-        
+    - Merge the three finding sets; dedupe by `file:line` + defect class; reconcile conflicting severities (highest wins unless demonstrably a false positive).
+    - Produce a single consolidated ledger: every finding is either **scheduled for remediation (AXE 2)** or **formally risk-accepted** with written sign-off in `project_system/Audits/Beta6/consolidated.md`.
+    - Agreement/disagreement matrix retained as an audit-quality signal (which engine caught what).
 
-### `[QUEUE-03]` Mailer Scoping Decision
+## 🛠️ AXE 2: ZERO-COMPROMISE REMEDIATION
 
-- **Specification:**
-    
-    - Ship `Waffle\Contracts\Mailer\MailerInterface` + message DTO **contract only**; transactional mail is dispatched as a queue message.
-        
-    - SMTP/API transport adapters are explicitly **post-v1** (non-goal in the master roadmap); userland may bind any PSR-compatible mailer to the interface meanwhile.
-        
+_A finding surfaced is not a finding fixed. Every issue from the audit wave is resolved **natively** — no Mago baselines, no suppressions, no `@`-silencing, no `#[WorkerSafe]` escape hatch used to paper over genuinely mutable state. The Mago Purge Protocol applies: clean means **zero output**._
 
-## ☸️ AXE 3: KUBERNETES OPERABILITY
-
-_"Production-ready on Docker/K8s" is the founding vision — these are the table stakes that don't exist yet._
-
-### `[OPS-01]` Health & Readiness Endpoints
+### `[FIX-01]` Native-First Remediation of Every Finding
 
 - **Specification:**
-    
-    - Lightweight middleware exposing `/healthz` (liveness: process responsive) and `/readyz` (readiness: aggregated `HealthCheckInterface` probes — DB pool, Redis, queue driver, disk).
-        
-    - `Waffle\Contracts\Health\HealthCheckInterface` in contracts; components ship their own probes; fail-closed: an unregistered critical dependency means not-ready.
-        
-    - Constant-time, allocation-light handlers — these are hit every few seconds by orchestrators.
-        
+    - Resolve every CRITICAL / HIGH / MEDIUM / LOW from `[AUDIT-04]` at the source — behaviour-correct fixes with regression tests, not silencing.
+    - **Prohibited:** `mago` baselines, inline `@mago-ignore` / `@`-error-suppression, coverage exclusions, or reclassifying a real defect as "won't fix" without recorded sign-off.
+    - Contracts-first sequencing where a fix touches an interface: the contract change lands in `waffle-commons/contracts` before its consumers; the `mago guard` perimeter stays non-negotiable.
 
-### `[OPS-02]` Graceful Shutdown & Connection Draining
+### `[FIX-02]` Full Gate Re-Verification (Definition of Done)
 
 - **Specification:**
-    
-    - Handle SIGTERM in the runtime: stop accepting work, flush deferred tasks (beta5 `[ASYNC-01]` if landed), return pooled connections (beta5 `[DBAL-01]`), close streams, then exit within the configurable grace period.
-        
-    - `/readyz` flips to not-ready immediately on SIGTERM so K8s stops routing before the drain.
-        
+    - Per modified component: `composer mago` (zero output — errors **and** warnings/info/help), `composer tests` ($\geq 95\%$ coverage), `wfl igor` **0 KO**.
+    - Ecosystem-wide `wfl check:all` / `wfl dod` green; both template apps (`skeleton`, `workspace`) boot-smoke clean; `wfl compare-audit` (SEC-03 gate) shows no vendor skew.
 
-### `[OPS-03]` Schema Migration Workflow Maturity
+## 📚 AXE 3: DOCUMENTATION MODERNIZATION (DIÁTAXIS)
 
-- **Specification:**
-    
-    - Build on the existing `data/src/Migration/MigrationRunner.php` — do not rewrite it.
-        
-    - Add versioned migration files, a ledger table, and console commands: `migrate`, `migrate:rollback`, `migrate:status`, `make:migration` (Maker conventions from RFC-020).
-        
-    - SQL dialects already supported by `data/` only; NoSQL backends are schema-less and out of scope.
-        
+_The documentation must be as trustworthy as the code. Beta6 brings the **entire** documentation surface — the in-repo per-component `docs/` trees and the central `documentation/` submodule — into strict Diátaxis compliance: four quadrants, each page in exactly one._
 
-## 📜 AXE 4: API SURFACE TOOLING
+| Quadrant | Orientation | Answers | Form |
+|---|---|---|---|
+| **Tutorials** | Learning | "Take me from zero to running." | Guided, step-by-step lessons |
+| **How-To Guides** | Task | "How do I accomplish X?" | Goal-oriented recipes |
+| **Reference** | Information | "What is the exact contract?" | API-accurate, terse, exhaustive |
+| **Explanation** | Understanding | "Why is it designed this way?" | Discursive, design-rationale prose |
 
-### `[API-01]` OpenAPI Generation (NEW COMPONENT `waffle-commons/openapi`)
+### `[DOC-01]` Diátaxis Restructure of `documentation/`
 
 - **Specification:**
-    
-    - Generate `openapi.json` from existing `#[Route]` attributes and typed controller signatures/DTOs — zero manual YAML.
-        
-    - Build-time console command (`openapi:generate`) sharing the beta5 `[AOT-02]` metadata-parsing phase where possible; optional dev-only route serving the spec + Swagger UI.
-        
-    - Optional `#[OA\*]`-style attributes for response/description overrides; absence of attributes still yields a valid (if terse) spec.
-        
+    - Reorganize `documentation/` into the four canonical Diátaxis categories; every page classified into exactly one quadrant — no hybrid tutorial/reference pages.
+    - Navigation and cross-links rebuilt around the quadrant taxonomy; orphaned or duplicated pages merged or retired.
 
-### `[API-02]` DTO Serializer & Content Negotiation (NEW COMPONENT `waffle-commons/serializer`)
+### `[DOC-02]` Per-Component `docs/` Upgrade
 
 - **Specification:**
-    
-    - Scoped normalizer for strictly-typed DTOs ↔ JSON (request hydration + response serialization) honoring PHP 8.5 property hooks and asymmetric visibility — **not** a general-purpose serializer.
-        
-    - **AOT alignment:** normalizers are compilable per-DTO classes generated at build time (same philosophy as beta5 `[AOT-01]`), reflection-free at runtime.
-        
-    - `Accept`-header content negotiation middleware (JSON committed; others post-v1).
-        
-    - `data/`'s Hydrator remains DB-only; this component owns the HTTP boundary.
-        
+    - Each of the 21 decoupled components' `docs/` tree upgraded to the same standard, with at minimum a Reference page verified against the current public API and an Explanation page for any non-obvious design decision.
+    - Language policy honored: English for all component documentation and identifiers (French remains confined to the `skeleton` / `workspace` / `academy` template apps).
 
-## 🧪 AXE 5: TESTABILITY (NEW COMPONENT `waffle-commons/testing`)
-
-### `[TEST-01]` Kernel Testing Bridge
+### `[DOC-03]` Reference Generation & Cross-Linking
 
 - **Specification:**
-    
-    - `WaffleTestCase`: boots the kernel in-process, dispatches simulated PSR-7 requests through the real pipeline (no web server), returns typed responses for assertion.
-        
-    - Test doubles for time, queue (`InMemoryQueue` asserting dispatched messages), mailer contract, and HTTP client (record/replay).
-        
-    - Dev-only component (`require-dev` in userland); EcoShield-Gateway and Academy labs are the first consumers.
-        
+    - Reference pages verified against the current `waffle-commons/contracts` public surface; every documented symbol resolves to a real, exported contract.
+    - Consistent cross-linking between quadrants (a How-To links to the Reference it uses and the Explanation of why), so the docs form a navigable graph rather than isolated pages.
 
-### `[DXP-01]` Dev Profiler Headers (stretch)
+## 🛡️ AXE 4: ECOSHIELD-GATEWAY REVERSE-PROXY POC
 
-- **Specification:**
-    
-    - Dev-mode middleware emitting `X-Waffle-Time`, `X-Waffle-Memory`, `X-Waffle-Queries` headers; no web toolbar (API-first).
-        
+_The dogfooding validation project begins here. Beta6 stands up the first working `waffle-commons/ecoshield-gateway` — a high-performance reverse proxy built exclusively on public Waffle APIs — as the Phase 1 POC that beta7 grows to alpha (`[GATE-02]`) and beta8 to beta (`[GATE-03]`), soaking on RC1._
 
-## 🛡️ AXE 6: ECOSHIELD-GATEWAY ALPHA (DOGFOODING — stretch)
-
-### `[GATE-01]` Gateway Lab Bootstrap
+### `[GATE-01]` `ecoshield-gateway` Reverse-Proxy POC ($8\,\text{KiB}$ streaming buffers)
 
 - **Specification:**
-    
-    - Execute Phase 1–2 of `Roadmap_EcoShield_Gateway.md` on beta6: legacy monolith lab + Waffle proxy app (catch-all `ProxyController` over the resilient client `[NET-02/03]`, strangler route served natively with cache + rate limiter `[NET-01]`).
-        
-    - Built **exclusively on public Waffle APIs** — any private-API reach-through is a framework design bug to fix, not to work around.
-        
+    - Scaffold `waffle-commons/ecoshield-gateway` from `component-template` (new-component onboarding checklist applies: gitlink committed, path-repo lock mirrored).
+    - **Streaming reverse proxy** over the FrankenPHP worker runtime: bounded **$8\,\text{KiB}$** streaming buffers for request and response bodies — constant memory regardless of payload size, **never** buffering a full body in worker memory (statelessness mandate; the soak target is $\Delta M = 0$).
+    - Catch-all `ProxyController` with PSR-7 passthrough, hop-by-hop header stripping, and correct `Host` / `X-Forwarded-*` handling; no request/response smuggling surface.
+    - Built **exclusively on public Waffle APIs** — any private-API reach-through is a framework design bug to fix upstream, not to work around in the gateway.
+    - **Statelessness compliance:** `wfl igor` **0 KO** across worker iterations; no per-request state retained between proxied calls.
+
+## 📊 AXE 5: SCIENTIFIC TELEMETRY BENCHMARKING (K6)
+
+_The "$5\text{–}10\times$ RAM vs PHP-FPM" success indicator has been an assertion. Beta6 makes it an experiment: a comprehensive K6 suite benchmarking three runtimes head-to-head under identical, reproducible load, producing publishable numbers for the conference._
+
+| Engine | Framework | Runtime | Concurrency model | Role |
+|---|---|---|---|---|
+| **A** | Waffle-Commons | FrankenPHP Worker Mode | Memory-resident worker | Subject |
+| **B** | Symfony | Traditional PHP-FPM | Process-per-request | Baseline (classic stack) |
+| **C** | Symfony | FrankenPHP Worker Runtime | Memory-resident worker | Control (runtime held constant) |
+
+_Engine **B** isolates the combined framework + runtime delta versus the classic stack; Engine **C** holds the runtime constant (both on the FrankenPHP worker), so any A-vs-C difference is attributable to **Waffle vs Symfony**, not FrankenPHP vs FPM. Together they separate the runtime win from the framework win._
+
+### `[BENCH-01]` Tri-Engine K6 Harness
+
+- **Specification:**
+    - Reproducible harness (Docker Compose) standing up all three engines against an identical workload and dataset, with pinned CPU/RAM limits so the comparison is apples-to-apples.
+    - K6 scripts version-controlled; every run emits machine-readable output (JSON summary) archived alongside the audit reports in `project_system/`.
+
+### `[BENCH-02]` Constant-Load Percentile Benchmark
+
+- **Specification:**
+    - Constant-arrival-rate scenarios at fixed RPS steps; capture latency percentiles $p_{50}$, $p_{95}$, $p_{99}$, $p_{99.9}$ and RAM footprint per engine at each step.
+    - **Pass:** Engine A holds $p_{99}$ and peak RAM within target versus both baselines; the RAM reduction factor (target $5\text{–}10\times$ vs Engine B) is published from these runs.
+
+### `[BENCH-03]` Prolonged Soak — Memory-Leak Detection ($\Delta M = 0$)
+
+- **Specification:**
+    - Multi-hour constant-load soak per engine; sample RSS / peak memory over time.
+    - **Acceptance target for the worker-mode engines (A and C):** $\Delta M = 0$ — zero memory drift between the first and last measurement window, cross-checked by the `wfl igor` statelessness audit. Any positive $\Delta M$ is a leak routed back into AXE 2 for a native fix.
+
+### `[BENCH-04]` Database Connection-Pool Starvation
+
+- **Specification:**
+    - Drive request concurrency above the configured pool size to characterize the starvation behaviour of the beta5 `[DBAL-01]` pooler: lease-wait latency, heal-on-lease correctness under contention, and **fail-closed** semantics when the pool is exhausted.
+    - **Pass:** bounded, documented degradation (no unbounded queue growth, no deadlock, no leaked or severed connections); $\Delta M = 0$ across the run.
 
 ## ✅ ACCEPTANCE CRITERIA
 
-- **NET:** limiter correct under concurrent multi-worker load (no over-admission beyond bucket size); breaker opens/half-opens per thresholds in fault-injection tests; zero infinite timeouts possible by construction.
-- **QUEUE:** message survives worker crash (Redis Streams pending-list reclaim); failed messages land in the dead-letter store with full envelope; `queue:work` drains cleanly on SIGTERM.
-- **OPS:** `/readyz` flips on dependency failure and on SIGTERM; rolling-restart under k6 load loses zero in-flight requests; `migrate` + `migrate:rollback` round-trip on every supported SQL dialect.
-- **API:** generated `openapi.json` validates against the OpenAPI 3.1 schema; serializer round-trips every DTO shape in the test matrix (hooks, asymmetric visibility, nested DTOs, arrays).
-- **All items:** `composer mago && composer tests` green, ≥95% coverage, zero Mago baselines, `wfl igor` 0 KO; contracts-first sequencing; new submodules (`queue`, `openapi`, `serializer`, `testing`) scaffolded from `component-template`.
+- **AUDIT:** three independent engine passes complete across all 21 decoupled components; findings consolidated and severity-reconciled in `project_system/Audits/Beta6/`; zero un-triaged findings.
+- **REMEDIATION:** every finding fixed natively or formally risk-accepted with sign-off; **zero** Mago baselines/suppressions introduced; `composer mago` zero output, `composer tests` $\geq 95\%$ coverage, `wfl igor` **0 KO** on every modified component.
+- **DOCS:** `documentation/` and every component `docs/` tree strictly Diátaxis-partitioned (Tutorials / How-To / Reference / Explanation); reference pages verified against the current public API.
+- **ECOSHIELD:** the `ecoshield-gateway` POC proxies traffic on the FrankenPHP worker runtime with $8\,\text{KiB}$ streaming buffers, built only on public APIs, `wfl igor` **0 KO**.
+- **BENCH:** the tri-engine K6 harness is reproducible; constant-load percentiles ($p_{50}$ / $p_{95}$ / $p_{99}$ / $p_{99.9}$) and the RAM factor are published; the soak proves $\Delta M = 0$ on both worker-mode engines; pool-starvation behaviour is characterized with zero connection leakage.
+- **All items:** contracts-first sequencing on any interface change; `composer mago && composer tests` green, $\geq 95\%$ coverage, zero Mago baselines, `wfl igor` **0 KO**; the beta6 tag follows the release-wave mechanics (umbrella tag pushed → dry-run on the pushed tag → LIVE wave).

@@ -1,10 +1,10 @@
 ---
 name: resilience-net
-description: "[Beta6 / RFC-017 — NOT YET BUILT] Traffic protection & outbound resilience: token-bucket rate limiter, retry/backoff+jitter, circuit breaker; state in shared storage, never worker memory"
+description: "[Beta7 / RFC-017 — NOT YET BUILT] Traffic protection & outbound resilience: token-bucket rate limiter, retry/backoff+jitter, circuit breaker; state in shared storage, never worker memory"
 compatibility: opencode
 ---
 
-> **Status: planned (beta6 AXE 1, RFC-017). No code exists yet.** Hard prerequisite for
+> **Status: planned (beta7 AXE 1, RFC-017). No code exists yet.** Hard prerequisite for
 > EcoShield-Gateway.
 
 ## What I do
@@ -13,7 +13,7 @@ flaky upstreams — all stateless, with shared-storage state so it is correct ac
 `[[contracts-first]]`, `[[worker-safety]]`, `[[observability]]`.
 
 ## When to use
-"rate limit / throttle", "429 / Retry-After", "retry with backoff", "circuit breaker", beta6 NET.
+"rate limit / throttle", "429 / Retry-After", "retry with backoff", "circuit breaker", beta7 NET.
 
 ## Mandates
 - **NET-01 — Token-bucket rate limiter:** `Waffle\Contracts\RateLimit\RateLimiterInterface` +

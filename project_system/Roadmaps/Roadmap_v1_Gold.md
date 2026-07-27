@@ -11,7 +11,7 @@ tags:
   - release
 aliases: []
 ---
-# 🧇 WAFFLE-COMMONS — GOLD RELEASE ROADMAP v1.0.0
+# 🧇 WAFFLE-COMMONS — GOLD RELEASE ROADMAP 1.0.0
 
 > **Status:** Pending Validation — Draft
 > 

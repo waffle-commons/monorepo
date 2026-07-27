@@ -1,10 +1,10 @@
 ---
 name: k8s-ops
-description: "[Beta6 / RFC-014 — NOT YET BUILT] Kubernetes operability: /healthz + /readyz probes (HealthCheckInterface), graceful SIGTERM drain, schema-migration workflow maturity on MigrationRunner"
+description: "[Beta7 / RFC-014 — NOT YET BUILT] Kubernetes operability: /healthz + /readyz probes (HealthCheckInterface), graceful SIGTERM drain, schema-migration workflow maturity on MigrationRunner"
 compatibility: opencode
 ---
 
-> **Status: planned (beta6 AXE 3, RFC-014). No code exists yet** (except the existing
+> **Status: planned (beta7 AXE 3, RFC-014). No code exists yet** (except the existing
 > `data/src/Migration/MigrationRunner.php`, which OPS-03 **builds on, not rewrites**).
 
 ## What I do
@@ -14,7 +14,7 @@ clean shutdown, and a versioned migration workflow. See `[[contracts-first]]`, `
 
 ## When to use
 "health / readiness probe", "/healthz / /readyz", "graceful shutdown / SIGTERM / drain", "migrations
-/ migrate:rollback", beta6 OPS.
+/ migrate:rollback", beta7 OPS.
 
 ## Mandates
 - **OPS-01 — Health & readiness:** lightweight middleware exposing `/healthz` (liveness: process

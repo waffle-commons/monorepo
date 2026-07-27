@@ -17,17 +17,21 @@ v1", any planning that needs the canonical direction.
 - **`project_system/RFCs/`** — `RFC_001 … RFC_022` (Core/Runtime, Security/ABAC, HTTP, Events, Logging,
   Errors, DI, Routing, Config, Contracts/Utils, DTOs, Console, Cache, Data, Async, OpenAPI, Advanced
   Security, DX, AOT, Maker, Universal Auth Bridge, Universal Data Layer).
-- **`project_system/Roadmaps/`** — `Roadmap_V1_Master` (the release train) + per-release
-  `Roadmap_Beta0…Beta7`, `Roadmap_RC1`, `Roadmap_V1_Gold`, `Roadmap_Post_V1`.
-- **Train:** beta4 (security/stability, current) → beta5 (AOT/pooling/async/telemetry + spikes) →
-  beta6 (production surface: `queue`/`openapi`/`serializer`/`testing`, NET, OPS) → beta7 (freeze) →
-  `1.0.0-RC1` (EcoShield-Gateway 4-week soak) → `1.0.0` Gold (Apr 2027). EcoShield-Gateway (not
-  Sentinel) is the v1 validation dogfood.
+- **`project_system/Roadmaps/`** — `Roadmap_v1_Master` (the release train) + per-release
+  `Roadmap_Beta0…Beta8`, `Roadmap_RC1`, `Roadmap_v1_Gold`, `Roadmap_Post_v1`.
+- **Train (post-BBL pivot, 2026-07):** beta4 (security/stability, shipped) → beta5
+  (AOT/pooling/async/telemetry/WebAuthn, shipped) → beta6 (**stabilization & audit**: multi-engine
+  audits, Diátaxis docs, EcoShield POC, K6 — **current**) → beta7 (production surface:
+  `queue`/`openapi`/`serializer`/`testing`, NET, OPS) → beta8 (freeze) → `1.0.0-RC1`
+  (EcoShield-Gateway 4-week soak) → `1.0.0` Gold. Dates: beta6 Aug 2 · beta7 Sep 5 · beta8 Sep 28 ·
+  RC1 Oct 26 · Gold Dec 23 (2026), driven by the API Platform Conference (Lille, Sep 17–18 2026).
+  EcoShield-Gateway (not Sentinel) is the v1 validation dogfood.
 
-## Git boundary (do not break it)
-Inside `project_system/`, **only `RFCs/` is tracked**. `Roadmaps/`, `Logs/`, and other subdirs are
-**gitignored** — no `git add`/commit/history operations there. Edit roadmaps freely on disk; never try
-to stage them.
+## Git boundary
+Inside `project_system/`, `RFCs/`, `Roadmaps/`, and `Logs/` **are git-tracked** — roadmap edits have
+real history and belong on the current `pre-release/<version>` branch (use `git mv` to rename tracked
+roadmap files). **Only** `Audits/`, `Notes/`, `TODOs/`, and `*.pem` are gitignored (per
+`project_system/.gitignore`). The user drives all commits/pushes — edit and stage, but never commit.
 
 ## Conventions
 - **Version stamps:** `0.1.0-betaN` — **no `v` prefix** (the tag gate rejects a leading `v`). Fix the

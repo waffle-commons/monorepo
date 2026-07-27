@@ -1,10 +1,10 @@
 ---
 name: api-surface
-description: "[Beta6 / RFC-016 — NOT YET BUILT] API tooling: new waffle-commons/openapi (openapi:generate from #[Route]/DTOs) + waffle-commons/serializer (per-DTO compiled normalizers, content negotiation)"
+description: "[Beta7 / RFC-016 — NOT YET BUILT] API tooling: new waffle-commons/openapi (openapi:generate from #[Route]/DTOs) + waffle-commons/serializer (per-DTO compiled normalizers, content negotiation)"
 compatibility: opencode
 ---
 
-> **Status: planned (beta6 AXE 4). Two new components: `openapi`, `serializer`. No code exists yet.**
+> **Status: planned (beta7 AXE 4). Two new components: `openapi`, `serializer`. No code exists yet.**
 
 ## What I do
 I design the API-surface tooling that turns typed routes + DTOs into a spec and handles the HTTP
@@ -13,7 +13,7 @@ JSON boundary — both reflection-free at runtime, aligned with the AOT philosop
 
 ## When to use
 "OpenAPI / swagger", "generate the API spec", "serialize/deserialize DTO ↔ JSON", "content
-negotiation", beta6 API-01/02.
+negotiation", beta7 API-01/02.
 
 ## Mandates
 - **API-01 — OpenAPI (`waffle-commons/openapi`):** generate `openapi.json` from existing `#[Route]`

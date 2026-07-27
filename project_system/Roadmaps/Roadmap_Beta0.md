@@ -13,7 +13,7 @@ aliases: []
 ---
 # 🗺️ Roadmap Beta 0: Strictness, Integrity & Hardening
 
-**Status:** `Approved by the Architect` **Target:** `v0.1.0-beta0` **Theme:** "Zero Debt, Maximum Control"
+**Status:** `Approved by the Architect` **Target:** `0.1.0-beta0` **Theme:** "Zero Debt, Maximum Control"
 
 > **The Architect's Strategic Vision:** Alpha 5 laid the foundations of observability. Beta 0 is the radical hardening phase. We will not build the _Sentinel_ project on foundations that tolerate static-analysis warnings or injection flaws. This iteration marks the full adoption of PHP 8.5 defensive paradigms.
 

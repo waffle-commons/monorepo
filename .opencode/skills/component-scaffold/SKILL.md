@@ -5,7 +5,7 @@ compatibility: opencode
 ---
 
 ## What I do
-I create entirely new Waffle components (e.g., the beta6 `queue`, `openapi`, `serializer`, `testing`
+I create entirely new Waffle components (e.g., the beta7 `queue`, `openapi`, `serializer`, `testing`
 packages) adhering to the monorepo architecture: independent git submodules, each released on
 Packagist, PHP 8.5 strict. **The canonical starting point is the `component-template` submodule** —
 never hand-roll the skeleton; copy and adapt it so every gate (`mago.toml`, CI, `composer.json`

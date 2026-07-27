@@ -36,7 +36,7 @@ single component out of band.
 5. **Verify** Packagist resolves each package at the new version; confirm the wave's CI is green.
 
 ## New components in a wave
-When a release introduces packages (beta6: `queue`, `openapi`, `serializer`, `testing`), scaffold each
+When a release introduces packages (beta7: `queue`, `openapi`, `serializer`, `testing`), scaffold each
 from `component-template` (`[[component-scaffold]]`), register it in `.gitmodules` + `bin/wfl`, and
 include it in the branch/tag set before the umbrella tag.
 

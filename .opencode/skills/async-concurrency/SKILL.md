@@ -7,7 +7,7 @@ compatibility: opencode
 ## What I do
 I maintain the **shipped** cooperative-concurrency layer (RFC-015, beta5 AXE 2) for FrankenPHP worker
 mode — native PHP Fibers as an *isolation boundary*, not multithreading and not background processing
-(that is `[[queue-worker]]`, beta6). See `[[contracts-first]]`, `[[benchmark-gate]]`,
+(that is `[[queue-worker]]`, beta7). See `[[contracts-first]]`, `[[benchmark-gate]]`,
 `[[worker-safety]]`.
 
 ## When to use
