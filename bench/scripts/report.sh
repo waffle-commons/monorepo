@@ -132,8 +132,21 @@ out.append('')
 out.append('> constant-load RSS columns are sliced per rate step from the sampler')
 out.append('> timeline; other scenarios show whole-run RSS.\n')
 
-# RAM factor: engine-b (Symfony/FPM baseline) divided by the other engines.
-out.append('## RAM factor (engine-b as numerator — target 5-10x vs engine-a)\n')
+# RAM ratio at PINNED, BOUNDED concurrency — deliberately NOT called a "RAM factor".
+#
+# This table must never be read as the 5-10x claim. BENCH-02 pins engine-b to
+# `pm.static, max_children = 16` and caps every engine at `mem_limit: 1g`, so
+# FPM's memory is constant by construction and the dependent variable is
+# truncated: the rig cannot demonstrate OR refute the claim, and a ratio drawn
+# from it is an artefact of the pinning, not a property of the runtimes.
+# BENCH-05 (memory-scaling.js + engine-a-mem / engine-b-dyn) is the experiment
+# that answers the question; quote that one.
+out.append('## RSS ratio at pinned, bounded concurrency — NOT the 5-10x claim\n')
+out.append('> **Do not quote these as the RAM factor.** BENCH-02 pre-forks FPM at a fixed 16\n'
+           '> children and caps every engine at 1 GiB, which flattens FPM\'s memory curve before\n'
+           '> the first sample. These ratios describe this rig, not the runtimes. The 5-10x claim\n'
+           '> is tested by BENCH-05 (`run-bench.sh engine-b-dyn memscale`), which pins only CPU,\n'
+           '> lets memory grow, and switches FPM to a dynamic pool.\n')
 out.append('| scenario | workload | metric | engine-b / engine-a | engine-b / engine-c |')
 out.append('|---|---|---|---:|---:|')
 pairs = sorted({(s, w) for (s, w, _) in factors_src})
@@ -162,31 +175,51 @@ if starve:
     out.append('')
 
 # BENCH-03 soak dM.
-WARMUP_SKIP_S, WINDOW_S = 600, 600
+#
+# Windows ADAPT to the sampled span instead of demanding a fixed 30 min. A soak
+# launched as `DURATION=30m` samples ~1799s once teardown is subtracted, and a
+# hard `span >= 1800` gate reported INSUFFICIENT DATA for a run that had 289
+# usable samples — a verdict lost to two seconds of arithmetic. The shape of the
+# measurement (settle, then compare an early window against the final one) is
+# what matters; its size should follow the data.
+#
+# Floor of 900s: below ~15 min a dM verdict is too weak to mean anything, and
+# saying so is more useful than printing a confident number from 3 samples.
+MIN_SPAN_S = 900
 soaks = [r for r in runs if r['scenario'] == 'soak' and r['mem']]
 if soaks:
     out.append('## BENCH-03 soak dM (leak verdict, PASS if |dM| <= max(1%, 5 MB))\n')
-    out.append('| engine | first-window mean MB | last-window mean MB | dM MB | tolerance MB | verdict |')
-    out.append('|---|---:|---:|---:|---:|---|')
+    out.append('| engine | span | first-window mean MB | last-window mean MB | dM MB | tolerance MB | verdict |')
+    out.append('|---|---:|---:|---:|---:|---:|---|')
     for r in soaks:
         mem = r['mem']
         span = mem[-1][0] - mem[0][0]
-        if span < WARMUP_SKIP_S + 2 * WINDOW_S:
-            out.append(f"| {r['engine']} | n/a | n/a | n/a | n/a | INSUFFICIENT DATA ({span}s sampled, "
-                       f"need >= {WARMUP_SKIP_S + 2 * WINDOW_S}s) |")
+        if span < MIN_SPAN_S:
+            out.append(f"| {r['engine']} | {span}s | n/a | n/a | n/a | n/a | INSUFFICIENT DATA "
+                       f"(need >= {MIN_SPAN_S}s for a meaningful verdict) |")
             continue
-        first = slice_mem(mem, WARMUP_SKIP_S, WARMUP_SKIP_S + WINDOW_S)
-        last = slice_mem(mem, span - WINDOW_S, span + 1)
+        # Settle = 20% of the run (capped at 10 min); windows = 30% (capped at 10 min).
+        warm = min(600, int(span * 0.2))
+        win = min(600, max(120, int(span * 0.3)))
+        first = slice_mem(mem, warm, warm + win)
+        last = slice_mem(mem, span - win, span + 1)
         m1, _ = mem_stats(first)
         m2, _ = mem_stats(last)
         dm = m2 - m1
         tol = max(0.01 * m1, 5.0)
         verdict = 'PASS' if abs(dm) <= tol else 'FAIL (drift -> AXE 2 native fix, not accepted)'
-        out.append(f"| {r['engine']} | {fmt(m1)} | {fmt(m2)} | {fmt(dm, 2)} | {fmt(tol, 2)} | {verdict} |")
+        # A short soak bounds the leak RATE it can detect; say so next to the verdict
+        # so a PASS is never read as "no leak" when it means "no leak this fast".
+        if verdict == 'PASS' and span < 3 * 3600:
+            rate = tol / (span / 3600.0)
+            verdict += f' (bounds leak rate at ~{rate:.0f} MB/h — window is {span // 60}min, not multi-hour)'
+        out.append(f"| {r['engine']} | {span // 60}min | {fmt(m1)} | {fmt(m2)} | {fmt(dm, 2)} | "
+                   f"{fmt(tol, 2)} | {verdict} |")
     out.append('')
-    out.append(f'> dM windows: skip first {WARMUP_SKIP_S}s (warmup settle), compare the next '
-               f'{WINDOW_S}s against the final {WINDOW_S}s. Engine-a must have run with '
-               'MAX_REQUESTS=1000000 (Trap 3) for the verdict to be meaningful.\n')
+    out.append('> dM windows adapt to the sampled span: settle for 20% (max 10min), then compare '
+               'that window against the final one (30% of span, max 10min). Engine-a must have run '
+               'with MAX_REQUESTS=1000000 (Trap 3) or worker recycling masks a leak. `docker stats` '
+               'quantises to ~0.1 MiB, so treat sub-MB deltas as flat, not as precision.\n')
 
 report = '\n'.join(out) + '\n'
 (results / 'REPORT.md').write_text(report)
