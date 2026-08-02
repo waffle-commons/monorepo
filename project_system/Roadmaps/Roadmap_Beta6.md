@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 6)"
 date_created: 2026-07-17
-date_updated: 2026-07-27
+date_updated: 2026-08-02
 type: project
 status: pending
 tags:
@@ -31,7 +31,7 @@ _Beta4 and beta5 each ran a single-engine audit (OWASP Top 10 + Modern-PHP). Bet
 > `[AUDIT-03]`). All results live in a single `project_system/Audits/Beta6/consolidated.md`
 > (gitignored, local-only per `project_system/.gitignore` — no separate `audit-opus.md` /
 > `audit-aistudio.md` / `audit-antigravity2.md` files exist; the table below points at the real
-> location). **AXE 2 (remediation) has not started — that's tonight's next scope, not this pass.**
+> location). AXE 2 remediation was executed as the 2026-07-27 fix wave and closed 2026-08-02 — see AXE 2.
 
 | Pass | Engine | Primary lens | Status | Deliverable |
 |---|---|---|---|---|
@@ -119,6 +119,26 @@ _Beta4 and beta5 each ran a single-engine audit (OWASP Top 10 + Modern-PHP). Bet
 
 _A finding surfaced is not a finding fixed. Every issue from the audit wave is resolved **natively** — no Mago baselines, no suppressions, no `@`-silencing, no `#[WorkerSafe]` escape hatch used to paper over genuinely mutable state. The Mago Purge Protocol applies: clean means **zero output**._
 
+> **Execution status (2026-08-02): AXE 2 CLOSED — 17/17 fixed natively, zero suppressions.**
+> Items 1–3 and 6–17 were remediated in the 2026-07-27 fix wave (one `fix: … (FIX-01)` commit in each
+> of 12 repos, with regression tests). The two residuals closed this weekend: **item 4** — the AOT
+> emitter now memoises *only* inlined services (`self::INLINED` guard; passthroughs delegate to the
+> runtime container), so a Resettable passthrough resets exactly once per request in both modes
+> (parity-oracle test) and the stale pre-fix `workspace/var/cache/CompiledContainer.php` was
+> regenerated; **item 5** — subject resolution is ctor-injected into `SecureContainer`
+> (`SubjectResolverInterface`, contracts-first), resolved **lazily and only for voted actions**
+> (fail-closed 403 on resolver failure, `#[PublicAccess]`-without-voters never invokes it), with a
+> real object-level ownership demo in workspace and a safe-by-default unwired example in skeleton.
+> **[FIX-02] verified on the final tree:** `check:all` 23/23 components (mago zero-output + tests),
+> ecosystem `igor` **0 KO**, `compare-audit` clean, both boot-smokes green, coverage console 98.05% /
+> security 99.12%. A **30-agent adversarial review** (8 finders, refute-first verification of every
+> finding) over the full weekend diff returned **0 blocking**; all 5 important findings were fixed
+> (lazy voter-gated resolution; umbrella-ci `gate` now fail-closed when `detect-changes` itself
+> fails; stale `SecureContainer`/`PublicAccess` docblocks corrected; voter truth-table and resolver
+> tests added), plus applied suggestions (middleware attribute write-back, AOT docblock precision).
+> **Release-wave sequencing note:** `workspace/composer.lock` records path-repo HEADs — relock
+> workspace AFTER committing the component changes, before tagging.
+
 ### `[FIX-01]` Native-First Remediation of Every Finding
 
 - **Specification:**
@@ -161,6 +181,16 @@ _A finding surfaced is not a finding fixed. Every issue from the audit wave is r
   `auth/` so demo apps stop hand-rolling JWS; `waffle-serverless`'s pinned-to-beta4 dependency drift. Full
   itemization lives in `consolidated.md`'s own SHOULD/COULD sections — re-surface when scoping
   `Roadmap_Beta7.md`'s modernization work, not duplicated here to avoid drift between the two documents.
+  **Added by the 2026-08-02 adversarial review (suggestion tier, signed off as beta7):** promote
+  `Constant::ATTR_PARAMS` in contracts and adopt it in `CoreRoutingMiddleware`/`ControllerDispatcher`/app
+  resolvers (producers currently share a `'_params'` literal); AOT compiled-memo **runtime write-through**
+  so inlined singletons have a single identity authority (today a runtime-side closure factory
+  transitively resolving an inlined id builds a second instance — documented constraint in
+  `ContainerCompiler` + `reference/aot.md`, each copy still resets exactly once); `GreetedResource`
+  owner-case normalization option (current strict-byte ownership vs case-insensitive reservation is
+  documented intentional deny-more); a PHPUnit step for the new workspace umbrella-ci job (static gates
+  only tonight); `waffle-serverless` stale vendored `config/YamlParser` re-mirror when that demo is next
+  rebuilt.
 
 ### `[FIX-02]` Full Gate Re-Verification (Definition of Done)
 
@@ -171,6 +201,24 @@ _A finding surfaced is not a finding fixed. Every issue from the audit wave is r
 ## 📚 AXE 3: DOCUMENTATION MODERNIZATION (DIÁTAXIS)
 
 _The documentation must be as trustworthy as the code. Beta6 brings the **entire** documentation surface — the in-repo per-component `docs/` trees and the central `documentation/` submodule — into strict Diátaxis compliance: four quadrants, each page in exactly one._
+
+> **Execution status (2026-08-02): AXE 3 CLOSED — with one recorded scope decision on `[DOC-02]`.**
+> **`[DOC-01]` done:** `documentation/` verified strictly quadrant-partitioned; `explanation/architecture.md`
+> rewritten from its stale Beta-1/2 content to the real 21-component ecosystem (grounded in a
+> composer.json sweep of all 21); `explanation/performance.md` de-orphaned (3 inbound links; it hosts the
+> AXE 5 measured numbers); duplicate `how-to/security.md` merged into `secure-a-controller.md` and
+> deleted; **two tutorials added** (secured CRUD endpoint; async + telemetry), restoring quadrant
+> balance; a **nonexistent `#[Rule]` attribute** discovered documented across 6 pages and swept
+> corpus-wide. **`[DOC-02]` renegotiated (recorded decision, not a silent drop):** authoring 21 per-component
+> `docs/` trees (~80–120 h) would duplicate the central tree, which already carries a Reference page for
+> every component — the central `documentation/` submodule is the canonical Diátaxis surface, and each
+> of the 21 component READMEs now carries a uniform `## 📚 Documentation` link block into its
+> Reference/Explanation pages. The missing repo doc packs were closed: `async` (which shipped beta5 with
+> **no README at all**) received the full pack; `telemetry`/`telemetry-otel` READMEs brought to sibling
+> standard (two stale claims corrected against source). **`[DOC-03]` done:** every reference page verified
+> symbol-by-symbol against the live public surface (~30 stale claims fixed — pre-ARCH-03 kernel API,
+> beta5 pool signatures, missing beta6 hardenings, auth test-count claim); link graph checked in full:
+> **331 links, 0 broken, 0 anchor mismatches**.
 
 | Quadrant | Orientation | Answers | Form |
 |---|---|---|---|
@@ -249,8 +297,8 @@ _Engine **B** isolates the combined framework + runtime delta versus the classic
 ## ✅ ACCEPTANCE CRITERIA
 
 - **AUDIT:** ✅ **closed 2026-07-27.** Two of three independent engine passes complete across all 21 decoupled components (Claude Code, Google AI Studio); Antigravity2 formally accepted as a documented residual, not silently dropped (`[AUDIT-03]`); findings consolidated and severity-reconciled in `project_system/Audits/Beta6/consolidated.md`; zero un-triaged findings — the one cross-engine disagreement (`[AUDIT-04]`, the `RouteCompileCommand` deserialization item) is resolved with code-level evidence, not just deferred.
-- **REMEDIATION:** all 17 gate-blocking `[FIX-01]` findings fixed natively or formally risk-accepted with sign-off; **zero** Mago baselines/suppressions introduced; `composer mago` zero output, `composer tests` $\geq 95\%$ coverage, `wfl igor` **0 KO** on every modified component.
-- **DOCS:** `documentation/` and every component `docs/` tree strictly Diátaxis-partitioned (Tutorials / How-To / Reference / Explanation); reference pages verified against the current public API.
+- **REMEDIATION:** ✅ **closed 2026-08-02.** All 17 gate-blocking `[FIX-01]` findings fixed natively (none risk-accepted); **zero** Mago baselines/suppressions introduced; `check:all` 23/23 (mago zero output + tests, coverage ≥95% on modified components), ecosystem `wfl igor` **0 KO**; hardened further by a 30-agent adversarial review (0 blocking, all important findings fixed).
+- **DOCS:** ✅ **closed 2026-08-02.** `documentation/` strictly Diátaxis-partitioned and link-graph-clean (331 links, 0 broken); reference pages verified symbol-by-symbol against the current public API; `[DOC-02]` satisfied via the recorded renegotiation (central tree canonical + per-component README link blocks + missing repo doc packs closed) rather than duplicated per-component `docs/` trees.
 - **ECOSHIELD:** the `ecoshield-gateway` POC proxies traffic on the FrankenPHP worker runtime with $8\,\text{KiB}$ streaming buffers, built only on public APIs, `wfl igor` **0 KO**.
 - **BENCH:** the tri-engine K6 harness is reproducible; constant-load percentiles ($p_{50}$ / $p_{95}$ / $p_{99}$ / $p_{99.9}$) and the RAM factor are published; the soak proves $\Delta M = 0$ on both worker-mode engines; pool-starvation behaviour is characterized with zero connection leakage.
 - **All items:** contracts-first sequencing on any interface change; `composer mago && composer tests` green, $\geq 95\%$ coverage, zero Mago baselines, `wfl igor` **0 KO**; the beta6 tag follows the release-wave mechanics (umbrella tag pushed → dry-run on the pushed tag → LIVE wave).
