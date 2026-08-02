@@ -26,3 +26,9 @@ TODO.md
 
 # Personnal
 *.jks
+
+# EcoShield POC (AXE 4): local component, not yet a submodule — its vendor/ and
+# coverage artifacts must not enter the umbrella.
+ecoshield-gateway/vendor/
+ecoshield-gateway/var/
+ecoshield-gateway/composer.lock
