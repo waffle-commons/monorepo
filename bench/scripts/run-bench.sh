@@ -120,7 +120,15 @@ seed_db
 
 # --- 2. engine (exactly ONE) -------------------------------------------------
 log "starting $ENGINE (and only $ENGINE — engines are benched sequentially)"
-"${COMPOSE[@]}" up -d "$ENGINE"
+# --force-recreate, always. Two reasons, one of which already cost a run:
+#   1. Bind-mounted config (app.bench.yaml, ini files) is read ONCE at worker
+#      boot. Editing it does not change compose's config hash, so a plain
+#      `up -d` happily reuses a container still holding the OLD config in
+#      memory — the run then measures a configuration that no longer exists on
+#      disk, or fails for a reason already fixed.
+#   2. Measurement hygiene: every run should start from a cold worker set, with
+#      no opcache/JIT/pool state carried over from the previous engine's run.
+"${COMPOSE[@]}" up -d --force-recreate "$ENGINE"
 
 log "waiting for $ENGINE to answer GET / (in-network k6 probe, timeout 180s)"
 ENGINE_OK=0
