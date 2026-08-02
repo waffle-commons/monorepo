@@ -151,6 +151,50 @@ services:
       - bench-net
 
   # ---------------------------------------------------------------------------
+  # BENCH-05 memory-vs-concurrency pair: engine-a-mem / engine-b-dyn
+  # ---------------------------------------------------------------------------
+  # These two exist because BENCH-02's pinning cannot answer the "5-10x RAM vs
+  # PHP-FPM" question, and running that experiment on the BENCH-02 services
+  # would silently produce a wrong answer rather than no answer:
+  #
+  #   * engine-b pins `pm = static, max_children = 16`, so FPM's memory is
+  #     constant by construction — the curve under test is flattened before the
+  #     first sample.
+  #   * every BENCH-02 engine caps `mem_limit: 1g`, which truncates the
+  #     dependent variable. You cannot measure how far memory grows inside a box
+  #     that forbids it from growing.
+  #
+  # So here CPU stays pinned identically (2 cpus — the controlled variable) while
+  # memory is left far above the expected ceiling (the dependent variable), and
+  # FPM is switched to a `dynamic` pool that spawns children with concurrency,
+  # which is the mechanism the claim is actually about.
+  #
+  # These services are for BENCH-05 ONLY. Never quote a BENCH-02 latency number
+  # from them (different pool model) and never quote a BENCH-05 RAM number from
+  # engine-b (different memory model). Each pair answers exactly one question.
+  engine-a-mem:
+    extends:
+      service: engine-a
+    container_name: engine-a-mem
+    cpus: "2"
+    mem_limit: 6g
+    ports: !override
+      - "127.0.0.1:8084:80"
+
+  engine-b-dyn:
+    extends:
+      service: engine-b
+    container_name: engine-b-dyn
+    cpus: "2"
+    mem_limit: 6g
+    volumes:
+      # Swap the static pool for the dynamic one. Mounted rather than rebuilt so
+      # both pool models ship from one image and cannot drift apart.
+      - ./engines/symfony-fpm/zzz-bench-pool-dynamic.conf:/usr/local/etc/php-fpm.d/zzz-bench-pool.conf:ro
+    ports: !override
+      - "127.0.0.1:8085:80"
+
+  # ---------------------------------------------------------------------------
   # Engine C — the SAME Symfony app on FrankenPHP worker mode (4 workers,
   # runtime/frankenphp-symfony). Dockerfile written by the engine-stub task
   # into bench/engines/symfony-worker/.

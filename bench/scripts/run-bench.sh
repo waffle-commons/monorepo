@@ -4,16 +4,20 @@
 #   usage: run-bench.sh <engine-a|engine-b|engine-c> <smoke|constant|soak|starve> [workload]
 #
 #   engine    engine-a = waffle skeleton (FrankenPHP worker)
-#             engine-b = Symfony (php-fpm + nginx)
+#             engine-b = Symfony (php-fpm + nginx, pm.static)
 #             engine-c = Symfony (FrankenPHP worker)
+#             engine-a-mem / engine-b-dyn = BENCH-05 pair only (memory free to
+#             grow, FPM pool dynamic) — never mix their numbers with BENCH-02
 #   scenario  smoke    -> k6/scenarios/smoke.js
 #             constant -> k6/scenarios/constant-load.js   (BENCH-02)
 #             soak     -> k6/scenarios/soak.js            (BENCH-03)
 #             starve   -> k6/scenarios/pool-starvation.js (BENCH-04)
+#             memscale -> k6/scenarios/memory-scaling.js   (BENCH-05)
 #   workload  json|hello|greet|dbread|dbwrite — only meaningful for `constant`
 #             (exported to k6 as WORKLOAD; other scenarios fix their own mix)
 #
-# Env passthrough to k6 (all optional): RATES, STEP_DURATION, RATE, DURATION.
+# Env passthrough to k6 (all optional): RATES, STEP_DURATION, RATE, DURATION,
+# VUS_STEPS (BENCH-05 concurrency steps).
 # Compose-interpolated knobs: DB_POOL_SIZE (BENCH-04 sweep), MAX_REQUESTS
 # (pinned to 1000000 here unless the caller overrides — Trap 3: worker recycle
 # at the 500 default would mask leaks in the soak).
@@ -30,7 +34,7 @@ INIT_SQL="$BENCH_DIR/sql/init.sql"
 RESULTS_DIR="$BENCH_DIR/results"
 
 usage() {
-  echo "usage: $0 <engine-a|engine-b|engine-c> <smoke|constant|soak|starve> [workload]" >&2
+  echo "usage: $0 <engine-a|engine-b|engine-c|engine-a-mem|engine-b-dyn> <smoke|constant|soak|starve|memscale> [workload]" >&2
   echo "       workload: json|hello|greet|dbread|dbwrite (constant only, default json)" >&2
   exit 2
 }
@@ -43,7 +47,7 @@ SCENARIO="$2"
 WORKLOAD_ARG="${3:-}"
 
 case "$ENGINE" in
-  engine-a|engine-b|engine-c) ;;
+  engine-a|engine-b|engine-c|engine-a-mem|engine-b-dyn) ;;
   *) echo "error: unknown engine '$ENGINE'" >&2; usage ;;
 esac
 
@@ -52,6 +56,7 @@ case "$SCENARIO" in
   constant) SCENARIO_FILE="constant-load.js";   RESULT_WORKLOAD="${WORKLOAD_ARG:-json}" ;;
   soak)     SCENARIO_FILE="soak.js";            RESULT_WORKLOAD="all" ;;
   starve)   SCENARIO_FILE="pool-starvation.js"; RESULT_WORKLOAD="db" ;;
+  memscale) SCENARIO_FILE="memory-scaling.js";  RESULT_WORKLOAD="dbread" ;;
   *) echo "error: unknown scenario '$SCENARIO'" >&2; usage ;;
 esac
 
@@ -143,7 +148,7 @@ SAMPLER_PID=$!
 
 # --- 5. measured k6 run ------------------------------------------------------
 K6_ENV=(-e "TARGET=http://$ENGINE")
-for v in WORKLOAD RATES STEP_DURATION RATE DURATION; do
+for v in WORKLOAD RATES STEP_DURATION RATE DURATION VUS_STEPS; do
   if [[ -n "${!v:-}" ]]; then
     K6_ENV+=(-e "$v=${!v}")
     log "k6 env passthrough: $v=${!v}"
