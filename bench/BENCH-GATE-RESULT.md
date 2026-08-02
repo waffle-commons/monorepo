@@ -24,10 +24,10 @@ JIT `1234` / 128 M buffer, `MAX_REQUESTS=1000000`, one engine running at a time,
 |---|---|---|
 | `[BENCH-01]` reproducible tri-engine harness | **PASS** | one command per run; Symfony app bootstrap-scripted |
 | `[BENCH-02]` constant-load percentiles | **PASS** (latency) | vs PHP-FPM: decisive win. vs Symfony-on-worker: parity to 400 rps, earlier knee after |
-| `[BENCH-02]` 5–10× RAM factor | **NOT DEMONSTRATED** | harness could not test the claim — see BENCH-05 |
+| `[BENCH-02]` 5–10× RAM factor | **NOT TESTABLE HERE** | pinning made the claim unmeasurable — superseded by BENCH-05 |
 | `[BENCH-03]` soak ΔM = 0 | **PASS** (shortened window) | 30 min/engine, not multi-hour |
 | `[BENCH-04]` pool-starvation behaviour | **PASS** | 8× oversubscription, bounded, zero errors |
-| `[BENCH-05]` memory vs concurrency | see below | corrected experiment, added 2026-08-02 |
+| `[BENCH-05]` memory vs concurrency | **PASS — claim REFRAMED** | FPM grows **10.5× faster** per concurrent request; 2.37× total at 128 concurrency; bare "5–10×" is **not** publishable as stated |
 
 ---
 
@@ -143,7 +143,67 @@ latency-under-arrival-rate.
 
 ## `[BENCH-05]` Memory vs concurrency — the corrected RAM experiment
 
-<!-- BENCH05_RESULTS -->
+Method: closed model, `constant-vus` steps **8 → 16 → 32 → 64 → 128**, 2 min each,
+workload `dbread` (holds a connection for the life of the request, so a request in
+flight genuinely occupies a worker or child). CPU pinned at 2 (controlled variable);
+memory raised to 6 GiB and FPM switched to `pm=dynamic, max_children=128` so the
+dependent variable can actually move.
+
+### RSS by concurrency
+
+| concurrency | A — Waffle worker | B — Symfony FPM (dynamic) | B/A |
+|---:|---:|---:|---:|
+| 8 | 68.0 MiB | 59.4 MiB | **0.87×** |
+| 16 | 68.4 MiB | 73.4 MiB | 1.07× |
+| 32 | 71.1 MiB | 96.4 MiB | 1.36× |
+| 64 | 74.5 MiB | 130.9 MiB | 1.76× |
+| 128 | 80.6 MiB | 191.2 MiB | **2.37×** |
+
+**Growth rate — the real result:**
+
+| Engine | RSS slope | Interpretation |
+|---|---|---|
+| A (worker) | **+0.105 MiB** per concurrent request | fixed worker set; memory ~flat |
+| B (FPM) | **+1.099 MiB** per concurrent request | one process per in-flight request |
+
+**FPM's memory grows 10.5× faster per unit of concurrency.** That ratio — not a single
+total-RAM number — is the defensible claim, and it is the mechanism the "5–10×" slogan
+was always gesturing at.
+
+### What this means for the "5–10× RAM" claim — state it this way
+
+- **At low concurrency the claim is false, and inverted.** At 8 concurrent requests
+  Symfony/FPM uses *less* total RAM than Waffle (0.87×), because Waffle pays a fixed
+  floor — 256 MB opcache + 128 MB JIT buffer shared across a resident worker set —
+  that FPM amortises differently. Publishing "5–10× less RAM" without qualification
+  would be refutable by anyone running a small instance.
+- **The crossover is near 12–16 concurrent requests.** Below it FPM wins on total RAM;
+  above it Waffle wins, and the gap widens without bound.
+- **Measured, at 128 concurrent: 2.37×.** That is the number this rig earned.
+- **5× extrapolates to ≈490 concurrent requests** on these slopes — beyond the measured
+  range, and it also requires `max_children` ≳ 490, since at 128 children FPM stops
+  growing and starts queueing instead. **10× is not reachable by extrapolation** here,
+  because Waffle's slope is small but not zero.
+
+> **Recommendation for the conference:** publish the *slope* (10.5× lower memory growth
+> per concurrent request), the measured 2.37× at 128 concurrency, and the crossover
+> point. Do not publish a bare "5–10×". The slope is the honest, defensible, and
+> frankly more interesting claim — it says the two runtimes have different *shapes*,
+> not merely different constants.
+
+### Throughput at the same concurrency (secondary, but decisive)
+
+Both engines under the *fairer* dynamic-pool FPM configuration:
+
+| Engine | throughput | p50 | p99 | errors |
+|---|---:|---:|---:|---:|
+| A — Waffle worker | **781.6 req/s** | 35.0 ms | 223.9 ms | 0.00 % |
+| B — Symfony FPM (dynamic, 128 children) | 100.5 req/s | 303.7 ms | 2076.0 ms | 0.03 % |
+
+**7.8× the throughput at identical concurrency and CPU.** This also retires the concern
+that BENCH-02's `pm.static` pinning unfairly penalised FPM: given a dynamic pool with
+128 children — a *more* favourable configuration — FPM still delivers an eighth of the
+throughput at 8.7× the p50 latency.
 
 ---
 
