@@ -1,0 +1,230 @@
+# =============================================================================
+# Beta6 AXE 5 — K6 tri-engine benchmark rig (BENCH-01..04).
+#
+# Engines run ONE AT A TIME (scripts/run-bench.sh starts exactly one engine +
+# bench-postgres; never `docker compose up` all engines at once — they would
+# fight for the pinned CPUs and the numbers would be garbage).
+#
+# Fairness contract (see bench/README.md):
+#   - every engine: cpus "2", mem_limit 1g, PHP 8.5, APP_ENV=prod,
+#     APP_DEBUG=false, opcache.validate_timestamps=0, JIT 1234 / 128M buffer,
+#     no Xdebug.
+#   - worker engines (A, C): 4 workers pinned. FPM engine (B): pm.static,
+#     children sized to the same 1G RAM budget (~16).
+#   - MAX_REQUESTS=1000000 on Engine A so the worker recycle does not mask
+#     leaks during the BENCH-03 soak (documented honest-method note).
+# =============================================================================
+
+name: waffle-bench
+
+networks:
+  bench-net:
+
+volumes:
+  bench-pgdata:
+
+services:
+  # ---------------------------------------------------------------------------
+  # Engine A — Waffle skeleton, prod stage, FrankenPHP worker mode (4 workers).
+  # ---------------------------------------------------------------------------
+  engine-a:
+    build:
+      # Context is the MONOREPO ROOT: the image overlays the beta6 component
+      # working trees over skeleton's Packagist-resolved (beta5) vendor —
+      # see engines/waffle/Dockerfile for the full rationale.
+      context: ..
+      dockerfile: bench/engines/waffle/Dockerfile
+      target: engine
+    image: waffle-bench-engine-a
+    container_name: engine-a
+    cpus: "2"
+    mem_limit: 1g
+    # Hardening mirrored from skeleton/docker-compose.prod.yml (read-only rootfs
+    # + 1777 tmpfs for the only writable paths — Caddy state, /tmp, var/).
+    read_only: true
+    security_opt:
+      - "no-new-privileges:true"
+    volumes:
+      - type: tmpfs
+        target: /tmp
+        tmpfs:
+          mode: 1777
+      - type: tmpfs
+        target: /config
+        tmpfs:
+          mode: 1777
+      - type: tmpfs
+        target: /data
+        tmpfs:
+          mode: 1777
+      - type: tmpfs
+        target: /app/var
+        tmpfs:
+          mode: 1777
+      # JIT parity drop-in (opcache.jit=1234, buffer 128M) — see README.
+      - type: bind
+        source: ./engines/waffle/jit-bench.ini
+        target: /usr/local/etc/php/conf.d/zz-jit-bench.ini
+        read_only: true
+      # Bench app config: trusted host "engine-a", array cache (no Redis in the
+      # rig), pgsql → bench-postgres. Mirror of skeleton/config/app.yaml —
+      # keep in sync (see the header comment in the file).
+      - type: bind
+        source: ./engines/waffle/app.bench.yaml
+        target: /app/config/app.yaml
+        read_only: true
+      # Bench Caddyfile: identical to the skeleton one EXCEPT it interpolates
+      # {$FRANKENPHP_CONFIG} — the stock skeleton Caddyfile ignores that env
+      # var, so the 4-worker pin below would otherwise be a no-op.
+      - type: bind
+        source: ./engines/waffle/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+    environment:
+      SERVER_NAME: ":80"
+      # Worker count pinned to 4 (fairness: same as Engine C).
+      FRANKENPHP_CONFIG: "worker ./public/index.php 4"
+      # Trap 3: the worker script exits/restarts every MAX_REQUESTS (default
+      # 500) — pinned very high so recycling cannot mask leaks in the ΔM soak.
+      MAX_REQUESTS: "1000000"
+      APP_ENV: "prod"
+      APP_DEBUG: "false"
+      # -----------------------------------------------------------------------
+      # NON-PRODUCTION BENCH FIXTURES — fixed 64-char secrets, committed on
+      # purpose so the rig is reproducible from a clean clone. NEVER reuse
+      # outside this bench rig. Skeleton prod boot is fail-closed: it ABORTS
+      # without WAFFLE_CSRF_SECRET / WAFFLE_AUTH_SECRET >= 32 bytes.
+      # -----------------------------------------------------------------------
+      APP_SECRET: "9f2d1c7a4e8b6035d1a7c3e9f0b8d246a5c1e7f3928b4d60c7a1f5e3b9d80426"
+      WAFFLE_CSRF_SECRET: "3c8e5a1f9b7d2064e8c4a6f1d3b90527c6e2a8f4917b5d30e9c7a5f1b3d86042"
+      WAFFLE_AUTH_SECRET: "7a4f1e8c3b9d5260f7e3a1c5d9b84062e5c7f3a19b6d4028c3e7f5a1d9b06284"
+      DB_HOST: "bench-postgres"
+      DB_PORT: "5432"
+      DB_NAME: "waffle"
+      DB_USER: "waffle"
+      DB_PASSWORD: "waffle"
+      # BENCH-04 sweep knob (default pool size 8 — Trap 4).
+      DB_POOL_SIZE: "${DB_POOL_SIZE:-8}"
+    depends_on:
+      bench-postgres:
+        condition: service_healthy
+    # Loopback publish for host-side smoke only; k6 hits http://engine-a
+    # inside bench-net.
+    ports:
+      - "127.0.0.1:8081:80"
+    networks:
+      - bench-net
+
+  # ---------------------------------------------------------------------------
+  # Engine B — same Symfony app, php:8.5-fpm + nginx (pm.static, ~16 children).
+  # Dockerfile + nginx/fpm/ini config are written by the engine-stub task into
+  # bench/engines/symfony-fpm/ (bootstrap-symfony.sh generates the gitignored
+  # app into bench/engines/symfony-app/ first).
+  # ---------------------------------------------------------------------------
+  engine-b:
+    build:
+      # Context = bench/ root: the Dockerfile COPYs the SHARED generated app
+      # (engines/symfony-app/) which lives outside engines/symfony-fpm/.
+      context: .
+      dockerfile: engines/symfony-fpm/Dockerfile
+    image: waffle-bench-engine-b
+    container_name: engine-b
+    cpus: "2"
+    mem_limit: 1g
+    environment:
+      APP_ENV: "prod"
+      APP_DEBUG: "0"
+      APP_SECRET: "9f2d1c7a4e8b6035d1a7c3e9f0b8d246a5c1e7f3928b4d60c7a1f5e3b9d80426"
+      # Canonical DB contract: the Symfony app reads DB_* (config/packages/
+      # doctrine.yaml stub) — same env quintet as Engine A.
+      DB_HOST: "bench-postgres"
+      DB_PORT: "5432"
+      DB_NAME: "waffle"
+      DB_USER: "waffle"
+      DB_PASSWORD: "waffle"
+    depends_on:
+      bench-postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8082:80"
+    networks:
+      - bench-net
+
+  # ---------------------------------------------------------------------------
+  # Engine C — the SAME Symfony app on FrankenPHP worker mode (4 workers,
+  # runtime/frankenphp-symfony). Dockerfile written by the engine-stub task
+  # into bench/engines/symfony-worker/.
+  # ---------------------------------------------------------------------------
+  engine-c:
+    build:
+      # Context = bench/ root (same reason as engine-b: shared generated app).
+      context: .
+      dockerfile: engines/symfony-worker/Dockerfile
+    image: waffle-bench-engine-c
+    container_name: engine-c
+    cpus: "2"
+    mem_limit: 1g
+    environment:
+      SERVER_NAME: ":80"
+      FRANKENPHP_CONFIG: "worker ./public/index.php 4"
+      # Selects the FrankenPHP Symfony runtime loop (runtime/frankenphp-symfony).
+      APP_RUNTIME: "Runtime\\FrankenPhpSymfony\\Runtime"
+      APP_ENV: "prod"
+      APP_DEBUG: "0"
+      APP_SECRET: "9f2d1c7a4e8b6035d1a7c3e9f0b8d246a5c1e7f3928b4d60c7a1f5e3b9d80426"
+      # Canonical DB contract: DB_* quintet (see engine-b note).
+      DB_HOST: "bench-postgres"
+      DB_PORT: "5432"
+      DB_NAME: "waffle"
+      DB_USER: "waffle"
+      DB_PASSWORD: "waffle"
+    depends_on:
+      bench-postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8083:80"
+    networks:
+      - bench-net
+
+  # ---------------------------------------------------------------------------
+  # Shared PostgreSQL 17 — deterministic 10k-row seed via sql/init.sql (runs on
+  # a FRESH volume only: re-seed = `docker compose ... down -v` first, which is
+  # what scripts/run-bench.sh does between runs).
+  # ---------------------------------------------------------------------------
+  bench-postgres:
+    image: postgres:17-alpine
+    container_name: bench-postgres
+    environment:
+      POSTGRES_DB: "waffle"
+      POSTGRES_USER: "waffle"
+      POSTGRES_PASSWORD: "waffle"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U waffle -d waffle"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+      start_period: 5s
+    volumes:
+      - bench-pgdata:/var/lib/postgresql/data
+      - type: bind
+        source: ./sql/init.sql
+        target: /docker-entrypoint-initdb.d/init.sql
+        read_only: true
+    networks:
+      - bench-net
+
+  # ---------------------------------------------------------------------------
+  # k6 load generator — profile "tools" so it NEVER starts with the engines;
+  # scripts/run-bench.sh invokes it as:
+  #   docker compose -f docker-compose.bench.yml run --rm k6 run /scripts/scenarios/<x>.js
+  # ---------------------------------------------------------------------------
+  k6:
+    image: grafana/k6:latest
+    container_name: bench-k6
+    profiles:
+      - tools
+    volumes:
+      - ./k6:/scripts
+      - ./results:/results
+    networks:
+      - bench-net

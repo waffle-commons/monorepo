@@ -1,0 +1,10 @@
+# Build context for engines B and C is bench/ root (they COPY the shared
+# generated app). Keep the context lean and the images clean:
+results/
+engines/symfony-app/var/
+engines/symfony-app/.git/
+k6/
+sql/
+scripts/
+BENCH-GATE-RESULT.md
+README.md

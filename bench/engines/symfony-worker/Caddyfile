@@ -1,0 +1,20 @@
+# Engine C Caddyfile — mirrors skeleton/docker/frankenphp/Caddyfile (engine A),
+# with the worker directive injected via {$FRANKENPHP_CONFIG}
+# ("worker ./public/index.php 4" — file + pinned worker count).
+{
+	frankenphp {
+		{$FRANKENPHP_CONFIG}
+	}
+	order php_server before file_server
+}
+
+{$SERVER_NAME::80} {
+	root * public/
+	encode zstd gzip
+
+	php_server {
+		resolve_root_symlink
+	}
+
+	file_server
+}
