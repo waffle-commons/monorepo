@@ -30,6 +30,7 @@ jobs:
     outputs:
       components: ${{ steps.matrix.outputs.components }}
       any:        ${{ steps.matrix.outputs.any }}
+      workspace:  ${{ steps.filter.outputs.workspace }}
     steps:
       - name: Checkout umbrella
         uses: actions/checkout@v6
@@ -63,6 +64,7 @@ jobs:
             telemetry-otel:   'telemetry-otel/**'
             utils:            'utils/**'
             waffle:           'waffle/**'
+            workspace:        'workspace/**'
 
       - name: Build matrix
         id: matrix
@@ -71,8 +73,12 @@ jobs:
         run: |
           set -euo pipefail
           echo "Raw changes JSON: $CHANGES"
-          echo "components=$CHANGES" >> "$GITHUB_OUTPUT"
-          if [ "$CHANGES" = "[]" ] || [ -z "$CHANGES" ]; then
+          # 'workspace' has its own dedicated job (it needs all 21 path-repo
+          # submodules) — strip it from the per-component check matrix.
+          COMPONENTS=$(jq -c 'map(select(. != "workspace"))' <<< "$CHANGES")
+          echo "Component matrix JSON: $COMPONENTS"
+          echo "components=$COMPONENTS" >> "$GITHUB_OUTPUT"
+          if [ "$COMPONENTS" = "[]" ] || [ -z "$COMPONENTS" ]; then
             echo "any=false" >> "$GITHUB_OUTPUT"
           else
             echo "any=true"  >> "$GITHUB_OUTPUT"
@@ -181,7 +187,84 @@ jobs:
           files: ./var/data/phpunit-coverage/clover.xml
 
   # --------------------------------------------------------------------------
-  # 3. SEC-03 timing-safe comparison gate (cross-component, autoload-free).
+  # 3. Workspace demo app — composer/security posture gate (audit FIX-01 #10).
+  #    Not a library: composer validate + install + static gates + composer
+  #    audit only — no phpunit/coverage gate (mirrors the demo-app policy the
+  #    way config/console/contracts skip igor in the check matrix).
+  # --------------------------------------------------------------------------
+  workspace:
+    name: workspace
+    needs: detect-changes
+    if: needs.detect-changes.outputs.workspace == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout umbrella (no submodules)
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      # workspace/composer.json declares 21 path repositories (../contracts …
+      # ../telemetry-otel), so ALL of them must be checked out or composer
+      # install fails. Never the private 'academy' submodule (the default
+      # GITHUB_TOKEN is repo-scoped and can't clone it). Rewrite the SSH remote
+      # to HTTPS so the runner reads the public repos anonymously.
+      - name: Init workspace + its 21 path-repo components
+        run: |
+          set -euo pipefail
+          COMPONENTS="workspace contracts utils config container http http-client routing pipeline event-dispatcher log error-handler cache security auth console data runtime waffle async telemetry telemetry-otel"
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          # shellcheck disable=SC2086 — word-splitting is intentional here.
+          git submodule sync -- $COMPONENTS
+          git submodule update --init --depth=1 -- $COMPONENTS
+
+      - name: Setup PHP 8.5
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+          extensions: mbstring, intl, opcache, xml, dom, tokenizer, yaml
+
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: workspace/vendor
+          key:  composer-${{ runner.os }}-workspace-${{ hashFiles('workspace/composer.lock') }}
+          restore-keys: |
+            composer-${{ runner.os }}-workspace-
+
+      # --no-check-all: the 21 exact '1.0.0-dev' path-repo pins are intentional
+      # for the demo app; the strict pass still enforces schema + publish rules.
+      - name: composer validate (strict)
+        working-directory: workspace
+        run: composer validate --strict --no-check-all
+
+      - name: composer install
+        working-directory: workspace
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: mago fmt (check)
+        working-directory: workspace
+        run: vendor/bin/mago fmt --check
+
+      - name: mago lint
+        working-directory: workspace
+        run: vendor/bin/mago lint
+
+      - name: mago analyze
+        working-directory: workspace
+        run: vendor/bin/mago analyze
+
+      - name: mago guard
+        working-directory: workspace
+        run: vendor/bin/mago guard
+
+      - name: composer audit (DEP-04)
+        working-directory: workspace
+        run: composer audit
+
+  # --------------------------------------------------------------------------
+  # 4. SEC-03 timing-safe comparison gate (cross-component, autoload-free).
   #    Bans naive === / !== between two runtime secrets that must use
   #    hash_equals(); Mago has no custom-rule API to express this.
   # --------------------------------------------------------------------------
@@ -216,19 +299,31 @@ jobs:
         run: php scripts/sec03-compare-audit.php auth security http http-client data cache telemetry
 
   # --------------------------------------------------------------------------
-  # 4. Single aggregating gate so branch protection can pin one required check.
+  # 5. Single aggregating gate so branch protection can pin one required check.
   # --------------------------------------------------------------------------
   gate:
     name: umbrella-ci gate
-    needs: [detect-changes, check, sec03]
+    needs: [detect-changes, check, workspace, sec03]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Decide
         run: |
           set -euo pipefail
+          # FAIL-CLOSED: if detect-changes itself failed (or was cancelled), its
+          # outputs are empty strings — the matrix/workspace jobs silently skip
+          # and the 'any != true' early exit below would go green having checked
+          # nothing. Assert it succeeded BEFORE trusting any of its outputs.
+          if [ "${{ needs.detect-changes.result }}" != "success" ]; then
+            echo "::error::detect-changes did not succeed (result: ${{ needs.detect-changes.result }}) — its outputs are untrustworthy, failing closed"
+            exit 1
+          fi
           if [ "${{ needs.sec03.result }}" != "success" ]; then
             echo "::error::SEC-03 timing-safe comparison gate failed (result: ${{ needs.sec03.result }})"
+            exit 1
+          fi
+          if [ "${{ needs.workspace.result }}" != "success" ] && [ "${{ needs.workspace.result }}" != "skipped" ]; then
+            echo "::error::workspace job failed (result: ${{ needs.workspace.result }})"
             exit 1
           fi
           if [ "${{ needs.detect-changes.outputs.any }}" != "true" ]; then
