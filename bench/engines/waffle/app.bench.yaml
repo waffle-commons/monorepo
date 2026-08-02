@@ -21,6 +21,12 @@ waffle:
   # Bench delta #1: accept the compose service hostname + loopback.
   trusted_hosts:
     - engine-a
+    # BENCH-05 runs the same image under a second compose service name, and k6
+    # reaches it as http://engine-a-mem — TrustedHostMiddleware answers 400 for
+    # any Host outside this list, so every service name that serves this config
+    # must appear here. (The engine is not broken when that happens: a 400 on an
+    # unlisted Host is the middleware doing its job.)
+    - engine-a-mem
     - localhost
   security:
     level: 10
