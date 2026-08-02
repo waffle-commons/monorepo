@@ -249,6 +249,24 @@ _The documentation must be as trustworthy as the code. Beta6 brings the **entire
 
 _The dogfooding validation project begins here. Beta6 stands up the first working `waffle-commons/ecoshield-gateway` — a high-performance reverse proxy built exclusively on public Waffle APIs — as the Phase 1 POC that beta7 grows to alpha (`[GATE-02]`) and beta8 to beta (`[GATE-03]`), soaking on RC1._
 
+> **Execution status (2026-08-02): AXE 4 CLOSED — POC delivered and gate-green.**
+> `ecoshield-gateway/` ships a `ProxyController` with hop-by-hop stripping in both directions
+> (including the fields named by the message's own `Connection` header — the half most proxies
+> miss), `Host` recomputation, append-never-trust `X-Forwarded-*`, request-smuggling rejection on
+> ambiguous framing, and 502 mapping that does not leak internal topology. **Bounded memory is
+> structural, not aspirational:** the inbound body stream is handed to the upstream request by
+> reference and `http-client` already moves both directions in 8 KiB chunks, so payload size never
+> enters worker memory — pinned by a test asserting the *same stream instance*, since a single
+> `(string)` cast would silently invert the property.
+> **The POC's real finding: the public API was sufficient.** `src/` imports nothing but PSR
+> interfaces; no private reach-through was needed, so no upstream framework bug was surfaced.
+> Gates: `composer mago` zero output, 12 tests at **100 % statement coverage**, `igor` **0 KO**
+> (3/3 stateless). Deliberately **excluded from the release-wave allow-list** — a POC is not
+> published alongside the framework — and tracked as a plain directory until its own repository
+> exists. Deferred to beta7 by design and stated in its README: upstream connection pooling,
+> retry/circuit-breaking (that is `resilience-net` `NET-01`), response caching, WebSocket upgrade
+> passthrough, multi-upstream load balancing.
+
 ### `[GATE-01]` `ecoshield-gateway` Reverse-Proxy POC ($8\,\text{KiB}$ streaming buffers)
 
 - **Specification:**
@@ -299,6 +317,6 @@ _Engine **B** isolates the combined framework + runtime delta versus the classic
 - **AUDIT:** ✅ **closed 2026-07-27.** Two of three independent engine passes complete across all 21 decoupled components (Claude Code, Google AI Studio); Antigravity2 formally accepted as a documented residual, not silently dropped (`[AUDIT-03]`); findings consolidated and severity-reconciled in `project_system/Audits/Beta6/consolidated.md`; zero un-triaged findings — the one cross-engine disagreement (`[AUDIT-04]`, the `RouteCompileCommand` deserialization item) is resolved with code-level evidence, not just deferred.
 - **REMEDIATION:** ✅ **closed 2026-08-02.** All 17 gate-blocking `[FIX-01]` findings fixed natively (none risk-accepted); **zero** Mago baselines/suppressions introduced; `check:all` 23/23 (mago zero output + tests, coverage ≥95% on modified components), ecosystem `wfl igor` **0 KO**; hardened further by a 30-agent adversarial review (0 blocking, all important findings fixed).
 - **DOCS:** ✅ **closed 2026-08-02.** `documentation/` strictly Diátaxis-partitioned and link-graph-clean (331 links, 0 broken); reference pages verified symbol-by-symbol against the current public API; `[DOC-02]` satisfied via the recorded renegotiation (central tree canonical + per-component README link blocks + missing repo doc packs closed) rather than duplicated per-component `docs/` trees.
-- **ECOSHIELD:** the `ecoshield-gateway` POC proxies traffic on the FrankenPHP worker runtime with $8\,\text{KiB}$ streaming buffers, built only on public APIs, `wfl igor` **0 KO**.
-- **BENCH:** the tri-engine K6 harness is reproducible; constant-load percentiles ($p_{50}$ / $p_{95}$ / $p_{99}$ / $p_{99.9}$) and the RAM factor are published; the soak proves $\Delta M = 0$ on both worker-mode engines; pool-starvation behaviour is characterized with zero connection leakage.
+- **ECOSHIELD:** ✅ **closed 2026-08-02.** The `ecoshield-gateway` POC proxies over the FrankenPHP worker with 8 KiB streaming buffers in both directions (inherited from `http-client`, body stream passed by reference so payload size never enters worker memory), built only on public APIs — `src/` imports nothing but PSR interfaces, so no private reach-through and no upstream framework bug surfaced. `composer mago` zero output, 12 tests / 100 % coverage, `wfl igor` **0 KO**. Excluded from the release wave (POC, not published).
+- **BENCH:** ✅ **closed 2026-08-02.** The tri-engine harness is reproducible (`bench/`, one command per run); constant-load percentiles are published per rate step (an aggregate over a ladder containing saturated steps is meaningless); the soak proves $\Delta M \approx 0$ within measurement resolution on both worker engines; pool starvation characterised at 8× oversubscription — 868 req/s, p99.9 98 ms, zero rejected requests, zero leaked connections. **The RAM factor is deliberately NOT published as "$5\text{–}10\times$":** BENCH-02's pinning could not test that claim, and the corrected experiment (`[BENCH-05]`) shows it is false below ~12 concurrent requests, crosses over at 12–16, and reaches 2.37× at 128. The defensible published claim is the growth *slope* — memory grows **10.5× slower per concurrent request** than PHP-FPM — plus 7.8× throughput at 8.7× lower p50 against php-fpm on its most favourable pool. Full record: `bench/BENCH-GATE-RESULT.md`.
 - **All items:** contracts-first sequencing on any interface change; `composer mago && composer tests` green, $\geq 95\%$ coverage, zero Mago baselines, `wfl igor` **0 KO**; the beta6 tag follows the release-wave mechanics (umbrella tag pushed → dry-run on the pushed tag → LIVE wave).
