@@ -1,6 +1,6 @@
 # Reference — `CLAUDE.md` conventions
 
-> **Release:** `0.1.0-beta5`.
+> **Release:** `0.1.0-beta6`.
 > **Scope:** `<umbrella>/CLAUDE.md`.
 > **Purpose:** the thin CLI router at the umbrella root — it ships the canonical Dockerized commands and points to `AGENTS.md` (the binding standards) and the `.opencode/skills/` library. Written for AI assistants, binding on humans too.
 

@@ -1,6 +1,6 @@
 # Reference — `release-wave.yml`
 
-> **Release:** `0.1.0-beta5`.
+> **Release:** `0.1.0-beta6`.
 > **Scope:** `.github/workflows/release-wave.yml` — the umbrella's release fan-out workflow.
 
 ## Purpose
