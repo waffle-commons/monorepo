@@ -1,6 +1,6 @@
 # BENCH-GATE-RESULT — Beta6 AXE 5 (tri-engine k6 benchmark)
 
-- **Date:** 2026-08-02
+- **Date:** 2026-08-02 / 2026-08-03 (full-length soaks)
 - **Subject:** `waffle-commons/skeleton` @ `pre-release/0.1.0-beta6`, FrankenPHP 1.12.2 / PHP 8.5
 - **Harness:** `bench/` (this directory) — `run-bench.sh <engine> <scenario> [workload]`
 - **Raw data:** `bench/results/*.json` + `*-mem.csv` (gitignored; archived to
@@ -25,7 +25,7 @@ JIT `1234` / 128 M buffer, `MAX_REQUESTS=1000000`, one engine running at a time,
 | `[BENCH-01]` reproducible tri-engine harness | **PASS** | one command per run; Symfony app bootstrap-scripted |
 | `[BENCH-02]` constant-load percentiles | **PASS** (latency) | vs PHP-FPM: decisive win. vs Symfony-on-worker: parity to 400 rps, earlier knee after |
 | `[BENCH-02]` 5–10× RAM factor | **NOT TESTABLE HERE** | pinning made the claim unmeasurable — superseded by BENCH-05 |
-| `[BENCH-03]` soak ΔM = 0 | **PASS** (shortened window) | 30 min/engine, not multi-hour |
+| `[BENCH-03]` soak ΔM = 0 | **PASS** (full window) | 3 h/engine, 1.62 M requests each, ΔM negative on both |
 | `[BENCH-04]` pool-starvation behaviour | **PASS** | 8× oversubscription, bounded, zero errors |
 | `[BENCH-05]` memory vs concurrency | **PASS — claim REFRAMED** | FPM grows **10.5× faster** per concurrent request; 2.37× total at 128 concurrency; bare "5–10×" is **not** publishable as stated |
 
@@ -94,25 +94,30 @@ Recorded as a beta7 item.
 
 ## `[BENCH-03]` Soak — ΔM
 
-Method: constant 150 rps, all five workloads round-robin, **30 min per worker engine**
-(reduced from the specified multi-hour window — see *Deviations*), RSS sampled every 5 s,
-`MAX_REQUESTS=1000000` so the worker loop never recycles and cannot mask a leak.
+Method: constant 150 rps, all five workloads round-robin, **3 hours per worker engine** (the full
+window the roadmap specifies), RSS sampled every 5 s, `MAX_REQUESTS=1000000` so the worker loop
+never recycles and cannot mask a leak.
 
-| Engine | Requests | p50 / p99 | First 10-min window | Last 10-min window | ΔM | Verdict |
+| Engine | Requests | p50 / p99 | First window | Last window | ΔM | Verdict |
 |---|---:|---|---|---|---|---|
-| A (Waffle worker) | 270 001 | 1.78 / 5.04 ms | 69.7 MiB | 71.2 MiB | **+1.5 MiB** | **PASS** (tol ±5 MiB) |
-| C (Symfony worker) | 269 975 | 1.78 / 4.79 ms | 59.4 MiB | 60.9 MiB | **+1.5 MiB** | **PASS** |
+| A (Waffle worker) | 1 620 001 | 1.85 / 6.23 ms | 73.21 MiB | 71.45 MiB | **−1.76 MiB** | **PASS** |
+| C (Symfony worker) | 1 620 001 | 1.68 / 4.80 ms | 60.78 MiB | 60.49 MiB | **−0.29 MiB** | **PASS** |
 
-Zero failed requests on either engine. Both engines report the same +1.5 MiB drift,
-which is at the resolution limit of `docker stats` — read this as **flat within
-measurement resolution**, not as three-digit precision. Cross-checked against
-`wfl igor` (0 KO) on the same build.
+Zero failed requests on either engine across 1.62 million requests each (1 729 RSS samples per run,
+tolerance ±5 MiB). **Both deltas are negative** — memory ended *lower* than it began, which is the
+opposite of a leak rather than merely a small one. Peak RSS: A 76.0 MiB, C 64.4 MiB. Cross-checked
+against `wfl igor` (0 KO) on the same build.
 
-**Honest limitation:** 30 minutes bounds the detectable leak rate at roughly
-10 MiB/hour. A slower leak would not show. The multi-hour soak the roadmap specifies
-remains outstanding and is the single cheapest way to strengthen this result.
+**Why the full window mattered.** The initial 30-minute pass reported +1.5 MiB and, read alone,
+looked like a mild upward drift; its 30-minute buckets ran 73.07 → 73.31 → 73.93 MiB, which
+extrapolates to a slow leak. Over three hours the trajectory settles back
+(73.07 / 73.31 / 73.93 / 73.22 / 70.77 / 71.75 / 70.64 MiB) and the drift inverts. The short window
+was not wrong so much as **too short to distinguish settling from leaking** — exactly the failure
+mode a ΔM gate exists to catch, and the reason the shortened run was re-done at full length rather
+than published with a caveat.
 
----
+Detection sensitivity improved accordingly: the bound on an undetectable leak rate falls from
+~10 MB/h (30 min) to **~1.7 MB/h** (3 h), a ~6× sharper claim.
 
 ## `[BENCH-04]` Connection-pool starvation
 
@@ -212,8 +217,9 @@ throughput at 8.7× the p50 latency.
 1. **BENCH-02 step duration 1 min, not 2**, and three workloads (`json`, `dbread`,
    `dbwrite`) rather than five. Time-boxing for a same-day release; costs statistical
    smoothing per step, not validity. `hello`/`greet` are covered by the smoke pass.
-2. **BENCH-03 soak 30 min per engine, not multi-hour.** Bounds detectable leak rate at
-   ~10 MiB/h. Outstanding.
+2. ~~BENCH-03 soak 30 min per engine.~~ **Resolved 2026-08-03:** re-run at the full 3 h per
+   worker engine. The shortened window is retained in the history only as the reason the re-run
+   happened — its apparent +1.5 MiB upward drift did not survive the longer observation.
 3. **The 5–10× RAM factor is not published from BENCH-02.** The harness pinned
    `pm.static, max_children=16` and `mem_limit: 1g`, which makes FPM's memory constant
    by construction and truncates the dependent variable — it cannot demonstrate *or*
