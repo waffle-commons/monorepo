@@ -23,6 +23,15 @@ CREATE TABLE IF NOT EXISTS users (
 --
 -- Emails are unique per row ('user<n>@bench.waffle.local') so the write workload
 -- (POST /write/demo, server-generated values) can never collide with the seed.
+-- A genuine RESET, not an append. This file is re-run by run-bench.sh between
+-- runs, and `INSERT ... ON CONFLICT DO NOTHING` alone would leave any rows a
+-- previous run created in place — so "every run starts from the same 10k rows"
+-- would be false the moment a workload wrote anything. TRUNCATE makes the claim
+-- true and keeps the dataset byte-identical across engines.
+-- (Safe on first boot too: docker-entrypoint-initdb.d runs this against the
+-- table created immediately above, which is empty.)
+TRUNCATE TABLE users;
+
 INSERT INTO users (id, email, password_hash, created_at)
 SELECT
     substr(t.h, 1, 8) || '-' || substr(t.h, 9, 4) || '-' || substr(t.h, 13, 4)
@@ -34,7 +43,7 @@ FROM (
     SELECT gs.n AS n, md5('bench-user-' || gs.n) AS h
     FROM generate_series(1, 10000) AS gs(n)
 ) AS t
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT (id) DO NOTHING;  -- belt-and-braces after the TRUNCATE above
 
 -- Fast sanity probe used by scripts/run-bench.sh after (re-)seeding.
 -- Expected: 10000.

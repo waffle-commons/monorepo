@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # bench/scripts/run-bench.sh — one measured bench run, end to end (BENCH-01).
 #
-#   usage: run-bench.sh <engine-a|engine-b|engine-c> <smoke|constant|soak|starve> [workload]
+#   usage: run-bench.sh <engine-a|engine-b|engine-c|engine-a-mem|engine-b-dyn> <smoke|constant|soak|starve|memscale> [workload]
 #
 #   engine    engine-a = waffle skeleton (FrankenPHP worker)
 #             engine-b = Symfony (php-fpm + nginx, pm.static)
@@ -96,7 +96,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 seed_db() {
-  log "(re)seeding bench database from sql/init.sql (drop/create + 10000 rows)"
+  log "(re)seeding bench database from sql/init.sql (TRUNCATE + 10000 rows)"
   "${COMPOSE[@]}" exec -T bench-postgres \
     psql -q -U waffle -d waffle -v ON_ERROR_STOP=1 < "$INIT_SQL"
 }

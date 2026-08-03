@@ -83,34 +83,43 @@ final class BenchController extends AbstractController
     }
 
     /**
-     * POST /write/demo — exactly one DBAL INSERT, all values server-generated
-     * (empty request body; created_at comes from the column default).
+     * POST /write/demo — the TRANSACTIONAL ROUND-TRIP workload.
+     *
+     * WORKLOAD PARITY (read before changing this method).
+     * ---------------------------------------------------
+     * This must perform the SAME work as Engine A's counterpart, and Engine A
+     * (skeleton's WriteDemoController) deliberately does NOT write: it issues
+     * `SELECT 1` on a pooled connection that the framework's
+     * TransactionIsolationMiddleware has already wrapped in a transaction,
+     * because the endpoint is public and CSRF-exempt and must not commit
+     * durable rows on every anonymous call.
+     *
+     * An earlier revision of this stub issued a real INSERT in autocommit. That
+     * made "dbwrite" two different workloads — INSERT-without-transaction here
+     * versus BEGIN + SELECT 1 + COMMIT there — so the two engines were not
+     * comparable and the resulting numbers were meaningless in both directions.
+     * Mirroring Engine A is the only way to keep the comparison honest without
+     * shipping a public durable-write endpoint in the reference template.
+     *
+     * What this therefore measures on every engine: the request pipeline, an
+     * explicit transaction boundary, and one trivial statement — NOT the cost
+     * of a durable write.
      */
     #[Route('/write/demo', name: 'bench_write', methods: ['POST'])]
     public function write(Connection $connection): JsonResponse
     {
-        $id = $this->uuidV4();
-        $email = bin2hex(random_bytes(8)) . '@bench.local';
-        // Hash-SHAPED constant-cost value: password hashing (bcrypt/argon) is
-        // deliberately NOT part of the workload on any engine — the write
-        // demo measures the request pipeline + one INSERT, not KDF cost.
-        $passwordHash = 'bench$' . bin2hex(random_bytes(16));
+        $connection->beginTransaction();
 
-        $connection->executeStatement(
-            'INSERT INTO users (id, email, password_hash) VALUES (?, ?, ?)',
-            [$id, $email, $passwordHash],
-        );
+        try {
+            $applied = $connection->fetchOne('SELECT 1') !== false;
+            $inTransaction = $connection->isTransactionActive();
+            $connection->commit();
+        } catch (\Throwable $e) {
+            $connection->rollBack();
 
-        return new JsonResponse(['id' => $id, 'email' => $email], 201);
-    }
+            throw $e;
+        }
 
-    /** RFC 4122 v4 UUID from random_bytes — no extra dependency. */
-    private function uuidV4(): string
-    {
-        $bytes = random_bytes(16);
-        $bytes[6] = chr((ord($bytes[6]) & 0x0f) | 0x40);
-        $bytes[8] = chr((ord($bytes[8]) & 0x3f) | 0x80);
-
-        return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($bytes), 4));
+        return new JsonResponse(['written' => $applied, 'in_transaction' => $inTransaction]);
     }
 }

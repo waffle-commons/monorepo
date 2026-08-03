@@ -65,9 +65,12 @@ best under the same 1 G", not a strawman.
 `users` schema (= `skeleton/migrations/Version2026053101_CreateUsersTable.sql`):
 `id VARCHAR(36) PK`, `email UNIQUE`, `password_hash`, `created_at`.
 
-Note (Engine A): Waffle's CSRF protection is stateless-HMAC and fail-closed on
-unsafe methods — the k6 scenarios must perform the anon-session + token handshake
-before POSTing (`k6/lib/`), or POST workloads measure 403s.
+Note (Engine A): Waffle's CSRF protection is fail-closed on unsafe methods, but
+it only guards actions carrying `#[RequiresCsrfToken]`. None of the five bench
+routes does, so the POST workloads need no token handshake and none is
+implemented — verify with `rg RequiresCsrfToken ../skeleton/src` before adding
+one. If a future workload targets a CSRF-guarded action, the handshake becomes
+mandatory or that workload silently measures 403s.
 
 ## Deterministic seed & the id-derivation scheme
 
@@ -93,8 +96,10 @@ function userId(n) {
 }
 ```
 
-Re-seeding is automatic on a fresh volume: `run-bench.sh` tears down with `-v`
-between runs, so every run starts from the exact same 10k rows.
+Re-seeding is automatic: `run-bench.sh` re-runs `sql/init.sql` after every
+db-touching scenario, and that file `TRUNCATE`s before inserting, so every run
+starts from the exact same 10 000 rows. (It does **not** drop the volume — the
+container and its page cache are deliberately kept warm between engines.)
 
 ## Running the benches
 
@@ -113,11 +118,22 @@ scripts/run-bench.sh engine-a smoke
 scripts/run-bench.sh engine-b smoke
 scripts/run-bench.sh engine-c smoke
 
-# BENCH-02 — constant-arrival-rate ladder 50/100/200/400/800 rps × 2 min per step
-# (produces the published latency table + RAM factor, target 5–10x vs Engine B):
-scripts/run-bench.sh engine-a constant-load
-scripts/run-bench.sh engine-b constant-load
-scripts/run-bench.sh engine-c constant-load
+# BENCH-02 — constant-arrival-rate ladder 50/100/200/400/800 rps × 2 min per step.
+# Produces the published PER-RATE latency table. It does NOT produce a RAM factor:
+# this rig pins FPM to a static pool and caps every engine's memory, so it cannot
+# measure how memory scales with concurrency — that is BENCH-05 (memscale) below.
+# Add a workload as the third argument: json | hello | greet | dbread | dbwrite.
+scripts/run-bench.sh engine-a constant dbread
+scripts/run-bench.sh engine-b constant dbread
+scripts/run-bench.sh engine-c constant dbread
+
+# BENCH-05 — memory as a function of CONCURRENCY (the experiment BENCH-02 cannot
+# run). Pins only CPU, lets memory grow to 6g, and switches FPM to a dynamic pool
+# so children spawn with load. Closed model: constant-vus steps, not arrival rate,
+# because what decides FPM's process count is concurrent in-flight requests.
+# Never mix these numbers with BENCH-02's — each pair answers exactly one question.
+VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-a-mem memscale
+VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-b-dyn memscale
 
 # BENCH-03 — soak ~150 rps, A then C (2–3 h each, sequential; B shorter, footprint
 # only). ΔM = |mean RSS(last 10 min) − mean RSS(first 10 min after warmup)| ≤ ~1% / 5 MB:
@@ -126,8 +142,8 @@ scripts/run-bench.sh engine-c soak
 
 # BENCH-04 — pool starvation, Engine A only (VUs 8→16→32→64 against the DB routes,
 # pool=8; optional sweep DB_POOL_SIZE=16):
-scripts/run-bench.sh engine-a pool-starvation
-DB_POOL_SIZE=16 scripts/run-bench.sh engine-a pool-starvation
+scripts/run-bench.sh engine-a starve
+DB_POOL_SIZE=16 scripts/run-bench.sh engine-a starve
 ```
 
 The runner: `up` ONE engine + `bench-postgres` → warmup → k6 (JSON to `results/`) →
