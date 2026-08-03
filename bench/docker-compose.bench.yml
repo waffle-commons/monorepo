@@ -90,14 +90,17 @@ services:
       APP_ENV: "prod"
       APP_DEBUG: "false"
       # -----------------------------------------------------------------------
-      # NON-PRODUCTION BENCH FIXTURES — fixed 64-char secrets, committed on
-      # purpose so the rig is reproducible from a clean clone. NEVER reuse
-      # outside this bench rig. Skeleton prod boot is fail-closed: it ABORTS
-      # without WAFFLE_CSRF_SECRET / WAFFLE_AUTH_SECRET >= 32 bytes.
+      # NON-PRODUCTION BENCH FIXTURES — committed on purpose so the rig is
+      # reproducible from a clean clone. The values are deliberately
+      # self-describing rather than random hex: a 64-char hex string in a public
+      # repo reads like a leaked secret, trips secret scanners, and is the kind
+      # of thing that gets copy-pasted into a real deployment. These say what
+      # they are. They still satisfy the fail-closed >= 32-byte floor that
+      # aborts skeleton's prod boot without WAFFLE_CSRF_SECRET / WAFFLE_AUTH_SECRET.
       # -----------------------------------------------------------------------
-      APP_SECRET: "9f2d1c7a4e8b6035d1a7c3e9f0b8d246a5c1e7f3928b4d60c7a1f5e3b9d80426"
-      WAFFLE_CSRF_SECRET: "3c8e5a1f9b7d2064e8c4a6f1d3b90527c6e2a8f4917b5d30e9c7a5f1b3d86042"
-      WAFFLE_AUTH_SECRET: "7a4f1e8c3b9d5260f7e3a1c5d9b84062e5c7f3a19b6d4028c3e7f5a1d9b06284"
+      APP_SECRET: "bench-fixture-app-secret-do-not-reuse-anywhere"
+      WAFFLE_CSRF_SECRET: "bench-fixture-csrf-secret-do-not-reuse-anywhere"
+      WAFFLE_AUTH_SECRET: "bench-fixture-auth-secret-do-not-reuse-anywhere"
       DB_HOST: "bench-postgres"
       DB_PORT: "5432"
       DB_NAME: "waffle"
@@ -134,7 +137,7 @@ services:
     environment:
       APP_ENV: "prod"
       APP_DEBUG: "0"
-      APP_SECRET: "9f2d1c7a4e8b6035d1a7c3e9f0b8d246a5c1e7f3928b4d60c7a1f5e3b9d80426"
+      APP_SECRET: "bench-fixture-app-secret-do-not-reuse-anywhere"
       # Canonical DB contract: the Symfony app reads DB_* (config/packages/
       # doctrine.yaml stub) — same env quintet as Engine A.
       DB_HOST: "bench-postgres"
@@ -215,7 +218,7 @@ services:
       APP_RUNTIME: "Runtime\\FrankenPhpSymfony\\Runtime"
       APP_ENV: "prod"
       APP_DEBUG: "0"
-      APP_SECRET: "9f2d1c7a4e8b6035d1a7c3e9f0b8d246a5c1e7f3928b4d60c7a1f5e3b9d80426"
+      APP_SECRET: "bench-fixture-app-secret-do-not-reuse-anywhere"
       # Canonical DB contract: DB_* quintet (see engine-b note).
       DB_HOST: "bench-postgres"
       DB_PORT: "5432"
