@@ -30,7 +30,8 @@ Identical on every engine (enforced in `docker-compose.bench.yml` + per-engine i
 - Engines run **sequentially** — `run-bench.sh` starts exactly ONE engine plus
   `bench-postgres`, never two engines at once (they would contend for the pinned CPUs)
 - Same PostgreSQL 17 service, same `users` schema, same deterministic 10k-row seed,
-  DB re-seeded between runs (`down -v` drops the volume → `init.sql` replays)
+  DB re-seeded between runs (`init.sql` TRUNCATEs and re-inserts; the volume is
+  deliberately kept so the container and its page cache stay warm across engines)
 - Warmup phase before every measured window
 
 **FPM `pm.static = 16` rationale:** worker engines hold ONE booted app per worker
@@ -60,7 +61,7 @@ best under the same 1 G", not a strawman.
 | `GET /hello/{name}` | JSON with routed param |
 | `POST /greet` | JSON body `{"name": ...}` → validated DTO → JSON |
 | `GET /read/demo?id=<uuid>` | SELECT by primary key from `users` |
-| `POST /write/demo` | INSERT into `users` (server-generated values) |
+| `POST /write/demo` | transaction boundary + one trivial statement (`BEGIN` / `SELECT 1` / `COMMIT`) — **not** a durable write; the endpoint is public and CSRF-exempt, so neither engine commits a row |
 
 `users` schema (= `skeleton/migrations/Version2026053101_CreateUsersTable.sql`):
 `id VARCHAR(36) PK`, `email UNIQUE`, `password_hash`, `created_at`.
@@ -148,7 +149,7 @@ DB_POOL_SIZE=16 scripts/run-bench.sh engine-a starve
 
 The runner: `up` ONE engine + `bench-postgres` → warmup → k6 (JSON to `results/`) →
 `sample-memory.sh` (docker stats → RSS CSV every 5 s, engine-neutral: PHP memory ≠ RSS) →
-teardown (`down -v`) → archive. `report.sh` folds k6 JSON + CSV into the markdown
+teardown → re-seed → archive. `report.sh` folds k6 JSON + CSV into the markdown
 table for `BENCH-GATE-RESULT.md`.
 
 Pool gauges / worker memory for BENCH-04 come from `/waffle-metrics`, which is
@@ -171,7 +172,7 @@ published port.
 - **Soak window** — target is 2–3 h per worker engine, sequential. If wall-clock
   forces the 90 min/engine fallback, the shortened window is recorded explicitly
   in `BENCH-GATE-RESULT.md`; the verdict states what was measured, not vibes.
-- **Secrets in the compose file are bench fixtures** — fixed 64-char values
+- **Secrets in the compose file are bench fixtures** — self-describing, deliberately non-secret values
   committed on purpose for clean-clone reproducibility; never production material.
 - **Engines are never co-resident** — every figure comes from a run where the
   measured engine and the DB were the only loaded services on the rig.

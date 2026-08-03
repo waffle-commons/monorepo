@@ -23,7 +23,7 @@ JIT `1234` / 128 M buffer, `MAX_REQUESTS=1000000`, one engine running at a time,
 | Item | Verdict | Note |
 |---|---|---|
 | `[BENCH-01]` reproducible tri-engine harness | **PASS** | one command per run; Symfony app bootstrap-scripted |
-| `[BENCH-02]` constant-load percentiles | **PASS** (latency) | vs PHP-FPM: decisive win. vs Symfony-on-worker: parity to 400 rps, earlier knee after |
+| `[BENCH-02]` constant-load percentiles | **PASS** (latency) | vs PHP-FPM: decisive win. vs Symfony-on-worker: parity to 200 rps on dbread / 400 on dbtxn, earlier knee after |
 | `[BENCH-02]` 5–10× RAM factor | **NOT TESTABLE HERE** | pinning made the claim unmeasurable — superseded by BENCH-05 |
 | `[BENCH-03]` soak ΔM = 0 | **PASS** (full window) | 3 h/engine, 1.62 M requests each, ΔM negative on both |
 | `[BENCH-04]` pool-starvation behaviour | **PASS** | 8× oversubscription, bounded, zero errors |
@@ -85,10 +85,12 @@ Engine C (the same Symfony app on the worker runtime) is the fairer framework
 comparison and holds throughout, which is the honest reading: most of the
 advantage over the classic stack is the **runtime**, not the framework.
 
-### A vs C — parity to 400 rps, then an earlier knee
+### A vs C — parity up to the knee, which arrives earlier for Waffle
 
-Both worker engines are equivalent up to 400 rps. Above that, C sustains 800 rps on DB
-workloads where A queues. Investigated rather than published as-is:
+The knee is workload-dependent and the corrected data places it lower than the first
+draft of this report claimed: on `json` Waffle holds throughout (1.0 ms at 800 rps);
+on `dbtxn` it holds to 400 rps (6.1 ms); on `dbread` it holds to 200 rps (3.4 ms) and
+is already queueing at 400 (883 ms) where C is still at 1.6 ms. Investigated rather than published as-is:
 
 - **Not the connection pool.** Sweeping `DB_POOL_SIZE` 8 → 32 → 64 barely moved the
   median (75 / 85 / 74 ms).
