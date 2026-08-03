@@ -25,7 +25,7 @@ Also bump the **version field** in `composer.json` if your team maintains it exp
 ```json
 {
   "name": "waffle-commons/<component>",
-  "version": "0.1.0-beta5",
+  "version": "0.1.0-beta6",
   ...
 }
 ```
@@ -34,15 +34,15 @@ Commit the bump:
 
 ```bash
 git add composer.json
-git commit -m "chore: bump version to 0.1.0-beta5"
+git commit -m "chore: bump version to 0.1.0-beta6"
 git push origin main
 ```
 
 ## Tag the release
 
 ```bash
-git tag -a 0.1.0-beta5 -m "0.1.0-beta5: <short description>"
-git push origin 0.1.0-beta5
+git tag -a 0.1.0-beta6 -m "0.1.0-beta6: <short description>"
+git push origin 0.1.0-beta6
 ```
 
 Tags MUST be **signed** if the component's ruleset requires it (`component-ruleset.json` includes `required_signatures` — see [reference](../reference/component-ruleset.md)). Configure `git config --global commit.gpgsign true` and `git config --global tag.gpgsign true` once and forget about it.
@@ -55,7 +55,7 @@ Verify:
 
 ```bash
 curl -s https://repo.packagist.org/p2/waffle-commons/<component>.json | jq '.packages."waffle-commons/<component>"[0].version'
-# "0.1.0-beta5"
+# "0.1.0-beta6"
 ```
 
 If the new tag does not appear within ~30 seconds, the webhook may be stuck — manually re-trigger via Packagist's web UI (Settings → Update).
@@ -66,15 +66,15 @@ The new version is now available, but no consumer is using it yet. For each down
 
 ```bash
 cd <consumer>
-git switch -c bump-<component>-to-0.1.0-beta5
+git switch -c bump-<component>-to-0.1.0-beta6
 # Update composer.json constraint if pinned, e.g. "self.version" components
 # need their own version bump first.
 docker exec -it -w /waffle-commons/<consumer> waffle-dev composer update waffle-commons/<component>
 docker exec -it -w /waffle-commons/<consumer> waffle-dev composer mago
 docker exec -it -w /waffle-commons/<consumer> waffle-dev composer tests
 git add composer.json composer.lock
-git commit -m "chore: bump waffle-commons/<component> to 0.1.0-beta5"
-git push origin bump-<component>-to-0.1.0-beta5
+git commit -m "chore: bump waffle-commons/<component> to 0.1.0-beta6"
+git push origin bump-<component>-to-0.1.0-beta6
 # Open PR, merge, release the consumer too.
 ```
 

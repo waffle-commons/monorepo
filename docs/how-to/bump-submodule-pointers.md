@@ -35,7 +35,7 @@ After a release pass — including the three packages Beta5 added (`async`, `tel
 git submodule foreach 'git fetch origin && git switch main && git pull --ff-only'
 git diff --submodule
 git add .
-git commit -m "Bump submodule pointers to 0.1.0-beta5"
+git commit -m "Bump submodule pointers to 0.1.0-beta6"
 ```
 
 Verify before pushing:
@@ -73,11 +73,11 @@ git commit --amend --no-edit
 When two components must move together (e.g. `contracts` adds a method that `security` consumes), bump both pointers in **one umbrella commit**:
 
 ```bash
-# Both contracts and security have been released to 0.1.0-beta5.
+# Both contracts and security have been released to 0.1.0-beta6.
 cd contracts && git pull --ff-only && cd ..
 cd security  && git pull --ff-only && cd ..
 git add contracts security
-git commit -m "Bump contracts + security to 0.1.0-beta5"
+git commit -m "Bump contracts + security to 0.1.0-beta6"
 ```
 
 Anyone cloning the umbrella at this commit sees the coherent pair.
