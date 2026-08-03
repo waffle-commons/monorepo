@@ -55,7 +55,15 @@ final class BenchController extends AbstractController
         ]);
     }
 
-    /** GET /read/demo?id=<uuid> — exactly one DBAL SELECT by primary key. */
+    /**
+     * GET /read/demo?id=<uuid> — exactly one DBAL SELECT by primary key.
+     *
+     * The projection must stay byte-identical to Engine A's (skeleton's
+     * ReadDemoController): the two engines have to fetch the same columns or
+     * `dbread` silently becomes two different workloads. `email` is deliberately
+     * absent — the endpoint is unauthenticated, and a reference implementation
+     * should not model returning PII from a public route.
+     */
     #[Route('/read/demo', name: 'bench_read', methods: ['GET'])]
     public function read(Request $request, Connection $connection): JsonResponse
     {
@@ -66,7 +74,7 @@ final class BenchController extends AbstractController
         }
 
         $row = $connection->fetchAssociative(
-            'SELECT id, email, created_at FROM users WHERE id = ?',
+            'SELECT id, created_at FROM users WHERE id = ?',
             [$id],
         );
 

@@ -39,8 +39,12 @@ RATES.forEach((rate, i) => {
     timeUnit: '1s',
     duration: STEP_DURATION,
     startTime: `${Math.round(i * STEP_SECONDS)}s`,
-    preAllocatedVUs: Math.max(10, rate), // sized to rate: 1 VU per rps handles up to 1 s of latency
-    maxVUs: rate * 2,
+    // Sized to rate: 1 VU per rps absorbs up to ~1 s of latency per request.
+    // maxVUs must never fall below preAllocatedVUs — k6 rejects that outright,
+    // aborting the whole ladder — which the previous `rate * 2` did for any
+    // rate below 5, since preAllocatedVUs has a floor of 10.
+    preAllocatedVUs: Math.max(10, rate),
+    maxVUs: Math.max(20, rate * 2),
     gracefulStop: '30s',
     exec: 'hit',
   };

@@ -47,21 +47,43 @@ p50 / p99 in ms:
 |---|---:|---|---|---|
 | json | 50 | 2.0 / 3.4 | 3.1 / 6.2 | 2.1 / 3.0 |
 | json | 200 | 1.5 / 4.3 | 2.3 / 50.7 | 1.5 / 3.3 |
-| json | 400 | 1.2 / 1321 | 2.2 / 5.9 | 1.1 / 3.4 |
 | json | 800 | **1.0** / 38.2 | 587.8 / 1005 | 1.3 / 84.6 |
-| dbread | 50 | 4.0 / 6.5 | 19.2 / 30.8 | 2.6 / 12.8 |
-| dbread | 200 | 2.9 / 6.6 | 4877 / 5591 | 2.0 / 4.5 |
-| dbread | 400 | 3.9 / 102.5 | 8424 / 8795 | 1.6 / 4.5 |
-| dbread | 800 | 1845 / 2509 | 13102 / 19956 | 1.6 / 18.8 |
-| dbwrite | 200 | 2.9 / 8.5 | 3348 / 3570 | 2.4 / 11.5 |
-| dbwrite | 800 | 1945 / 2453 | 13020 / 15397 | 2.6 / 46.0 |
+| dbread | 50 | 4.3 / 8.8 | 26.3 / 61.8 | 2.8 / 4.1 |
+| dbread | 200 | 3.4 / 11.8 | 3311 / 3558 | 1.9 / 4.0 |
+| dbread | 800 | 2586 / 3210 | 13214 / 15915 | 1.3 / 6.4 |
+| dbtxn | 50 | 4.8 / 16.0 | 22.1 / 956 | 3.2 / 12.6 |
+| dbtxn | 100 | 4.5 / 15.2 | 2467 / 3555 | 2.8 / 11.4 |
+| dbtxn | 800 | 2849 / 3401 | 17205 / 21707 | 6.2 / 598 |
+
+> **`dbtxn` was published as `dbwrite` in the first draft of this report, and that
+> draft was wrong.** Engine A's `/write/demo` performs `BEGIN + SELECT 1 + COMMIT`
+> — the endpoint is public and CSRF-exempt, so the reference template deliberately
+> commits nothing durable — while the Symfony stub performed a single autocommit
+> `INSERT`. The two engines were running different workloads, so the original
+> `dbwrite` row compared nothing meaningful. The stub now mirrors Engine A exactly
+> (verified identical response bodies), the ladder was re-run, and the workload is
+> named for what it actually measures: **pipeline + transaction boundary + one
+> trivial statement — not the cost of a durable write.**
+>
+> Correcting it moved the result *against* the Symfony baseline, not for it: B now
+> pays the same three round trips and collapses at 100 rps where its single INSERT
+> had previously held to 200.
+>
+> `dbread` was re-run at the same time: both engines dropped `email` from the
+> projection (a public endpoint should not model returning PII), and the two must
+> fetch identical columns or that workload drifts apart the same way.
 
 ### A vs B — the roadmap's actual claim: **decisive win**
 
-Symfony on PHP-FPM collapses on DB workloads at 100–200 rps (at 200 rps `dbread` it
-completed **5 094 of 12 000** scheduled requests), while Waffle holds single-digit
-milliseconds through 400 rps. Roughly **4–8× the DB throughput headroom**, and ~4.8×
-lower p50 at a matched low rate (dbread @ 50 rps: 4.0 ms vs 19.2 ms).
+Symfony on PHP-FPM collapses on DB workloads between 100 and 200 rps — 2 467 ms
+median on `dbtxn` at 100 rps, 3 311 ms on `dbread` at 200 — while Waffle holds
+single-digit milliseconds through 200 rps on both and through 400 on `dbtxn`.
+At a matched low rate Waffle is ~6× faster on `dbread` (4.3 ms vs 26.3 ms) and
+~4.6× on `dbtxn` (4.8 ms vs 22.1 ms).
+
+Engine C (the same Symfony app on the worker runtime) is the fairer framework
+comparison and holds throughout, which is the honest reading: most of the
+advantage over the classic stack is the **runtime**, not the framework.
 
 ### A vs C — parity to 400 rps, then an earlier knee
 
