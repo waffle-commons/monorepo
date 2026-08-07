@@ -128,6 +128,7 @@ ${C_DIM}USAGE${C_RST}
 
 ${C_DIM}LIFECYCLE${C_RST}
   init                  init submodules, boot docker, install hooks, symlink wfl into ~/.local/bin
+  build [args...]       docker compose build (extra args passed through)
   up [args...]          docker compose up -d (extra args passed through)
   down [args...]        docker compose down (extra args passed through)
   status                show active PHP profile and container state
@@ -216,6 +217,7 @@ cmd_init() {
   esac
 }
 
+cmd_build()   { _ensure_compose; (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" build "$@"); }
 cmd_up()   { _ensure_compose; (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" up -d "$@"); }
 cmd_down() { _ensure_compose; (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" down    "$@"); }
 
@@ -987,6 +989,7 @@ main() {
   case "$sub" in
     init)        cmd_init        "$@" ;;
     up)          cmd_up          "$@" ;;
+    build)       cmd_build       "$@" ;;
     down)        cmd_down        "$@" ;;
     shell)       cmd_shell       "$@" ;;
     run)         cmd_run "run" "$@" ;;
