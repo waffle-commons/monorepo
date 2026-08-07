@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: Release Train to v1.0 (Master)"
 date_created: 2026-06-07
-date_updated: 2026-07-17
+date_updated: 2026-08-05
 type: project
 status: 🏗️ wip
 tags:
@@ -73,7 +73,7 @@ Inventory audit refreshed 2026-07-17 across the 26 live submodules (the beta5 ad
 ## 📊 v1.0 SUCCESS INDICATORS (revised)
 
 1. **Stability:** $\geq 95\%$ coverage on all components; 100% on the critical path (`contracts`, `security`, `auth`, `http`); zero Mago baselines; `wfl igor` 0 KO.
-2. **Performance:** <10ms p99 "hello world" in production worker mode; RAM reduction factor $5\text{–}10\times$ vs PHP-FPM under load (EcoShield-Gateway FinOps benchmark, k6 $\geq 1000$ rps).
+2. **Performance:** <10ms p99 "hello world" in production worker mode; memory-growth slope ~10× lower per concurrent request vs PHP-FPM, with the measured total-RAM factor and crossover point published (EcoShield-Gateway FinOps benchmark, k6 $\geq 1000$ rps). *The former bare "$5\text{–}10\times$ RAM" indicator was reframed by beta6 `[BENCH-05]`: measured false below ~12 concurrent requests (0.87×), crossover at 12–16, 2.37× at 128 — the slope is the defensible claim.*
 3. **Security:** zero known critical vulnerabilities on the **final** surface (re-audited in beta8, certified in RC1).
 4. **Adoption:** **EcoShield-Gateway running the full Strangler-Fig scenario on RC1 for $\geq 4$ weeks** without critical incident (replaces the former Sentinel criterion).
 5. **Completeness:** every capability row in the gap table above closed or explicitly moved to the non-goals list.
@@ -84,4 +84,4 @@ Inventory audit refreshed 2026-07-17 across the 26 live submodules (the beta5 ad
 - **Branching:** one `pre-release/<version>` branch per component per release (all components ship together: composer constraints, README, CHANGELOG). Delete the previous release's branches once the new ones are cut.
 - **Release mechanics:** umbrella tag pushed → dispatch dry-run on the pushed tag → LIVE wave.
 - **Definition of done per component:** `composer mago && composer tests` green, $\geq 95\%$ coverage.
-- **New components planned:** `queue`, `openapi`, `serializer`, `testing` (beta7) — monorepo grows from 26 to 30 submodules; repo-creation overhead is budgeted in the beta7 window. Beta6 adds one app-level POC repo, `ecoshield-gateway` (a dogfooding application, not a contracts-perimeter library).
+- **New components planned:** `queue`, `openapi`, `serializer`, `testing` (beta7) — monorepo grows from 26 to 30 submodules; repo-creation overhead is budgeted in the beta7 window. Beta6 added the `ecoshield-gateway` app-level POC (a dogfooding application, not a contracts-perimeter library) — tracked as a plain directory until its own repository exists, and deliberately excluded from the release wave.
