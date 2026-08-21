@@ -118,7 +118,7 @@ Or fan a command out across **all** components:
 
 See [`docs/tutorials/setup-your-monorepo-workspace.md`](docs/tutorials/setup-your-monorepo-workspace.md) for the full setup walkthrough.
 
-## 🏗️ Pipeline at a glance (Beta-5)
+## 🏗️ Pipeline at a glance
 
 Every request through a Waffle application traverses this canonical PSR-15 middleware order:
 

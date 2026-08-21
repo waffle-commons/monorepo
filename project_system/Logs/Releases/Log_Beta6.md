@@ -1,7 +1,7 @@
 ---
 title: "Log Beta 6"
 date_created: '2026-08-03'
-date_updated: '2026-08-03'
+date_updated: '2026-08-22'
 type: project
 status: archived
 tags:
@@ -19,7 +19,7 @@ aliases: []
 > Goal: **stop and harden.** No new components. Independent multi-engine security audits across all
 > 21 decoupled components, zero-compromise remediation, a full Diátaxis documentation pass, and the
 > first scientific benchmark converting the runtime performance claim into published, reproducible
-> numbers ahead of API Platform Conference (Lille, September 17–18). Target: 2026-08-03.
+> numbers ahead of API Platform Conference (Lille, September 17–18). Released: 2026-08-22.
 
 ## 1. Technical Changelog (What changed)
 
@@ -103,6 +103,9 @@ the defensible claim.
 
 ## 5. Release mechanics
 
-Component branches `pre-release/0.1.0-beta6` → push → umbrella tag `0.1.0-beta6` (no `v` prefix) →
-dry-run on the pushed tag → LIVE wave. `composer update` is run across submodules before each push
-and again after publication.
+Component branches `pre-release/0.1.0-beta6` → push → **merge into each repo's default branch
+(fast-forward or merge commit, never a squash)** → re-pin the umbrella gitlinks → umbrella tag
+`0.1.0-beta6` (no `v` prefix) → dry-run on the pushed tag → LIVE wave. The merge step is mandatory:
+`release-wave.yml` refuses to tag any component whose gitlink SHA is not an ancestor of its default
+branch, and a squash-merge orphans the branch tip and fails the whole wave. `composer update` is run
+across submodules before each push and again after publication.

@@ -1,7 +1,7 @@
 ---
 title: Retrospective Beta 6
 date_created: 2026-08-03
-date_updated: 2026-08-03
+date_updated: 2026-08-22
 type: project
 status: archived
 tags:

@@ -1,9 +1,9 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 6)"
 date_created: 2026-07-17
-date_updated: 2026-08-02
+date_updated: 2026-08-22
 type: project
-status: pending
+status: shipped
 tags:
   - project
   - roadmap
@@ -14,7 +14,7 @@ aliases: []
 
 > **Status:** Pending Validation — Draft (validated post-BBL strategic pivot, July 2026)
 > 
-> **Target Release:** **August 2, 2026**
+> **Released:** **August 22, 2026**
 > 
 > **Primary Theme:** **Deep Multi-Engine Security Audits · Documentation Modernization · EcoShield-Gateway POC · Scientific Telemetry Benchmarking (K6)**.
 > 
@@ -192,6 +192,23 @@ _A finding surfaced is not a finding fixed. Every issue from the audit wave is r
   only tonight); `waffle-serverless` stale vendored `config/YamlParser` re-mirror when that demo is next
   rebuilt.
 
+> **Pre-release verification (2026-08-20/21) — one coverage hole found and closed.**
+> Re-running the gates on the final tree surfaced a defect in the *gate itself*: six components
+> (`config`, `console`, `contracts`, `error-handler`, `log`, `routing`) had **never** carried
+> `igor-php/igor-php` in `require-dev`, so `igor.sh` took its "not installed — skipped" branch and
+> silently excluded them. The published "ecosystem `wfl igor` 0 KO" therefore covered 17 of 23
+> components, not all of them — since beta4. All six are now wired (`igor.json` + `composer igor` +
+> dev dependency), the state they do hold is declared `#[WorkerSafe]` with explicit reasons
+> (`Router`'s boot-time trie and compile-once PCRE memo, `TrieNode`'s build fields, `Config::$parameters`,
+> and console's CLI-only classes), and **`igor.sh` now FAILS on any unaudited component** rather than
+> warning — with a minimal, documented exemption list containing only `component-template`. A
+> regression test (hiding a binary) confirms the hole cannot silently reopen. **One residual:**
+> `routing/src/Router.php` is reported KO for "mutation on a local reference to a shared service
+> (`$span`)" — a per-call telemetry span, ended in the same method. `http-client/src/Client.php`,
+> `security/src/Container/SecureContainer.php` and `waffle`'s `ControllerResponseConverter` use the
+> identical construct and are reported clean, so this is an igor-php heuristic inconsistency, not a
+> leak. It is **not suppressed**; it is recorded here and upstream.
+
 ### `[FIX-02]` Full Gate Re-Verification (Definition of Done)
 
 - **Specification:**
@@ -250,7 +267,12 @@ _The documentation must be as trustworthy as the code. Beta6 brings the **entire
 _The dogfooding validation project begins here. Beta6 stands up the first working `waffle-commons/ecoshield-gateway` — a high-performance reverse proxy built exclusively on public Waffle APIs — as the Phase 1 POC that beta7 grows to alpha (`[GATE-02]`) and beta8 to beta (`[GATE-03]`), soaking on RC1._
 
 > **Execution status (2026-08-02): AXE 4 CLOSED — POC delivered and gate-green.**
-> `ecoshield-gateway/` ships a `ProxyController` with hop-by-hop stripping in both directions
+> **Location note (2026-08-07):** the POC was developed inside this monorepo and has since been
+> moved to its **own repository**, outside `waffle-commons` (the path is gitignored here — see
+> `.gitignore`). It was never a submodule and was always excluded from the release wave, so this
+> move changes nothing about the beta6 tag; the `[GATE-01]` result below stands as achieved and
+> was verified against the tree at the time of closure.
+> `ecoshield-gateway` ships a `ProxyController` with hop-by-hop stripping in both directions
 > (including the fields named by the message's own `Connection` header — the half most proxies
 > miss), `Host` recomputation, append-never-trust `X-Forwarded-*`, request-smuggling rejection on
 > ambiguous framing, and 502 mapping that does not leak internal topology. **Bounded memory is
@@ -317,6 +339,6 @@ _Engine **B** isolates the combined framework + runtime delta versus the classic
 - **AUDIT:** ✅ **closed 2026-07-27.** Two of three independent engine passes complete across all 21 decoupled components (Claude Code, Google AI Studio); Antigravity2 formally accepted as a documented residual, not silently dropped (`[AUDIT-03]`); findings consolidated and severity-reconciled in `project_system/Audits/Beta6/consolidated.md`; zero un-triaged findings — the one cross-engine disagreement (`[AUDIT-04]`, the `RouteCompileCommand` deserialization item) is resolved with code-level evidence, not just deferred.
 - **REMEDIATION:** ✅ **closed 2026-08-02.** All 17 gate-blocking `[FIX-01]` findings fixed natively (none risk-accepted); **zero** Mago baselines/suppressions introduced; `check:all` 23/23 (mago zero output + tests, coverage ≥95% on modified components), ecosystem `wfl igor` **0 KO**; hardened further by a 30-agent adversarial review (0 blocking, all important findings fixed).
 - **DOCS:** ✅ **closed 2026-08-02.** `documentation/` strictly Diátaxis-partitioned and link-graph-clean (331 links, 0 broken); reference pages verified symbol-by-symbol against the current public API; `[DOC-02]` satisfied via the recorded renegotiation (central tree canonical + per-component README link blocks + missing repo doc packs closed) rather than duplicated per-component `docs/` trees.
-- **ECOSHIELD:** ✅ **closed 2026-08-02.** The `ecoshield-gateway` POC proxies over the FrankenPHP worker with 8 KiB streaming buffers in both directions (inherited from `http-client`, body stream passed by reference so payload size never enters worker memory), built only on public APIs — `src/` imports nothing but PSR interfaces, so no private reach-through and no upstream framework bug surfaced. `composer mago` zero output, 12 tests / 100 % coverage, `wfl igor` **0 KO**. Excluded from the release wave (POC, not published).
+- **ECOSHIELD:** ✅ **closed 2026-08-02** (POC since relocated to its own repository outside the monorepo — see the AXE 4 location note). The `ecoshield-gateway` POC proxies over the FrankenPHP worker with 8 KiB streaming buffers in both directions (inherited from `http-client`, body stream passed by reference so payload size never enters worker memory), built only on public APIs — `src/` imports nothing but PSR interfaces, so no private reach-through and no upstream framework bug surfaced. `composer mago` zero output, 12 tests / 100 % coverage, `wfl igor` **0 KO**. Excluded from the release wave (POC, not published).
 - **BENCH:** ✅ **closed 2026-08-02.** The tri-engine harness is reproducible (`bench/`, one command per run); constant-load percentiles are published per rate step (an aggregate over a ladder containing saturated steps is meaningless); the soak proves $\Delta M = 0$ on both worker engines at the FULL specified length — 3 h each, 1.62 M requests, ΔM **−1.76 MiB** (A) and **−0.29 MiB** (C), i.e. negative drift, with the undetectable-leak bound sharpened from ~10 MB/h to ~1.7 MB/h; pool starvation characterised at 8× oversubscription — 868 req/s, p99.9 98 ms, zero rejected requests, zero leaked connections. **The RAM factor is deliberately NOT published as "$5\text{–}10\times$":** BENCH-02's pinning could not test that claim, and the corrected experiment (`[BENCH-05]`) shows it is false below ~12 concurrent requests, crosses over at 12–16, and reaches 2.37× at 128. The defensible published claim is the growth *slope* — memory grows **10.5× slower per concurrent request** than PHP-FPM — plus 7.8× throughput at 8.7× lower p50 against php-fpm on its most favourable pool. Full record: `bench/BENCH-GATE-RESULT.md`.
 - **All items:** contracts-first sequencing on any interface change; `composer mago && composer tests` green, $\geq 95\%$ coverage, zero Mago baselines, `wfl igor` **0 KO**; the beta6 tag follows the release-wave mechanics (umbrella tag pushed → dry-run on the pushed tag → LIVE wave).
