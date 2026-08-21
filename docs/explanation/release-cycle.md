@@ -61,8 +61,15 @@ A coordinated wave (e.g. `0.1.0-beta4` → `0.1.0-beta5`):
    5. The framework facade (`waffle`).
    6. App-side (`skeleton`).
    7. Integration (`workspace`).
-3. **For each component**: bump `composer.json` version, tag a signed annotated tag, push. Packagist auto-detects via the configured webhook. See [release-a-component](../how-to/release-a-component.md).
-4. **Bump the umbrella pointers.** After every component has tagged, in the umbrella:
+3. **For each component**: push its `pre-release/<version>` branch, then **merge it into that repo's
+   default branch** and push. No `composer.json` carries a `version` key — Packagist derives the
+   version from the tag, and siblings are pinned with `self.version` — so there is nothing to bump
+   by hand. See [release-a-component](../how-to/release-a-component.md).
+
+   > ⚠️ **Fast-forward or merge commit — never a squash.** `release-wave.yml` refuses to tag any
+   > component whose umbrella gitlink SHA is not an ancestor of its default branch. A squash-merge
+   > creates a new commit and orphans the branch tip, which fails the gate for *every* component.
+4. **Bump the umbrella pointers.** After every component is merged, in the umbrella:
    ```bash
    git submodule foreach 'git fetch origin && git switch main && git pull --ff-only'
    git add .
@@ -75,7 +82,11 @@ A coordinated wave (e.g. `0.1.0-beta4` → `0.1.0-beta5`):
    git tag -a 0.1.0-beta5 -m "Beta 5 wave"
    git push origin 0.1.0-beta5
    ```
-6. **Publish release notes** in the umbrella's GitHub Releases page summarising what changed across every component.
+   Pushing this tag **is** the trigger: the [release-wave](../reference/workflows/release-wave.md)
+   workflow fans the tag out to every allow-listed component and opens a GitHub Release on each.
+   Component tags are created *by the workflow* — do not push them yourself.
+6. **Verify** Packagist resolves each package at the new version and the wave's summary reports no
+   failures.
 
 ## Beta vs. stable cadence
 

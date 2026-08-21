@@ -26,7 +26,15 @@ single component out of band.
    `pre-release/*` branches once the new ones are cut.
 2. **Stamp current version only:** `0.1.0-betaN` — **NO `v` prefix** (the tag gate rejects a leading
    `v`). Never bulk-bump historical changelogs (see `[[roadmap-steward]]`).
-3. **Push component tags** (bare SemVer) so Packagist syncs each package.
+3. **Merge each component into its default branch — MANDATORY.** `release-wave.yml` fails closed
+   unless every gitlink SHA is an ancestor of that repo's default branch (`git merge-base
+   --is-ancestor $sha $default_branch`, else `exit 3`). Push each `pre-release/<version>` branch,
+   then **fast-forward or merge-commit** it into `main` and push.
+   ⚠️ **Never squash-merge:** a squash creates a new commit and orphans the branch tip, so the
+   umbrella's gitlink stops being reachable and the wave refuses to tag *all* components.
+   Re-pin the umbrella gitlinks to the merged SHAs and commit the umbrella before tagging.
+   Verify per repo: `git merge-base --is-ancestor <gitlink-sha> origin/main && echo OK`.
+   The workflow creates the component tags itself — do **not** pre-push them.
 4. **Umbrella tag → dry-run → LIVE:**
    - Push the **umbrella** tag to the remote.
    - The dispatch **dry-run checks out `ref:<tag>`**, so the tag **must already exist on the remote**
