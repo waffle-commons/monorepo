@@ -219,6 +219,10 @@ INDEX=0
 PASS_COUNT=0
 FAIL_COUNT=0
 WARN_COUNT=0
+# Components legitimately exempt from the worker-safety audit. ONLY scaffolds belong here:
+# a component that ships PHP services but has no igor-php is a COVERAGE HOLE, not a pass —
+# beta6 found six such components silently skipped for four releases. Keep this list minimal.
+IGOR_EXEMPT="component-template"
 FAILED_LIST=""
 
 while IFS= read -r comp; do
@@ -242,13 +246,27 @@ while IFS= read -r comp; do
     fi
 
     if ! igor_installed "$comp"; then
-        WARN_COUNT=$((WARN_COUNT + 1))
-        printf 'WARN\t%s\t-\n' "$comp" >>"$SUMMARY_FILE"
-        if [ "$OUTPUT_MODE" = "VERBOSE" ]; then
-            warn "$comp: igor-php not installed (run 'composer install' in $comp) — skipped."
+        # Exempt scaffolds stay a WARN; everything else is a FAILURE. Silently skipping a
+        # component that ships services is how a worker-safety hole hides in plain sight.
+        if printf '%s\n' $IGOR_EXEMPT | grep -qx "$comp"; then
+            WARN_COUNT=$((WARN_COUNT + 1))
+            printf 'WARN\t%s\t-\n' "$comp" >>"$SUMMARY_FILE"
+            if [ "$OUTPUT_MODE" = "VERBOSE" ]; then
+                warn "$comp: igor-php not installed — exempt scaffold, skipped."
+            else
+                printf '\r[%2d/%2d] %-20s %s[WARN]%s exempt scaffold      \n' \
+                    "$INDEX" "$TOTAL" "$comp" "$YELLOW" "$NC"
+            fi
         else
-            printf '\r[%2d/%2d] %-20s %s[WARN]%s not installed       \n' \
-                "$INDEX" "$TOTAL" "$comp" "$YELLOW" "$NC"
+            FAIL_COUNT=$((FAIL_COUNT + 1))
+            FAILED_LIST="$FAILED_LIST $comp"
+            printf 'ERROR\t%s\t%s\n' "$comp" "not-audited" >>"$SUMMARY_FILE"
+            if [ "$OUTPUT_MODE" = "VERBOSE" ]; then
+                warn "$comp: igor-php NOT INSTALLED — component is unaudited. Add igor-php/igor-php to its require-dev and run 'composer install'."
+            else
+                printf '\r[%2d/%2d] %-20s %s[ERROR]%s NOT AUDITED         \n' \
+                    "$INDEX" "$TOTAL" "$comp" "$RED" "$NC"
+            fi
         fi
         continue
     fi
