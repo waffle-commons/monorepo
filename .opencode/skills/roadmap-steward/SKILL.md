@@ -21,9 +21,9 @@ v1", any planning that needs the canonical direction.
   `Roadmap_Beta0…Beta8`, `Roadmap_RC1`, `Roadmap_v1_Gold`, `Roadmap_Post_v1`.
 - **Train (post-BBL pivot, 2026-07):** beta4 (security/stability, shipped) → beta5
   (AOT/pooling/async/telemetry/WebAuthn, shipped) → beta6 (**stabilization & audit**: multi-engine
-  audits, Diátaxis docs, EcoShield POC, K6 — **current**) → beta7 (production surface:
+  audits, Diátaxis docs, EcoShield POC, K6 — shipped) → beta7 (**production surface**, current:
   `queue`/`openapi`/`serializer`/`testing`, NET, OPS) → beta8 (freeze) → `1.0.0-RC1`
-  (EcoShield-Gateway 4-week soak) → `1.0.0` Gold. Dates: beta6 Aug 2 · beta7 Sep 5 · beta8 Sep 28 ·
+  (EcoShield-Gateway 4-week soak) → `1.0.0` Gold. Dates: beta6 Aug 22 · beta7 Sep 5 · beta8 Sep 28 ·
   RC1 Oct 26 · Gold Dec 23 (2026), driven by the API Platform Conference (Lille, Sep 17–18 2026).
   EcoShield-Gateway (not Sentinel) is the v1 validation dogfood.
 

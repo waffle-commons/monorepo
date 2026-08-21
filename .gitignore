@@ -10,6 +10,7 @@
 .antigravitycli/*.json
 .claude/*.json
 .devtool/
+node_modules/
 .tooling-venv/
 .venv/
 build/

@@ -84,8 +84,9 @@ Services must be **stateless and resettable** across requests (resident-memory w
     `event-dispatcher`, `error-handler`, `telemetry`, `telemetry-otel`, `async`.
   - **Template / docs:** `skeleton`, `workspace`, `academy`, `documentation`, `component-template`.
   - **Planned (beta7):** `queue`, `openapi`, `serializer`, `testing` — each scaffolded from
-    `component-template` (see the `component-scaffold` skill). **Beta6** adds only the app-level
-    `ecoshield-gateway` reverse-proxy POC (a dogfooding app, not a contracts-perimeter library).
+    `component-template` (see the `component-scaffold` skill). **Beta6** added no new packages —
+    the `ecoshield-gateway` reverse-proxy POC lives in its own repository outside this monorepo
+    (gitignored here, see `.gitignore`), and is deliberately absent from the release wave.
 - **PSR enforcement:** PSR-15 middleware, PSR-14 events, PSR-3 logging, PSR-7/17 HTTP messages &
   factories, PSR-18 HTTP client.
 - **Contracts-first sequencing:** every new interface lands in `waffle-commons/contracts` **before**
@@ -120,14 +121,14 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 |---|---|---|
 | `0.1.0-beta4` | Security & stability (shipped) | `Roadmap_Beta4.md` |
 | `0.1.0-beta5` | AOT · pooling · async · telemetry · WebAuthn (shipped) | `Roadmap_Beta5.md` |
-| `0.1.0-beta6` | **Stabilization & audit (current work)** — multi-engine audits · Diátaxis docs · EcoShield POC · K6 benchmarking | `Roadmap_Beta6.md` |
-| `0.1.0-beta7` | Production surface — `queue` · `openapi` · `serializer` · `testing` · NET · OPS | `Roadmap_Beta7.md` |
+| `0.1.0-beta6` | Stabilization & audit (shipped) — multi-engine audits · Diátaxis docs · EcoShield POC · K6 benchmarking | `Roadmap_Beta6.md` |
+| `0.1.0-beta7` | **Production surface (current work)** — `queue` · `openapi` · `serializer` · `testing` · NET · OPS | `Roadmap_Beta7.md` |
 | `0.1.0-beta8` | Consolidation & API freeze (last feature release) | `Roadmap_Beta8.md` |
 | `1.0.0-RC1` → `1.0.0` | Freeze cert + EcoShield-Gateway soak → Gold | `Roadmap_RC1.md` / `Roadmap_v1_Gold.md` |
 
 - **Post-BBL pivot (2026-07):** stabilization/audit pulled forward into **beta6**; the former beta6
   production-surface shifted to **beta7**; the API freeze is now **beta8**. Train re-dated around the
-  API Platform Conference (Lille, Sep 17–18 2026): beta6 **Aug 2** · beta7 **Sep 5** · beta8 **Sep 28**
+  API Platform Conference (Lille, Sep 17–18 2026): beta6 **Aug 22** · beta7 **Sep 5** · beta8 **Sep 28**
   · RC1 **Oct 26** · Gold **Dec 23 2026**.
 - **Version stamps:** `0.1.0-betaN` — **no `v` prefix** (the tag gate rejects it). Fix the *current*
   stamp; never bulk-bump historical CHANGELOGs. See the `roadmap-steward` skill.

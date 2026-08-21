@@ -43,7 +43,7 @@ Documentation is organised by what you're trying to do, following the [Diátaxis
 - [**`CODEOWNERS`**](reference/codeowners.md) — review routing.
 
 ### Planning a change or proposing a feature?
-- [**`project_system/` — governance & roadmap**](reference/project-system.md) — the **official roadmap**, the RFC design specs, and per-release logs & retrospectives. Align your proposal with the current [roadmap](../project_system/Roadmaps/Roadmap_Beta5.md) and the relevant RFC **before** you build.
+- [**`project_system/` — governance & roadmap**](reference/project-system.md) — the **official roadmap**, the RFC design specs, and per-release logs & retrospectives. Align your proposal with the current [roadmap](../project_system/Roadmaps/Roadmap_Beta6.md) and the relevant RFC **before** you build.
 
 ### Why is it like this?
 - [**Why a monorepo of submodules?**](explanation/why-monorepo-of-submodules.md) — the rationale and trade-offs.

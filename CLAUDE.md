@@ -48,7 +48,7 @@ Before planning or editing **anything**, READ:
    the Mago Purge Protocol, and the **Skills Routing Table** (intent → skill).
 2. The matching **`.opencode/skills/<skill>/SKILL.md`** for the task. When unsure, start with `tech-lead`.
 3. **`project_system/`** — the source of truth for project **direction**: `RFCs/` (RFC-001…022) and
-   `Roadmaps/` (`Roadmap_Beta4 → Roadmap_V1_Gold`, plus `Roadmap_V1_Master`). Consult it before
+   `Roadmaps/` (`Roadmap_Alpha5 → Roadmap_v1_Gold` and `Roadmap_Post_v1`, plus `Roadmap_v1_Master`). Consult it before
    planning roadmap work; see the `roadmap-steward` skill.
 
 Hard invariants: components depend **only** on `waffle-commons/contracts` (plus `waffle-commons/utils`,
