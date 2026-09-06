@@ -18,6 +18,11 @@ set -euo pipefail
 # Strip any existing copy of a marked WAFFLE block (and the blank line that
 # precedes it) so the caller can append a fresh copy — making installation
 # idempotent and re-runnable as a repair step.
+#
+# The rewritten content is copied back INTO the original file rather than moved
+# over it: `mv` would swap in the temp file's inode and its default 0644 mode,
+# silently discarding the caller's `chmod +x` and leaving Git to skip the hook
+# with "was ignored because it's not set as executable".
 strip_waffle_block() {  # $1=hook-file  $2=marker (e.g. "WAFFLE PRE-PUSH")
   local f="$1" m="$2"
   [ -f "$f" ] || return 0
@@ -29,7 +34,13 @@ strip_waffle_block() {  # $1=hook-file  $2=marker (e.g. "WAFFLE PRE-PUSH")
     skip { next }
     { flush(); print }
     END { flush() }
-  ' "$f" > "$f.waffle.tmp" && mv "$f.waffle.tmp" "$f"
+  ' "$f" > "$f.waffle.tmp" && cat "$f.waffle.tmp" > "$f" && rm -f "$f.waffle.tmp"
+}
+
+# Mark a hook executable. Called AFTER the block writes so nothing downstream
+# can drop the bit again; Git silently ignores a non-executable hook.
+ensure_executable() {  # $1=hook-file
+  [ -f "$1" ] && chmod +x "$1"
 }
 
 # Colors
@@ -71,6 +82,7 @@ if [ -x "./scripts/hooks/pre-commit-mago.sh" ]; then
 fi
 # END WAFFLE PRE-COMMIT HOOK
 EOF
+ensure_executable "$PRE_COMMIT"
 
 # Install pre-push hook
 PRE_PUSH="$ROOT_HOOKS_DIR/pre-push"
@@ -88,6 +100,7 @@ if [ -x "./scripts/hooks/pre-push-sanity.sh" ]; then
 fi
 # END WAFFLE PRE-PUSH HOOK
 EOF
+ensure_executable "$PRE_PUSH"
 
 # --- 2. INSTALL HOOKS IN EVERY SUBMODULE ---
 echo -e "\n${CYAN}Installing Git hooks in all submodules...${NC}"
@@ -150,7 +163,8 @@ done
 # END PROJECT GRAPHIFY PRE-COMMIT HOOK
 EOF
   fi
-  
+  ensure_executable "$SUB_PRE_COMMIT"
+
   # C. Install Waffle pre-push hook
   SUB_PRE_PUSH="$SUB_HOOKS_DIR/pre-push"
   if [ ! -f "$SUB_PRE_PUSH" ]; then
@@ -167,7 +181,8 @@ if [ -x "../scripts/hooks/pre-push-sanity.sh" ]; then
 fi
 # END WAFFLE PRE-PUSH HOOK
 EOF
-  
+  ensure_executable "$SUB_PRE_PUSH"
+
   # D. Install Graphify post hooks (existing hooks)
   for HOOK_NAME in post-checkout post-merge post-rewrite; do
     SUB_HOOK_FILE="$SUB_HOOKS_DIR/$HOOK_NAME"
@@ -191,6 +206,7 @@ done
 # END PROJECT GRAPHIFY REFRESH HOOK
 EOF
     fi
+    ensure_executable "$SUB_HOOK_FILE"
   done
 done
 
