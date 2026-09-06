@@ -11,6 +11,13 @@
 # checked-out branch (pre-release/0.1.0-betaN → 0.1.0-betaN). The no-v-prefix
 # convention matches the umbrella tag gate.
 #
+# '--all' covers exactly the packages the release wave tags — the RELEASE_INCLUDE
+# allowlist in .github/workflows/release-wave.yml, which is the single source of
+# truth for "releasable". It is parsed rather than mirrored here so the two can
+# never drift: 'workspace', 'academy' and the 'component-template' scaffold are
+# not released and carry no release paperwork, while 'documentation' IS released
+# (docs-only, so paperwork applies but there are no code gates to run).
+#
 # Usage:   scripts/pre-release.sh [component|--all]
 #          WFL_RELEASE_VERSION=0.1.0-beta5 scripts/pre-release.sh contracts
 # Exit:    0 if every targeted component is release-ready, 1 otherwise.
@@ -82,10 +89,16 @@ _assess() {
   printf '%s%s═══ pre-release — %s ═══%s\n' "$C_BLD" "$C_CYA" "$comp" "$C_RST"
   local fail=0
 
-  if "$REPO_ROOT/scripts/dod.sh" "$comp"; then
-    ok "  DoD passed"
+  if [ -f "$REPO_ROOT/$comp/composer.json" ]; then
+    if "$REPO_ROOT/scripts/dod.sh" "$comp"; then
+      ok "  DoD passed"
+    else
+      fail=1; warn "  DoD failed"
+    fi
   else
-    fail=1; warn "  DoD failed"
+    # A released package with no composer.json (documentation/) has no mago,
+    # test, coverage or igor surface — paperwork is the whole gate.
+    info "  no composer.json — docs-only package, DoD not applicable"
   fi
 
   if _check_paperwork "$comp"; then
@@ -97,20 +110,45 @@ _assess() {
   return "$fail"
 }
 
+# --- Release allowlist (parsed from the release-wave workflow) -------------
+# Resolved once, up front: a failure to read the allowlist must abort the run,
+# and `die` inside a subshell (process/command substitution) would only kill the
+# subshell and leave `--all` iterating an empty list — i.e. reporting READY.
+WAVE_WORKFLOW="$REPO_ROOT/.github/workflows/release-wave.yml"
+[ -f "$WAVE_WORKFLOW" ] || die "release allowlist unavailable: $WAVE_WORKFLOW not found"
+RELEASE_TARGETS="$(
+  sed -n "s/^[[:space:]]*RELEASE_INCLUDE:[[:space:]]*'\([^']*\)'[[:space:]]*\$/\1/p" \
+      "$WAVE_WORKFLOW" | head -n 1 | tr ',' '\n' | sed '/^[[:space:]]*$/d'
+)"
+[ -n "$RELEASE_TARGETS" ] || die "could not parse RELEASE_INCLUDE from $WAVE_WORKFLOW"
+
 TARGET="${1:---all}"
 overall=0
 declare -a not_ready=()
+COMPONENTS="$("$REPO_ROOT/scripts/list-components.sh")"
+[ -n "$COMPONENTS" ] || die "scripts/list-components.sh returned no components"
 
 if [ "$TARGET" = "--all" ]; then
   while IFS= read -r comp; do
-    # The scaffold + docs-only submodules are not released framework packages.
-    case "$comp" in component-template|documentation) continue ;; esac
-    [ -d "$REPO_ROOT/$comp" ] || continue
+    # Fail loudly on allowlist/.gitmodules drift rather than silently skipping.
+    if ! printf '%s\n' "$COMPONENTS" | grep -qx "$comp"; then
+      overall=1; not_ready+=("$comp")
+      warn "$comp: in RELEASE_INCLUDE but not a submodule in .gitmodules"
+      continue
+    fi
+    if [ ! -d "$REPO_ROOT/$comp" ]; then
+      overall=1; not_ready+=("$comp")
+      warn "$comp: submodule directory missing (run: git submodule update --init)"
+      continue
+    fi
     if ! _assess "$comp"; then overall=1; not_ready+=("$comp"); fi
-  done < <("$REPO_ROOT/scripts/list-components.sh")
+  done < <(printf '%s\n' "$RELEASE_TARGETS")
 else
-  if ! "$REPO_ROOT/scripts/list-components.sh" | grep -qx "$TARGET"; then
+  if ! printf '%s\n' "$COMPONENTS" | grep -qx "$TARGET"; then
     die "unknown component: '$TARGET' (see: scripts/list-components.sh, or use --all)"
+  fi
+  if ! printf '%s\n' "$RELEASE_TARGETS" | grep -qx "$TARGET"; then
+    warn "'$TARGET' is not in RELEASE_INCLUDE — the wave never tags it; paperwork findings below are informational"
   fi
   if ! _assess "$TARGET"; then overall=1; not_ready+=("$TARGET"); fi
 fi
