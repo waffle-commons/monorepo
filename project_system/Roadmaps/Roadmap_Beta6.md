@@ -202,12 +202,17 @@ _A finding surfaced is not a finding fixed. Every issue from the audit wave is r
 > (`Router`'s boot-time trie and compile-once PCRE memo, `TrieNode`'s build fields, `Config::$parameters`,
 > and console's CLI-only classes), and **`igor.sh` now FAILS on any unaudited component** rather than
 > warning — with a minimal, documented exemption list containing only `component-template`. A
-> regression test (hiding a binary) confirms the hole cannot silently reopen. **One residual:**
-> `routing/src/Router.php` is reported KO for "mutation on a local reference to a shared service
-> (`$span`)" — a per-call telemetry span, ended in the same method. `http-client/src/Client.php`,
-> `security/src/Container/SecureContainer.php` and `waffle`'s `ControllerResponseConverter` use the
-> identical construct and are reported clean, so this is an igor-php heuristic inconsistency, not a
-> leak. It is **not suppressed**; it is recorded here and upstream.
+> regression test (hiding a binary) confirms the hole cannot silently reopen. **The one residual is
+> now closed (2026-09-06):** `routing/src/Router.php` was reported KO for "mutation on a local
+> reference to a shared service (`$span`)" — a per-call telemetry span, ended in the same method's
+> `finally`. `http-client/src/Client.php`, `security/src/Container/SecureContainer.php` and `waffle`'s
+> `ControllerResponseConverter` use the identical construct and are reported clean, confirming an
+> igor-php heuristic inconsistency rather than a leak. Having carried it openly through one gate run,
+> it is now declared rather than left failing: a **method-level** `#[WorkerSafe(scope: 'per-request')]`
+> on `matchRequest()`, the narrowest scope the attribute offers (it targets
+> class/method/property/parameter — there is no statement-level form). Igor still audits all eight
+> files in the component and now reports **8 OK / 0 KO**, so the marker suppressed the single finding
+> without removing the file from the audit set. The upstream heuristic report stands.
 
 ### `[FIX-02]` Full Gate Re-Verification (Definition of Done)
 
