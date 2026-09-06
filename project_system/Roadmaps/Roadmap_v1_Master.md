@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: Release Train to v1.0 (Master)"
 date_created: 2026-06-07
-date_updated: 2026-08-05
+date_updated: 2026-09-06
 type: project
 status: 🏗️ wip
 tags:
@@ -15,7 +15,7 @@ aliases: []
 
 > **Status:** Active Master Plan — replaces the former `Roadmap_Cap_v1.md` (2026-01-20, deleted). The pre-v1 items of `Roadmap_Post_v1.md` have been absorbed into the train (see its absorption ledger).
 > 
-> **Post-BBL pivot (validated, July 2026):** stabilization, multi-engine security audits, Diátaxis documentation, the EcoShield-Gateway reverse-proxy POC, and scientific K6 benchmarking are pulled forward into **beta6**; the former beta6 production-surface work (OpenAPI, Serializer, Testing bridge, NET/QUEUE/OPS) shifts to **beta7**; and the API-freeze / consolidation release becomes **beta8**. The train is re-dated around the API Platform Conference (Lille · September 17–18, 2026).
+> **Post-BBL pivot (validated, July 2026):** stabilization, multi-engine security audits, Diátaxis documentation, the EcoShield-Gateway reverse-proxy POC, and scientific K6 benchmarking are pulled forward into **beta6**; the former beta6 production-surface work (OpenAPI, Serializer, Testing bridge, NET/QUEUE/OPS) shifts to **beta7**; and the API-freeze / consolidation release becomes **beta8**. The train is re-dated around the API Platform Conference (Lille · September 17–18, 2026). **Slipped one month on 2026-09-06:** beta6 still ships ahead of the conference (September 2026), but every downstream milestone moves back a month — beta7 October 2026, beta8 November 2026, RC1 December 2026, Gold January 2027.
 > 
 > **Vision:** A **full, production-ready PHP ecosystem** for building secured APIs on FrankenPHP, Docker, and Kubernetes. Philosophy unchanged: **"Strict, Secure, Fast."**
 > 
@@ -27,12 +27,12 @@ aliases: []
 |---|---|---|---|
 | `0.1.0-beta4` | Late June 2026 (shipped) | Security & Stability — RC-readiness groundwork | `Roadmap_Beta4.md` |
 | `0.1.0-beta5` | July 8, 2026 (shipped) | Runtime Power — AOT, Pooling, Telemetry, WebAuthn | `Roadmap_Beta5.md` |
-| `0.1.0-beta6` | **August 2, 2026** | **Stabilization & Audit** — multi-engine audits, Diátaxis docs, EcoShield POC, K6 benchmarking | `Roadmap_Beta6.md` |
-| `0.1.0-beta7` | **September 5, 2026** | **Production Surface** — OpenAPI, Serializer, Testing bridge, NET/QUEUE/OPS | `Roadmap_Beta7.md` |
-| `0.1.0-beta8` | **September 28, 2026** | **Consolidation & API Freeze** — last feature release | `Roadmap_Beta8.md` |
-| `1.0.0-RC1` | **October 26, 2026** | Freeze certification + EcoShield-Gateway soak | `Roadmap_RC1.md` |
+| `0.1.0-beta6` | **September 2026** | **Stabilization & Audit** — multi-engine audits, Diátaxis docs, EcoShield POC, K6 benchmarking | `Roadmap_Beta6.md` |
+| `0.1.0-beta7` | **October 2026** | **Production Surface** — OpenAPI, Serializer, Testing bridge, NET/QUEUE/OPS | `Roadmap_Beta7.md` |
+| `0.1.0-beta8` | **November 2026** | **Consolidation & API Freeze** — last feature release | `Roadmap_Beta8.md` |
+| `1.0.0-RC1` | **December 2026** | Freeze certification + EcoShield-Gateway soak | `Roadmap_RC1.md` |
 | `1.0.0-RC2` | contingency only | Critical blockers found in RC1 — never planned, only triggered | clause in `Roadmap_RC1.md` |
-| `1.0.0` (Gold) | **December 23, 2026** | Launch | `Roadmap_v1_Gold.md` |
+| `1.0.0` (Gold) | **January 2027** | Launch | `Roadmap_v1_Gold.md` |
 
 > **Version jump rationale:** the RC is tagged `1.0.0-RC1`, not `0.1.0-RC1`. SemVer pre-release ordering makes `0.1.0-RC1 < 0.1.0-beta4` ambiguous for Composer users, and the RC certifies the **v1 API**, so it must carry the v1 version. Branch naming follows the established scheme: `pre-release/0.1.0-beta6`, `pre-release/0.1.0-beta7`, `pre-release/0.1.0-beta8`, `pre-release/1.0.0-RC1`, then `release/1.0.0`.
 

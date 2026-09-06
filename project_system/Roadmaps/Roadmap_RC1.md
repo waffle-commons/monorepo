@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (RC 1)"
 date_created: 2026-06-07
-date_updated: 2026-08-05
+date_updated: 2026-09-06
 type: project
 status: pending
 tags:
@@ -15,7 +15,7 @@ aliases: []
 
 > **Status:** Pending Validation — Draft
 > 
-> **Target Tag:** October 26, 2026 · **Soak window:** tag → late November 2026 (≥4 weeks) — re-dated 2026-08-05 to match the post-BBL train in `Roadmap_v1_Master.md`
+> **Target Tag:** December 2026 · **Soak window:** tag → January 2027 (≥4 weeks) — re-dated 2026-09-06 for the one-month train slip; see `Roadmap_v1_Master.md`
 > 
 > **Core Mandate:** Prove that nothing needs changing. An RC adds **zero** features — it certifies the beta8 freeze under real conditions. If RC1 needs anything beyond a bug fix, that work was beta8's and the freeze date moves; it does not leak into the RC.
 > 

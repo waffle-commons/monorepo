@@ -1,7 +1,7 @@
 ---
 title: "Log Beta 6"
 date_created: '2026-08-03'
-date_updated: '2026-08-22'
+date_updated: '2026-09-06'
 type: project
 status: archived
 tags:
@@ -19,7 +19,7 @@ aliases: []
 > Goal: **stop and harden.** No new components. Independent multi-engine security audits across all
 > 21 decoupled components, zero-compromise remediation, a full Diátaxis documentation pass, and the
 > first scientific benchmark converting the runtime performance claim into published, reproducible
-> numbers ahead of API Platform Conference (Lille, September 17–18). Released: 2026-08-22.
+> numbers ahead of API Platform Conference (Lille, September 17–18). Released: 2026-09.
 
 ## 1. Technical Changelog (What changed)
 

@@ -26,6 +26,7 @@ single component out of band.
    `pre-release/*` branches once the new ones are cut.
 2. **Stamp current version only:** `0.1.0-betaN` — **NO `v` prefix** (the tag gate rejects a leading
    `v`). Never bulk-bump historical changelogs (see `[[roadmap-steward]]`).
+   Release dates are **month-precision** `YYYY-MM` — `## [0.1.0-beta6] — 2026-09`, never a full date.
 3. **Merge each component into its default branch — MANDATORY.** `release-wave.yml` fails closed
    unless every gitlink SHA is an ancestor of that repo's default branch (`git merge-base
    --is-ancestor $sha $default_branch`, else `exit 3`). Push each `pre-release/<version>` branch,

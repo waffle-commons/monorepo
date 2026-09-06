@@ -30,6 +30,7 @@ For **each** component in the wave:
 3. **Sync release metadata** on the `pre-release/<version>` branch: composer constraints across
    sibling packages, `README`, `CHANGELOG` (stamp the **current** version only — see
    `[[diataxis-doc]]` / `[[roadmap-steward]]` — never bulk-bump history).
+   The heading carries a **month-precision** date — `## [0.1.0-beta6] — 2026-09`, never `YYYY-MM-DD`.
 
 4. **Tag — NO `v` prefix.** Tags are bare SemVer (`0.1.0-beta4`, `1.0.0-RC1`, `1.0.0`); the tag gate
    rejects a leading `v`.

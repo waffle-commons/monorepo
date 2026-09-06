@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-07-17
+date_updated: 2026-09-06
 type: project
 status: pending
 tags:
@@ -14,7 +14,7 @@ aliases: []
 
 > **Status:** Pending Validation — Draft (Subject to revision after the beta6 retrospective)
 > 
-> **Target Release:** **September 5, 2026** (immediately ahead of the API Platform Conference, Lille — September 17–18, 2026)
+> **Target Release:** **October 2026** (the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
 > **Core Mandate:** Close every gap between "high-performance framework" and **full production-ready API ecosystem**: traffic protection, outbound resilience, background processing, Kubernetes operability, API tooling, and testability. This is the release where the missing components get built — beta8 then freezes, so anything not landed here is post-v1.
 > 

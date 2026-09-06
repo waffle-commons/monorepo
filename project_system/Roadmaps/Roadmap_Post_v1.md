@@ -1,7 +1,7 @@
 ---
 title: "Waffle Framework - Post-v1.0 Backlog (Vision 2027+)"
 date_created: '2026-04-13'
-date_updated: '2026-06-07'
+date_updated: '2026-09-06'
 type: roadmap
 status: draft
 tags:
@@ -15,7 +15,7 @@ aliases: []
 # 🔮 Waffle Framework: Post-v1.0 Backlog
 
 > **Post-v1.0 era philosophy: "From Kernel to Ecosystem."**
-> Once the core is frozen (beta7) and shipped (`1.0.0` Gold, April 2027), we build the satellites needed to compete with the giants (Symfony/Laravel) on microservice use cases — without ever sacrificing performance.
+> Once the core is frozen (beta8) and shipped (`1.0.0` Gold, January 2027), we build the satellites needed to compete with the giants (Symfony/Laravel) on microservice use cases — without ever sacrificing performance.
 > 
 > **Refreshed 2026-06-07:** the original 2026-04-13 draft predates RFC-021/022 and the v1 release train (`Roadmap_v1_Master.md`). Most of its content was absorbed into pre-v1 releases — the ledger below keeps the traceability; the backlog that follows is what genuinely remains post-v1.
 

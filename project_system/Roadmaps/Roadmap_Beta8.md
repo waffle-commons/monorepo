@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 8)"
 date_created: 2026-06-07
-date_updated: 2026-08-05
+date_updated: 2026-09-06
 type: project
 status: pending
 tags:
@@ -14,7 +14,7 @@ aliases: []
 
 > **Status:** Pending Validation — Draft (scope partially determined by the beta5 spike outcomes and the beta7 retrospective)
 > 
-> **Target Release:** **September 28, 2026** — **the last feature release before v1**. The tag of beta8 *is* the feature freeze. (Lands immediately after the API Platform Conference, Lille — September 17–18, 2026.)
+> **Target Release:** **November 2026** — **the last feature release before v1**. The tag of beta8 *is* the feature freeze.
 > 
 > **Core Mandate:** Resolve every open decision, soak every deep change, freeze the public API, and re-audit the final security surface. A beta exists to change things; after beta8, nothing changes except bug fixes.
 > 

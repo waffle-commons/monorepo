@@ -128,10 +128,14 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 
 - **Post-BBL pivot (2026-07):** stabilization/audit pulled forward into **beta6**; the former beta6
   production-surface shifted to **beta7**; the API freeze is now **beta8**. Train re-dated around the
-  API Platform Conference (Lille, Sep 17–18 2026): beta6 **Aug 22** · beta7 **Sep 5** · beta8 **Sep 28**
-  · RC1 **Oct 26** · Gold **Dec 23 2026**.
+  API Platform Conference (Lille, Sep 17–18 2026), then slipped one month on 2026-09-06: beta6
+  **Sep 2026** (still pre-conference) · beta7 **Oct** · beta8 **Nov** · RC1 **Dec** · Gold **Jan 2027**.
 - **Version stamps:** `0.1.0-betaN` — **no `v` prefix** (the tag gate rejects it). Fix the *current*
   stamp; never bulk-bump historical CHANGELOGs. See the `roadmap-steward` skill.
+- **Release dates are month-precision:** `YYYY-MM`, never `YYYY-MM-DD` — a CHANGELOG heading reads
+  `## [0.1.0-beta6] — 2026-09`; in prose (roadmaps, release logs) it is the month and year only
+  ("September 2026"). Retro-dating shipped releases is not part of this: leave historical entries
+  as written and stamp the current release in the new format.
 - **Release mechanics (umbrella wave):** one `pre-release/<version>` branch per component → umbrella
   tag pushed to the remote → dispatch **dry-run on the pushed tag** (`ref:<tag>` must already exist) →
   LIVE wave. Per-component steps live in `release-manager`; the orchestration lives in `release-wave`.

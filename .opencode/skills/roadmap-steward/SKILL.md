@@ -23,8 +23,9 @@ v1", any planning that needs the canonical direction.
   (AOT/pooling/async/telemetry/WebAuthn, shipped) → beta6 (**stabilization & audit**: multi-engine
   audits, Diátaxis docs, EcoShield POC, K6 — shipped) → beta7 (**production surface**, current:
   `queue`/`openapi`/`serializer`/`testing`, NET, OPS) → beta8 (freeze) → `1.0.0-RC1`
-  (EcoShield-Gateway 4-week soak) → `1.0.0` Gold. Dates: beta6 Aug 22 · beta7 Sep 5 · beta8 Sep 28 ·
-  RC1 Oct 26 · Gold Dec 23 (2026), driven by the API Platform Conference (Lille, Sep 17–18 2026).
+  (EcoShield-Gateway 4-week soak) → `1.0.0` Gold. Dates (one-month slip, 2026-09-06): beta6 Sep 2026 ·
+  beta7 Oct · beta8 Nov · RC1 Dec · Gold Jan 2027. Only beta6 lands before the API Platform
+  Conference (Lille, Sep 17–18 2026), which drove the original train.
   EcoShield-Gateway (not Sentinel) is the v1 validation dogfood.
 
 ## Git boundary
@@ -37,6 +38,12 @@ roadmap files). **Only** `Audits/`, `Notes/`, `TODOs/`, and `*.pem` are gitignor
 - **Version stamps:** `0.1.0-betaN` — **no `v` prefix** (the tag gate rejects a leading `v`). Fix the
   **current**-version stamp when something ships; **never bulk-bump** historical CHANGELOGs or
   `Waffle_Evolutions` — that history is pinned. Historical `Beta-N` prose stays as written.
+- **Release dates:** month-precision `YYYY-MM`, never `YYYY-MM-DD`. CHANGELOG headings read
+  `## [0.1.0-beta6] — 2026-09`; roadmap headers and release logs use the month and year in prose
+  ("September 2026", "**Target Release:** **September 2026**"). Only the current release is stamped —
+  shipped entries keep the date they were written with. Non-release dates (front-matter
+  `date_created`/`date_updated`, audit and execution-status dates, conference dates) keep full
+  `YYYY-MM-DD` precision.
 - **Language:** English (these are framework-direction docs, not template apps).
 - **Plan-first for waves:** large multi-repo work gets an **Action Plan first**; edit files only after
   explicit approval. Convert relative dates to absolute when recording decisions.
