@@ -169,13 +169,6 @@ jobs:
       # it reads, then assert the pin actually took — otherwise an upstream
       # release silently changes what this gate audits.
       - name: Pin the Igor auditor
-        if: |
-          matrix.component != 'config' &&
-          matrix.component != 'console' &&
-          matrix.component != 'contracts' &&
-          matrix.component != 'error-handler' &&
-          matrix.component != 'log' &&
-          matrix.component != 'routing'
         working-directory: ${{ matrix.component }}
         env:
           IGOR_VERSION: '0.7.0'
@@ -185,13 +178,6 @@ jobs:
           vendor/bin/igor-php --version | grep -qF "$IGOR_VERSION"
 
       - name: igor-php
-        if: |
-          matrix.component != 'config' &&
-          matrix.component != 'console' &&
-          matrix.component != 'contracts' &&
-          matrix.component != 'error-handler' &&
-          matrix.component != 'log' &&
-          matrix.component != 'routing'
         working-directory: ${{ matrix.component }}
         run: vendor/bin/igor-php .
 
@@ -210,8 +196,9 @@ jobs:
   # --------------------------------------------------------------------------
   # 3. Workspace demo app — composer/security posture gate (audit FIX-01 #10).
   #    Not a library: composer validate + install + static gates + composer
-  #    audit only — no phpunit/coverage gate (mirrors the demo-app policy the
-  #    way config/console/contracts skip igor in the check matrix).
+  #    audit only — no phpunit/coverage gate. This is the demo-app policy; it is
+  #    the only exemption in this workflow (every framework component is fully
+  #    gated, igor included).
   # --------------------------------------------------------------------------
   workspace:
     name: workspace
