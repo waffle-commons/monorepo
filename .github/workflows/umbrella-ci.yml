@@ -163,6 +163,27 @@ jobs:
         working-directory: ${{ matrix.component }}
         run: composer audit
 
+      # The composer package is only a bootstrapper: bin/igor-php resolves
+      # releases/latest from the GitHub API and downloads THAT binary, so the
+      # composer constraint and composer.lock pin nothing. Seed the version file
+      # it reads, then assert the pin actually took — otherwise an upstream
+      # release silently changes what this gate audits.
+      - name: Pin the Igor auditor
+        if: |
+          matrix.component != 'config' &&
+          matrix.component != 'console' &&
+          matrix.component != 'contracts' &&
+          matrix.component != 'error-handler' &&
+          matrix.component != 'log' &&
+          matrix.component != 'routing'
+        working-directory: ${{ matrix.component }}
+        env:
+          IGOR_VERSION: '0.7.0'
+        run: |
+          mkdir -p vendor/igor-php/igor-php/resources/bin
+          printf '%s' "$IGOR_VERSION" > vendor/igor-php/igor-php/resources/bin/.version
+          vendor/bin/igor-php --version | grep -qF "$IGOR_VERSION"
+
       - name: igor-php
         if: |
           matrix.component != 'config' &&
