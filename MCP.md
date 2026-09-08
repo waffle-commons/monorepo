@@ -64,7 +64,9 @@ MCP config is repo-specific). Configuration lives in four files:
 
 ## 🔑 Secrets & environment
 
-- **No secret is ever inlined.** The GitHub token is an env-var reference (`${GITHUB_TOKEN}`).
+- **No secret is ever inlined.** Every credential in `.mcp.json` and `opencode.json` is an env-var
+  reference — the GitHub token as `${GITHUB_TOKEN}` / `{env:GITHUB_TOKEN}`, the database values as
+  the `WAFFLE_*` vars below.
 - The database connection values are **non-secret local dev defaults** (the same `waffle/waffle`
   credentials documented in [`workspace/.env`](./workspace/.env)) and are surfaced as overridable
   env vars in `.claude/settings.local.json`:
@@ -75,6 +77,16 @@ MCP config is repo-specific). Configuration lives in four files:
   | `WAFFLE_MONGO_URI` | `mongodb://localhost:27017` | `mongo` |
   | `WAFFLE_REDIS_HOST` / `WAFFLE_REDIS_PORT` | `localhost` / `6379` | `redis` |
   | `GITHUB_TOKEN` | *(unset — you must provide it)* | `github` |
+
+  `.mcp.json` applies these defaults inline (`${WAFFLE_PG_DSN:-postgresql://…}`), so Claude Code
+  works with nothing exported. **opencode has no default-value syntax** — `opencode.json` uses the
+  bare `{env:WAFFLE_PG_DSN}` form, so export all three before launching opencode:
+
+  ```bash
+  export WAFFLE_PG_DSN="postgresql://waffle:waffle@localhost:5432/waffle"
+  export WAFFLE_MONGO_URI="mongodb://localhost:27017"
+  export WAFFLE_REDIS_HOST="localhost"
+  ```
 
 - **Set the GitHub token** before launching an agent:
 

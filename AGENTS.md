@@ -83,8 +83,10 @@ Services must be **stateless and resettable** across requests (resident-memory w
     `http-client`, `security`, `auth`, `data`, `cache`, `container`, `config`, `console`, `log`,
     `event-dispatcher`, `error-handler`, `telemetry`, `telemetry-otel`, `async`.
   - **Template / docs:** `skeleton`, `workspace`, `academy`, `documentation`, `component-template`.
-  - **Planned (beta6):** `queue`, `openapi`, `serializer`, `testing` — each scaffolded from
-    `component-template` (see the `component-scaffold` skill).
+  - **Planned (beta7):** `queue`, `openapi`, `serializer`, `testing` — each scaffolded from
+    `component-template` (see the `component-scaffold` skill). **Beta6** added no new packages —
+    the `ecoshield-gateway` reverse-proxy POC lives in its own repository outside this monorepo
+    (gitignored here, see `.gitignore`), and is deliberately absent from the release wave.
 - **PSR enforcement:** PSR-15 middleware, PSR-14 events, PSR-3 logging, PSR-7/17 HTTP messages &
   factories, PSR-18 HTTP client.
 - **Contracts-first sequencing:** every new interface lands in `waffle-commons/contracts` **before**
@@ -117,14 +119,23 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 
 | Release | Theme | Roadmap |
 |---|---|---|
-| `0.1.0-beta4` | Security & stability (current work) | `Roadmap_Beta4.md` |
-| `0.1.0-beta5` | AOT · pooling · async · telemetry (+spikes) | `Roadmap_Beta5.md` |
-| `0.1.0-beta6` | Production surface — `queue` · `openapi` · `serializer` · `testing` · NET · OPS | `Roadmap_Beta6.md` |
-| `0.1.0-beta7` | Consolidation & API freeze | `Roadmap_Beta7.md` |
-| `1.0.0-RC1` → `1.0.0` | Freeze cert + EcoShield-Gateway soak → Gold | `Roadmap_RC1.md` / `Roadmap_V1_Gold.md` |
+| `0.1.0-beta4` | Security & stability (shipped) | `Roadmap_Beta4.md` |
+| `0.1.0-beta5` | AOT · pooling · async · telemetry · WebAuthn (shipped) | `Roadmap_Beta5.md` |
+| `0.1.0-beta6` | Stabilization & audit (shipped) — multi-engine audits · Diátaxis docs · EcoShield POC · K6 benchmarking | `Roadmap_Beta6.md` |
+| `0.1.0-beta7` | **Production surface (current work)** — `queue` · `openapi` · `serializer` · `testing` · NET · OPS | `Roadmap_Beta7.md` |
+| `0.1.0-beta8` | Consolidation & API freeze (last feature release) | `Roadmap_Beta8.md` |
+| `1.0.0-RC1` → `1.0.0` | Freeze cert + EcoShield-Gateway soak → Gold | `Roadmap_RC1.md` / `Roadmap_v1_Gold.md` |
 
+- **Post-BBL pivot (2026-07):** stabilization/audit pulled forward into **beta6**; the former beta6
+  production-surface shifted to **beta7**; the API freeze is now **beta8**. Train re-dated around the
+  API Platform Conference (Lille, Sep 17–18 2026), then slipped one month on 2026-09-06: beta6
+  **Sep 2026** (still pre-conference) · beta7 **Oct** · beta8 **Nov** · RC1 **Dec** · Gold **Jan 2027**.
 - **Version stamps:** `0.1.0-betaN` — **no `v` prefix** (the tag gate rejects it). Fix the *current*
   stamp; never bulk-bump historical CHANGELOGs. See the `roadmap-steward` skill.
+- **Release dates are month-precision:** `YYYY-MM`, never `YYYY-MM-DD` — a CHANGELOG heading reads
+  `## [0.1.0-beta6] — 2026-09`; in prose (roadmaps, release logs) it is the month and year only
+  ("September 2026"). Retro-dating shipped releases is not part of this: leave historical entries
+  as written and stamp the current release in the new format.
 - **Release mechanics (umbrella wave):** one `pre-release/<version>` branch per component → umbrella
   tag pushed to the remote → dispatch **dry-run on the pushed tag** (`ref:<tag>` must already exist) →
   LIVE wave. Per-component steps live in `release-manager`; the orchestration lives in `release-wave`.
@@ -194,11 +205,11 @@ When unsure, default to **`tech-lead`** (it orchestrates the others). All skill 
 
 | Skill | Trigger / Use when… | Roadmap |
 |-------|---------------------|---------|
-| `resilience-net` | Rate limiter, retry/backoff, circuit breaker. | beta6 NET (RFC-017) |
-| `queue-worker` | Background processing (`queue` component, Redis Streams). | beta6 QUEUE (RFC-015) |
-| `api-surface` | OpenAPI generation + DTO serializer / content negotiation. | beta6 API (RFC-016) |
-| `k8s-ops` | Health/readiness probes, graceful drain, migration maturity. | beta6 OPS (RFC-014) |
-| `testing-bridge` | `WaffleTestCase` in-process kernel + test doubles. | beta6 TEST (RFC-012) |
+| `resilience-net` | Rate limiter, retry/backoff, circuit breaker. | beta7 NET (RFC-017) |
+| `queue-worker` | Background processing (`queue` component, Redis Streams). | beta7 QUEUE (RFC-015) |
+| `api-surface` | OpenAPI generation + DTO serializer / content negotiation. | beta7 API (RFC-016) |
+| `k8s-ops` | Health/readiness probes, graceful drain, migration maturity. | beta7 OPS (RFC-014) |
+| `testing-bridge` | `WaffleTestCase` in-process kernel + test doubles. | beta7 TEST (RFC-012) |
 
 ## 🤖 Subagents (`.opencode/agents/<name>.md`, `mode: subagent`)
 

@@ -7,6 +7,69 @@ submodule (see `docs/reference/workflows/release-wave.md`).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0-beta6] — 2026-09
+
+**Theme: stabilisation, audit remediation & measured performance (Roadmap_Beta6).**
+
+No new components. Beta6 stops and hardens: three planned independent audit engines
+(two completed, the third formally accepted as a documented residual), zero-compromise
+remediation of every finding, a full Diátaxis documentation pass, and the first
+scientific benchmark of the runtime claim.
+
+### Security — audit remediation (AXE 2, 17/17 fixed natively, zero suppressions)
+
+- **Injection surface:** SQL/CQL identifiers validated against a strict allow-list and
+  quoted consistently on read *and* write paths (`data`); Waffle Maker validates every
+  interpolated CLI token and lints generated source before writing (`console`); the
+  generated route cache rehydrates with `allowed_classes` (`console`).
+- **Authentication:** `BasicAuthenticator`'s username-enumeration timing side-channel
+  closed; HS* shared secrets gain the 32-byte floor every sibling already enforced;
+  auth and CSRF failures are audited on a dedicated SECURITY channel with client IP
+  (`auth`, `security`).
+- **Authorization:** `#[PublicAccess]` restricted to method-level placement, and a new
+  `SubjectResolverInterface` lets voters decide against real domain entities — resolved
+  lazily, only for voted actions, fail-closed (`contracts`, `security`).
+- **Output & input:** controller string returns escaped by default with a `RawHtml`
+  opt-out and a stricter CSP; route parameters validated before casting instead of
+  silently coerced (`waffle`).
+- **Filesystem & config:** upload moves contained with `Assert::within()` (`http`);
+  malformed YAML fails the boot closed instead of degrading to an empty configuration
+  (`config`).
+- **Runtime parity:** the AOT-compiled container memoises only inlined services, so a
+  resettable singleton resets exactly once per request in compiled mode as it does
+  interpreted (`console`).
+
+### Templates (`skeleton`) — defects found by running the real image under load
+
+- The production image shipped **no PostgreSQL or MySQL PDO driver**: every
+  database-backed route in the template was impossible in its own image.
+- `/greet` accepted only GET while its own documentation described a `POST` with a JSON
+  body, so the documented call answered 405.
+- The default database configuration named `mysql` with no such service in compose.
+- Public demo routes lacked `#[PublicAccess]` and returned 403 through the real
+  pipeline — invisible to controller tests, which bypass it.
+
+### Documentation (AXE 3)
+
+`documentation/` is the canonical Diátaxis tree: the architecture page was rewritten
+from its Beta-1/2 content to the real 21-component ecosystem, two tutorials restored
+quadrant balance, a duplicate how-to was merged, and every reference page was verified
+symbol-by-symbol against the live API — which removed a `#[Rule]` attribute documented
+across six pages that has never existed. Link graph: 331 links, zero broken. Each
+component README now links into the tree, and `async` — which shipped 0.1.0-beta5 with
+no README at all — received the full repository documentation pack.
+
+### Benchmark (AXE 5)
+
+New `bench/` harness comparing Waffle on the FrankenPHP worker against one Symfony app
+on both php-fpm and the FrankenPHP worker. Headline results, published in
+`bench/BENCH-GATE-RESULT.md`: **7.8× the throughput of Symfony/PHP-FPM at 8.7× lower
+p50**; 868 req/s sustained at 8× connection-pool oversubscription with zero errors and
+a sub-100 ms p99.9; **memory grows 10.5× slower per concurrent request** than PHP-FPM.
+The long-standing "5–10× RAM" claim is deliberately **not** published in that form —
+measurement shows it is false below ~12 concurrent requests and reaches 2.37× at 128,
+so the defensible claim is the growth *slope*, not a constant.
+
 ## [0.1.0-beta5] — 2026-07-08
 
 **Theme: event-driven, reactive & AOT-optimized enterprise runtime (Roadmap_Beta5).**

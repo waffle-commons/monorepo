@@ -12,7 +12,7 @@ aliases: []
 ---
 # 🗺️ Waffle Ecosystem Roadmap: Intelligence, Routing & Automation (Beta 2)  
   
-**Target Release:** `v0.1.0-beta2`  
+**Target Release:** `0.1.0-beta2`  
   
 **Theme:** Cognitive Architecture, Bulletproof CI/CD & Robust Routing  
   
@@ -24,7 +24,7 @@ aliases: []
   
 ## 1. Executive Summary  
   
-While Waffle `v0.1.0-beta1` successfully established the "Zero-Debt" framework foundations and introduced the core transparent proxy requirements (specifically `waffle-commons/http-client`), its deployment revealed crucial stability, configuration, and automation bottlenecks. The automated release workflows failed on Git submodule bounds, the skeleton template shipped with tight Kernel coupling, and the router lacked standard HTTP verb restriction.  
+While Waffle `0.1.0-beta1` successfully established the "Zero-Debt" framework foundations and introduced the core transparent proxy requirements (specifically `waffle-commons/http-client`), its deployment revealed crucial stability, configuration, and automation bottlenecks. The automated release workflows failed on Git submodule bounds, the skeleton template shipped with tight Kernel coupling, and the router lacked standard HTTP verb restriction.  
   
 **Waffle Beta 2** is the consolidation, intelligence, and hardening release. It focuses on transforming the monorepo into an automated fortress, introducing advanced REST routing safeguards, deploying a structured AI prompt workspace, and establishing a flawless local developer experience (DX).  
   

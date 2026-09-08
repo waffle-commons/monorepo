@@ -1,0 +1,75 @@
+# Bench-only application config for Engine A (mounted read-only over
+# /app/config/app.yaml by docker-compose.bench.yml).
+#
+# WHY A BENCH COPY EXISTS (keep in sync with skeleton/config/app.yaml):
+#   1. trusted_hosts — the allow-list is YAML-only (no env knob in
+#      AppKernelFactory: it reads `waffle.trusted_hosts` verbatim). k6 reaches
+#      the engine as http://engine-a, so Host "engine-a" must be accepted or
+#      TrustedHostMiddleware rejects every request. "localhost" stays for
+#      in-container health/metrics sampling (Trap 5: /waffle-metrics is
+#      loopback-only).
+#   2. cache.adapter array — the bench rig has no Redis service; skeleton's
+#      default `redis` adapter would point at a non-existent host. The array
+#      adapter is per-worker in-memory, which mirrors Symfony's in-process
+#      compiled caches (fairness note in bench/README.md).
+#   3. database — pgsql against bench-postgres (skeleton's tracked default was
+#      the broken mysql-no-service pairing; Phase B fixes it to pgsql too).
+# Everything else must mirror skeleton/config/app.yaml.
+waffle:
+  env: '%env(APP_ENV)%'
+  debug: '%env(APP_DEBUG)%'
+  # Bench delta #1: accept the compose service hostname + loopback.
+  trusted_hosts:
+    - engine-a
+    # BENCH-05 runs the same image under a second compose service name, and k6
+    # reaches it as http://engine-a-mem — TrustedHostMiddleware answers 400 for
+    # any Host outside this list, so every service name that serves this config
+    # must appear here. (The engine is not broken when that happens: a 400 on an
+    # unlisted Host is the middleware doing its job.)
+    - engine-a-mem
+    - localhost
+  security:
+    level: 10
+    csrf:
+      secret: '%env(WAFFLE_CSRF_SECRET)%'
+    cors:
+      allowed_origins: []
+    ssrf:
+      allowed_hosts: []
+  auth:
+    secret: '%env(WAFFLE_AUTH_SECRET)%'
+    tenant: 'skeleton'
+    jwt:
+      issuer: 'https://waffle-dev.local'
+      audience: 'waffle-skeleton'
+    webauthn:
+      rp_id: 'localhost'
+      rp_name: 'Waffle Skeleton'
+      allowed_origins:
+        - 'https://localhost'
+    assert_hosts: []
+  paths:
+    controllers: 'src/Controller'
+    services: 'src/Service'
+    event_listeners: 'app/EventListener'
+  log:
+    channel: app
+    stream: 'php://stderr'
+  # Bench delta #2: array adapter (no Redis in the bench rig).
+  cache:
+    adapter: 'array'
+    directory: 'var/cache/psr16'
+    default_ttl: 3600
+  # Bench delta #3: pgsql against the bench-postgres service.
+  database:
+    driver: 'pgsql'
+    host: '%env(DB_HOST)%'
+    port: '%env(DB_PORT)%'
+    database: '%env(DB_NAME)%'
+    username: '%env(DB_USER)%'
+    password: '%env(DB_PASSWORD)%'
+    charset: 'utf8'
+    migrations_path: 'migrations'
+    # BENCH-04 knob (Phase B wires DB_POOL_SIZE into buildConnectionPool();
+    # harmless extra key if Phase B reads the environment directly instead).
+    pool_size: '%env(DB_POOL_SIZE)%'

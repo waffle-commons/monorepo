@@ -10,6 +10,7 @@
 .antigravitycli/*.json
 .claude/*.json
 .devtool/
+node_modules/
 .tooling-venv/
 .venv/
 build/
@@ -26,3 +27,6 @@ TODO.md
 
 # Personnal
 *.jks
+
+# EcoShield POC (AXE 4): local application repo, excluded from monorepo history
+ecoshield-gateway/

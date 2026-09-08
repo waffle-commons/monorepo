@@ -38,7 +38,7 @@
         "-y",
         "@henkey/postgres-mcp-server",
         "--connection-string",
-        "postgresql://waffle:waffle@localhost:5432/waffle"
+        "{env:WAFFLE_PG_DSN}"
       ],
       "enabled": true
     },
@@ -50,7 +50,7 @@
         "mongodb-mcp-server"
       ],
       "environment": {
-        "MDB_MCP_CONNECTION_STRING": "mongodb://localhost:27017"
+        "MDB_MCP_CONNECTION_STRING": "{env:WAFFLE_MONGO_URI}"
       },
       "enabled": true
     },
@@ -63,7 +63,7 @@
         "-i",
         "--network=host",
         "-e",
-        "REDIS_HOST=localhost",
+        "REDIS_HOST={env:WAFFLE_REDIS_HOST}",
         "-e",
         "REDIS_PORT=6379",
         "mcp/redis"

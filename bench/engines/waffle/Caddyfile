@@ -1,0 +1,28 @@
+# Bench-only Caddyfile for Engine A (mounted over /etc/caddy/Caddyfile).
+#
+# WHY A BENCH COPY EXISTS: the skeleton Caddyfile declares the bare `frankenphp`
+# global option WITHOUT the `{$FRANKENPHP_CONFIG}` placeholder, so the
+# FRANKENPHP_CONFIG environment variable (the only place a worker count can be
+# pinned) is silently ignored by the stock image. The bench mounts this copy —
+# identical to skeleton/docker/frankenphp/Caddyfile except for the placeholder —
+# so that `FRANKENPHP_CONFIG="worker ./public/index.php 4"` from
+# docker-compose.bench.yml actually pins 4 workers (fairness contract: 4 workers
+# on Engine A and Engine C).
+{
+    frankenphp {
+        {$FRANKENPHP_CONFIG}
+    }
+    order php_server before file_server
+}
+
+# Server definition (HTTP only inside the bench network — no TLS overhead skew).
+{$SERVER_NAME:localhost} {
+    root * public/
+    encode zstd gzip
+
+    php_server {
+        resolve_root_symlink
+    }
+
+    file_server
+}

@@ -15,7 +15,7 @@ aliases: []
 ---
 # 🗺️ Operational Battle Plan: Alpha 5 (The "Sentient" Release)
 
-**Target:** v0.1.0-alpha5 **Theme:** Observability, Defense & Events **Philosophy:** "If it crashes, I want to know why (Logs) and I want to be able to react (Events)."
+**Target:** 0.1.0-alpha5 **Theme:** Observability, Defense & Events **Philosophy:** "If it crashes, I want to know why (Logs) and I want to be able to react (Events)."
 
 ## 🏗️ Phase 1: Cleanup & Hardening (The Foundation)
 

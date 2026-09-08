@@ -36,4 +36,6 @@ paraphrased or invented:
 - Doc/release version stamps are `0.1.0-betaN` — **no `v` prefix** (matches the no-`v` tag gate).
 - Update the **current**-version stamp on a page when its component ships; **never bulk-bump**
   historical `CHANGELOG`/`Waffle_Evolutions` entries or past `Beta-N` prose — that history is pinned.
+- Release dates are month-precision: `## [0.1.0-beta6] — 2026-09` in a CHANGELOG, "September 2026"
+  in prose. Never `YYYY-MM-DD`. Non-release dates (front-matter, audit dates) keep full precision.
 - The direction these docs track lives in `project_system/` — see `[[roadmap-steward]]`.

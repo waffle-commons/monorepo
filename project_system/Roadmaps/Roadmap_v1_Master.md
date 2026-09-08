@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: Release Train to v1.0 (Master)"
 date_created: 2026-06-07
-date_updated: 2026-06-07
+date_updated: 2026-09-08
 type: project
 status: 🏗️ wip
 tags:
@@ -15,60 +15,73 @@ aliases: []
 
 > **Status:** Active Master Plan — replaces the former `Roadmap_Cap_v1.md` (2026-01-20, deleted). The pre-v1 items of `Roadmap_Post_v1.md` have been absorbed into the train (see its absorption ledger).
 > 
+> **Post-BBL pivot (validated, July 2026):** stabilization, multi-engine security audits, Diátaxis documentation, the EcoShield-Gateway reverse-proxy POC, and scientific K6 benchmarking are pulled forward into **beta6**; the former beta6 production-surface work (OpenAPI, Serializer, Testing bridge, NET/QUEUE/OPS) shifts to **beta7**; and the API-freeze / consolidation release becomes **beta8**. The train is re-dated around the API Platform Conference (Lille · September 17–18, 2026). **Slipped one month on 2026-09-06:** beta6 still ships ahead of the conference (September 2026), but every downstream milestone moves back a month — beta7 October 2026, beta8 November 2026, RC1 December 2026, Gold January 2027.
+> 
 > **Vision:** A **full, production-ready PHP ecosystem** for building secured APIs on FrankenPHP, Docker, and Kubernetes. Philosophy unchanged: **"Strict, Secure, Fast."**
 > 
-> **Validation project:** **EcoShield-Gateway** (replaces Sentinel) — the Strangler-Fig API gateway POC (`Roadmap_EcoShield_Gateway.md`). A gateway is the perfect dogfooding target: it exercises proxying, resilience, rate limiting, auth, observability, and worker-mode endurance — exactly the surface v1 must prove.
+> **Validation project:** **EcoShield-Gateway** (replaces Sentinel) — the Strangler-Fig API gateway POC, developed in its own repository outside this monorepo (the POC record and its maturity ladder — POC at beta6 → alpha at beta7 → beta at beta8 → soak on RC1 — live in `Roadmap_Beta6.md` AXE 4). A gateway is the perfect dogfooding target: it exercises proxying, resilience, rate limiting, auth, observability, and worker-mode endurance — exactly the surface v1 must prove.
 
 ## 🚆 THE RELEASE TRAIN
 
-| Release | Window | Theme | Roadmap |
+| Release | Target | Theme | Roadmap |
 |---|---|---|---|
-| `0.1.0-beta4` | Late June 2026 (J-5 BBL) | Security & Stability — RC-readiness groundwork | `Roadmap_Beta4.md` |
-| `0.1.0-beta5` | July – September 2026 | Runtime Power — AOT, Pooling, Telemetry (+3 spikes) | `Roadmap_Beta5.md` |
-| `0.1.0-beta6` | October – November 2026 | **Production Surface** — the missing ecosystem components | `Roadmap_Beta6.md` |
-| `0.1.0-beta7` | December 2026 – January 2027 | **Consolidation & API Freeze** — last feature release | `Roadmap_Beta7.md` |
-| `1.0.0-RC1` | February – mid-March 2027 | Freeze certification + EcoShield-Gateway soak | `Roadmap_RC1.md` |
+| `0.1.0-beta4` | Late June 2026 (shipped) | Security & Stability — RC-readiness groundwork | `Roadmap_Beta4.md` |
+| `0.1.0-beta5` | July 8, 2026 (shipped) | Runtime Power — AOT, Pooling, Telemetry, WebAuthn | `Roadmap_Beta5.md` |
+| `0.1.0-beta6` | **September 2026** | **Stabilization & Audit** — multi-engine audits, Diátaxis docs, EcoShield POC, K6 benchmarking | `Roadmap_Beta6.md` |
+| `0.1.0-beta7` | **October 2026** | **Production Surface** — OpenAPI, Serializer, Testing bridge, NET/QUEUE/OPS | `Roadmap_Beta7.md` |
+| `0.1.0-beta8` | **November 2026** | **Consolidation & API Freeze** — last feature release | `Roadmap_Beta8.md` |
+| `1.0.0-RC1` | **December 2026** | Freeze certification + EcoShield-Gateway soak | `Roadmap_RC1.md` |
 | `1.0.0-RC2` | contingency only | Critical blockers found in RC1 — never planned, only triggered | clause in `Roadmap_RC1.md` |
-| `1.0.0` (Gold) | April 2027 | Launch | `Roadmap_v1_Gold.md` |
+| `1.0.0` (Gold) | **January 2027** | Launch | `Roadmap_v1_Gold.md` |
 
-> **Version jump rationale:** the RC is tagged `1.0.0-RC1`, not `0.1.0-RC1`. SemVer pre-release ordering makes `0.1.0-RC1 < 0.1.0-beta4` ambiguous for Composer users, and the RC certifies the **v1 API**, so it must carry the v1 version. Branch naming follows the established scheme: `pre-release/0.1.0-beta6`, `pre-release/0.1.0-beta7`, `pre-release/1.0.0-RC1`, then `release/1.0.0`.
+> **Schedule guards (added 2026-09-08) — read these before re-committing to any date above.** Two milestones carry a written guard in their own roadmap, and both bind this table:
+> - **beta7 · capacity** (`Roadmap_Beta7.md`) — the heaviest release of the train (four new repositories + eleven items) in its shortest window. The stretch tier is cut on first contact with the schedule, and an unscaffolded-by-mid-October state splits the release rather than sliding it into November. **The November freeze is protected; beta7's scope is not.**
+> - **RC1 · schedule** (`Roadmap_RC1.md`) — the ≥4-week soak, not the tag, is the binding constraint: a January 2027 Gold needs the `1.0.0-RC1` tag by **~December 5, 2026**. The soak straddles the year-end holidays, and an RC2 restarts the clock (Gold → February–March 2027). **The soak is never shortened to recover a date.**
+>
+> Corollary for this table: a slip at beta7 or beta8 moves every later row by the same amount — the rows above are re-dated together, never absorbed by compressing the freeze or the soak.
+
+> **Version jump rationale:** the RC is tagged `1.0.0-RC1`, not `0.1.0-RC1`. SemVer pre-release ordering makes `0.1.0-RC1 < 0.1.0-beta4` ambiguous for Composer users, and the RC certifies the **v1 API**, so it must carry the v1 version. Branch naming follows the established scheme: `pre-release/0.1.0-beta6`, `pre-release/0.1.0-beta7`, `pre-release/0.1.0-beta8`, `pre-release/1.0.0-RC1`, then `release/1.0.0`.
 
 ## 🔬 GAP ANALYSIS — WHAT "FULL / PRODUCTION-READY" STILL REQUIRES
 
-Inventory audit of the 22 components (2026-06-07), cross-referenced with `Roadmap_Post_v1.md` (whose data/AOT/async/OIDC items have already been pulled forward and shipped or scheduled):
+Inventory audit refreshed 2026-07-17 across the 26 live submodules (the beta5 additions — `async`, `telemetry`, `telemetry-otel` — are now live), cross-referenced with `Roadmap_Post_v1.md` (whose data/AOT/async/OIDC items have already been pulled forward and shipped):
 
 | Capability | Current state | Closed by |
 |---|---|---|
 | Security hardening (SSRF, CSRF binding, CORS, traversal, timing) | beta4 scope | beta4 |
-| AOT container/router, DB pooling, OTel/Prometheus | beta5 scope | beta5 |
-| Async deferral / reactive broadcast / WebAuthn | beta5 research spikes | beta7 (land or cut) |
-| **Rate limiting / throttling** | ❌ absent (zero code) | **beta6** `[NET-01]` |
-| **Resilient HTTP client** (timeout policy, retry/backoff, circuit breaker) | ❌ `http-client` is a single `Client.php` | **beta6** `[NET-02/03]` |
-| **Background processing** (queue contracts + driver + worker) | ❌ absent; beta5 `[ASYNC-01]` explicitly disclaims this role | **beta6** `[QUEUE-*]` |
-| **Health/readiness probes + graceful drain** (K8s) | ❌ only internal pool heal-on-lease | **beta6** `[OPS-01/02]` |
-| **Schema migrations maturity** | ⚠️ `data/src/Migration/MigrationRunner.php` exists; no CLI, no versioned workflow | **beta6** `[OPS-03]` |
-| **OpenAPI generation** from `#[Route]` + DTOs | ❌ absent | **beta6** `[API-01]` |
-| **DTO serializer / content negotiation** | ⚠️ ad-hoc JSON in `http/`; `data/` Hydrator is DB-only | **beta6** `[API-02]` |
-| **Testing bridge** (kernel test case, request simulation) | ❌ absent | **beta6** `[TEST-01]` |
-| Dev profiler headers | ❌ absent | beta6 `[DXP-01]` |
-| API freeze pass on `contracts/`, security re-audit, docs completion | not yet schedulable | **beta7** |
-| Real-world validation under production-like load | n/a | **EcoShield-Gateway** alpha (beta6) → beta (beta7) → soak (RC1) |
+| AOT container/router, DB pooling, OTel/Prometheus, WebAuthn | beta5 scope | beta5 (shipped) |
+| **Multi-engine security re-audit + zero-compromise remediation** | ⚠️ single-engine audits only (beta4/beta5) | **beta6** `[AUDIT-*]` / `[FIX-*]` |
+| **Diátaxis documentation modernization** (full surface) | ⚠️ partial / uneven coverage | **beta6** `[DOC-01..03]` |
+| **Scientific K6 benchmarking** (worker vs PHP-FPM, RAM factor) | ❌ claim asserted, never measured | **beta6** `[BENCH-*]` |
+| **EcoShield-Gateway reverse-proxy POC** ($8\,\text{KiB}$ streaming) | ❌ absent | **beta6** `[GATE-01]` |
+| Async deferral / reactive broadcast / WebAuthn | beta5 research spikes | beta8 (confirm or cut) |
+| **Rate limiting / throttling** | ❌ absent (zero code) | **beta7** `[NET-01]` |
+| **Resilient HTTP client** (timeout policy, retry/backoff, circuit breaker) | ❌ `http-client` is a single `Client.php` | **beta7** `[NET-02/03]` |
+| **Background processing** (queue contracts + driver + worker) | ❌ absent; beta5 `[ASYNC-01]` explicitly disclaims this role | **beta7** `[QUEUE-*]` |
+| **Health/readiness probes + graceful drain** (K8s) | ❌ only internal pool heal-on-lease | **beta7** `[OPS-01/02]` |
+| **Schema migrations maturity** | ⚠️ `data/src/Migration/MigrationRunner.php` exists; no CLI, no versioned workflow | **beta7** `[OPS-03]` |
+| **OpenAPI generation** from `#[Route]` + DTOs | ❌ absent | **beta7** `[API-01]` |
+| **DTO serializer / content negotiation** | ⚠️ ad-hoc JSON in `http/`; `data/` Hydrator is DB-only | **beta7** `[API-02]` |
+| **Testing bridge** (kernel test case, request simulation) | ❌ absent | **beta7** `[TEST-01]` |
+| Dev profiler headers | ❌ absent | beta7 `[DXP-01]` |
+| API freeze pass on `contracts/`, security re-audit, docs completion | not yet schedulable | **beta8** |
+| Real-world validation under production-like load | n/a | **EcoShield-Gateway** POC (beta6) → alpha (beta7) → beta (beta8) → soak (RC1) |
 
 ## 🚫 EXPLICIT NON-GOALS FOR v1 (post-v1 backlog)
 
 - **Templating engine** — API-first framework; no HTML rendering layer.
 - **Translation / i18n** — API errors ship in English; userland concern.
 - **Full ORM** (Doctrine-style unit-of-work) — `data/` repositories + mappers are the v1 answer.
-- **Mailer transport** — `MailerInterface` contract only (beta6 decision `[QUEUE-03]`); SMTP/API adapters are post-v1.
+- **Mailer transport** — `MailerInterface` contract only (beta7 decision `[QUEUE-03]`); SMTP/API adapters are post-v1.
 - **WebSockets beyond Mercure/SSE** — covered only if `[REACTIVE-01]` spike is a go.
 - **Admin / web UI of any kind.**
 
 ## 📊 v1.0 SUCCESS INDICATORS (revised)
 
-1. **Stability:** ≥95% coverage on all components; 100% on the critical path (`contracts`, `security`, `auth`, `http`); zero Mago baselines; `wfl igor` 0 KO.
-2. **Performance:** <10ms p99 "hello world" in production worker mode; RAM reduction factor 5–10× vs PHP-FPM under load (EcoShield-Gateway FinOps benchmark, k6 ≥1000 rps).
-3. **Security:** zero known critical vulnerabilities on the **final** surface (re-audited in beta7, certified in RC1).
-4. **Adoption:** **EcoShield-Gateway running the full Strangler-Fig scenario on RC1 for ≥4 weeks** without critical incident (replaces the former Sentinel criterion).
+1. **Stability:** $\geq 95\%$ coverage on all components; 100% on the critical path (`contracts`, `security`, `auth`, `http`); zero Mago baselines; `wfl igor` 0 KO.
+2. **Performance:** <10ms p99 "hello world" in production worker mode; memory-growth slope ~10× lower per concurrent request vs PHP-FPM, with the measured total-RAM factor and crossover point published (EcoShield-Gateway FinOps benchmark, k6 $\geq 1000$ rps). *The former bare "$5\text{–}10\times$ RAM" indicator was reframed by beta6 `[BENCH-05]`: measured false below ~12 concurrent requests (0.87×), crossover at 12–16, 2.37× at 128 — the slope is the defensible claim.*
+3. **Security:** zero known critical vulnerabilities on the **final** surface (re-audited in beta8, certified in RC1).
+4. **Adoption:** **EcoShield-Gateway running the full Strangler-Fig scenario on RC1 for $\geq 4$ weeks** without critical incident (replaces the former Sentinel criterion).
 5. **Completeness:** every capability row in the gap table above closed or explicitly moved to the non-goals list.
 
 ## 🧭 CROSS-CUTTING RULES (apply to every release of the train)
@@ -76,5 +89,5 @@ Inventory audit of the 22 components (2026-06-07), cross-referenced with `Roadma
 - **Contracts-first sequencing:** every new interface lands in `waffle-commons/contracts` before its consuming component; `mago guard` perimeter is non-negotiable.
 - **Branching:** one `pre-release/<version>` branch per component per release (all components ship together: composer constraints, README, CHANGELOG). Delete the previous release's branches once the new ones are cut.
 - **Release mechanics:** umbrella tag pushed → dispatch dry-run on the pushed tag → LIVE wave.
-- **Definition of done per component:** `composer mago && composer tests` green, ≥95% coverage.
-- **New components planned:** `queue`, `openapi`, `serializer`, `testing` (beta6) — monorepo grows from 22 to 26 submodules; repo-creation overhead is budgeted in the beta6 window.
+- **Definition of done per component:** `composer mago && composer tests` green, $\geq 95\%$ coverage.
+- **New components planned:** `queue`, `openapi`, `serializer`, `testing` (beta7) — monorepo grows from 26 to 30 submodules; repo-creation overhead is budgeted in the beta7 window. Beta6 added the `ecoshield-gateway` app-level POC (a dogfooding application, not a contracts-perimeter library) — tracked as a plain directory until its own repository exists, and deliberately excluded from the release wave.

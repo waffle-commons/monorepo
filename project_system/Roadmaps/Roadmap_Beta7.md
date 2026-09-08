@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-06-07
+date_updated: 2026-09-08
 type: project
 status: pending
 tags:
@@ -10,123 +10,188 @@ tags:
   - waffle
 aliases: []
 ---
-# 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP v0.1.0-beta7
+# 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta7
 
-> **Status:** Pending Validation — Draft (scope partially determined by beta5 spike outcomes and the beta6 retrospective)
+> **Status:** Pending Validation — Draft (Subject to revision after the beta6 retrospective)
 > 
-> **Target Release:** End of January 2027 — **the last feature release before v1**. The tag of beta7 *is* the feature freeze.
+> **Target Release:** **October 2026** (the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
-> **Core Mandate:** Resolve every open decision, soak every deep change, freeze the public API, and re-audit the final security surface. A beta exists to change things; after beta7, nothing changes except bug fixes.
+> **Core Mandate:** Close every gap between "high-performance framework" and **full production-ready API ecosystem**: traffic protection, outbound resilience, background processing, Kubernetes operability, API tooling, and testability. This is the release where the missing components get built — beta8 then freezes, so anything not landed here is post-v1.
 > 
-> **Commitment Tiers:** Everything in this roadmap is must-ship — by definition, anything that slips here slips out of v1 entirely (to the post-v1 backlog), not to RC1.
+> **Commitment Tiers:** Committed — AXE 1 (NET), AXE 2 (QUEUE contracts + driver), AXE 3 (OPS), AXE 5 (TEST) · High — AXE 4 (API) · Stretch — `[DXP-01]`, `[GATE-02]`.
+> 
+> **Capacity guard (added 2026-09-08):** beta7 is the **heaviest release of the train in the shortest window** — four brand-new repositories (`queue`, `openapi`, `serializer`, `testing`, each needing repo creation, scaffolding, CI, a `RELEASE_INCLUDE` entry and a first Packagist publication) plus eleven items across five axes. Plan against the measured evidence, not the intent: umbrella-tag cadence has run beta3→beta4 in 7 days, →beta5 in 24, →beta6 in 62; and beta6 was **code-complete on 2026-08-02/03 yet only tagged in September** — roughly five weeks of verification, documentation and wave prep for a release that added *zero* new components. Subtract that tail and conference week (Lille, Sep 17–18) from an October tag and ~3–4 weeks of build remain. **Therefore:** the stretch tier (`[DXP-01]`, `[GATE-02]`) is cut on first contact with the schedule, not renegotiated late; and if the four new repositories are not scaffolded and green on their own gates by **mid-October**, split the release — NET + OPS + QUEUE tag as beta7 in October, API + TEST fold into the beta8 window — instead of letting beta7 slide into November. **The freeze date (beta8, November) is what is being protected here; beta7's scope is not.**
 
-## 🔬 AXE 1: SPIKE RESOLUTION (BETA5 GO/NO-GO DEBT)
+## 🛡️ AXE 1: TRAFFIC PROTECTION & OUTBOUND RESILIENCE
 
-_The three beta5 research spikes get their final verdict. "Go" means landing the production implementation here with full gates; "no-go" means a formal cut to the post-v1 backlog, documented in the master roadmap's non-goals._
+_An API ecosystem that cannot defend its inbound edge or survive flaky upstreams is not production-ready. These are also hard prerequisites for EcoShield-Gateway._
 
-### `[SPK-01]` `[ASYNC-01]` Fiber-Based Deferred Task Runner — verdict
-
-- Land (with the load-test report's throughput budget enforced) or cut. If cut, the documented alternative is `waffle-commons/queue` (beta6) for everything beyond trivial deferral.
-    
-
-### `[SPK-02]` `[REACTIVE-01]` Reactive Write-Hook Observers — verdict
-
-- Land (enqueue-only hooks + middleware flush, Igor-clean) or cut. If cut, SSE/Mercure remains available through explicit event dispatch.
-    
-
-### `[SPK-03]` `[AUTH-01]` WebAuthn / Passkeys — verdict
-
-- Land (contracts + `web-auth/webauthn-lib` adapter, W3C test vectors green, security-audit gate passed) or cut to post-v1. **A half-implemented authentication scheme does not ship in a v1.**
-    
-
-## 🧊 AXE 2: API FREEZE (THE CENTRAL DELIVERABLE)
-
-### `[FRZ-01]` Contracts BC Review
+### `[NET-01]` Token-Bucket Rate Limiter Middleware
 
 - **Specification:**
     
-    - Exhaustive review of every interface, DTO, enum, and attribute in `waffle-commons/contracts` — each one is either confirmed (frozen for all of v1.x under strict SemVer) or fixed **now**.
+    - Introduce `Waffle\Contracts\RateLimit\RateLimiterInterface` + `LimiterStateStorageInterface` in contracts (contracts-first).
         
-    - Checklist per symbol: final naming, parameter/return types explicit (beta4 `[ARCH-01]` bar), no leaked implementation details, PHPDoc contract semantics (preconditions, failure modes) complete.
+    - Implement a Token Bucket limiter as a `security/` middleware, keyed by IP, authenticated subject (`UserIdentityInterface`), or API token.
         
-    - Produce `contracts/BC-POLICY.md`: what is covered by the BC promise (interfaces, DTO shapes) and what is not (internal classes, `@internal` markers).
+    - Storage backends through the existing cache contracts (Redis for multi-worker correctness; in-memory fallback documented as single-worker only).
+        
+    - Emit standard `RateLimit-*` response headers and a fail-closed `429` with `Retry-After`.
+        
+    - **Statelessness compliance:** limiter state lives exclusively in the storage backend, never in worker memory; `wfl igor` must stay 0 KO.
         
 
-### `[FRZ-02]` Deprecation Sweep
+### `[NET-02]` HTTP Client Resilience Policies
 
 - **Specification:**
     
-    - Everything superseded during the beta series gets `#[Deprecated]` now and **removed in RC1** — v1.0 ships zero deprecated symbols.
+    - Extend `waffle-commons/http-client` with declarative per-request policies: connect/total timeout (mandatory defaults — no infinite timeouts anywhere), bounded retry with exponential backoff + jitter, and idempotency awareness (never auto-retry non-idempotent methods unless explicitly opted in).
         
-    - Cross-component grep for usages; skeleton/workspace/Academy templates updated to the final APIs.
+    - Policies are immutable DTOs; configuration lives in config, not code.
+        
+    - Compose with the beta4 `[SEC-02]` SSRF guardrail (resolve → validate → pin runs on every retry attempt).
         
 
-### `[FRZ-03]` Naming & Convention Consistency Pass
+### `[NET-03]` Circuit Breaker
 
 - **Specification:**
     
-    - One sweep across all components: namespace conventions (`Waffle\Commons\*` / `Waffle\Contracts\*`), exception hierarchies, config key naming, console command naming (`domain:action`), error response shapes.
+    - Implement a circuit breaker (closed/open/half-open) wrapping outbound calls, with failure-rate thresholds and cool-down windows.
         
-    - Inconsistencies found after v1 are permanent — this is the last cheap moment.
+    - State storage through the same `LimiterStateStorageInterface` family as `[NET-01]` — shared across workers via Redis, never in-process.
+        
+    - Expose breaker state transitions as events (kernel lifecycle hooks from beta4 `[ARCH-04]`) and as metrics on `/waffle-metrics` (beta5 `[OBS-02]`).
         
 
-## 🧯 AXE 3: SOAK & STABILIZATION
+## 📨 AXE 2: BACKGROUND PROCESSING (NEW COMPONENT `waffle-commons/queue`)
 
-### `[STAB-01]` Deep-Change Soak Fixes
+_Beta5 `[ASYNC-01]` is finish-request deferral and explicitly **not** background processing. Production APIs need real job dispatch. Scope is deliberately minimal: contracts + one solid driver + a worker — not a Symfony Messenger clone._
+
+### `[QUEUE-01]` Queue Contracts
 
 - **Specification:**
     
-    - Dedicated bake time for the invasive beta5/beta6 machinery under sustained load: AOT compiled-vs-runtime container parity (snapshot diffs on real apps), DBAL pool exhaustion/reconnect edge cases, queue worker endurance, breaker/limiter behavior under chaos testing.
+    - `Waffle\Contracts\Queue\`: `MessageInterface`, `QueueDispatcherInterface`, `QueueConsumerInterface`, `FailedMessageStoreInterface`.
         
-    - 72h continuous k6 soak on the workspace demo apps + EcoShield-Gateway: zero memory drift (Igor), zero connection leakage, zero 5xx not injected by the chaos scenario.
+    - Messages are strictly-typed, serializable DTOs (no closures, no object graphs); envelope carries id, attempts, available-at, and trace context (W3C propagation from beta5 `[OBS-01]`).
         
 
-### `[GATE-02]` EcoShield-Gateway Beta + FinOps Benchmark
+### `[QUEUE-02]` Redis Streams Driver + Console Worker
 
 - **Specification:**
     
-    - Execute Phase 3 of `Roadmap_EcoShield_Gateway.md` on beta7: k6 ≥1000 rps, Scenario A (direct legacy PHP-FPM) vs Scenario B (gateway) — RAM ceiling, latency, breaking point.
+    - One reference driver on Redis Streams (consumer groups give ack/retry semantics for free); additional drivers are post-v1.
         
-    - The benchmark report is a v1 launch asset **and** the empirical proof for success indicator #2 (5–10× RAM factor).
+    - `bin/waffle queue:work` console command (lives in `console/`, depends only on contracts per the established perimeter): bounded retries, dead-letter via `FailedMessageStoreInterface`, graceful SIGTERM drain (ties into `[OPS-02]`).
+        
+    - Worker is itself a long-running FrankenPHP-style process: must pass the Igor statelessness audit between messages.
         
 
-## 🔐 AXE 4: FINAL SECURITY RE-AUDIT
-
-### `[AUD-01]` Full-Surface Audit
+### `[QUEUE-03]` Mailer Scoping Decision
 
 - **Specification:**
     
-    - Re-run the complete audit (the one that produced the beta4 findings) against the **final** surface: everything beta4 fixed (regression check) plus the new beta5/beta6 attack surface — `/waffle-metrics`, connection pooling, rate limiter storage, queue payload handling, OpenAPI/Swagger dev routes, health endpoints, WebAuthn (if landed), the gateway proxy path (header smuggling, hop-by-hop handling, request smuggling).
+    - Ship `Waffle\Contracts\Mailer\MailerInterface` + message DTO **contract only**; transactional mail is dispatched as a queue message.
         
-    - Every finding is fixed in beta7 or formally risk-accepted with sign-off in the audit report. RC1 inherits zero open criticals.
+    - SMTP/API transport adapters are explicitly **post-v1** (non-goal in the master roadmap); userland may bind any PSR-compatible mailer to the interface meanwhile.
         
 
-## 📚 AXE 5: DOCUMENTATION & ONBOARDING COMPLETION
+## ☸️ AXE 3: KUBERNETES OPERABILITY
 
-### `[DOC-01]` Diátaxis Completion
+_"Production-ready on Docker/K8s" is the founding vision — these are the table stakes that don't exist yet._
+
+### `[OPS-01]` Health & Readiness Endpoints
 
 - **Specification:**
     
-    - `documentation/` (tutorials / how-to / reference / explanation) covers every component at v1 API state — including the four beta6 newcomers.
+    - Lightweight middleware exposing `/healthz` (liveness: process responsive) and `/readyz` (readiness: aggregated `HealthCheckInterface` probes — DB pool, Redis, queue driver, disk).
         
-    - Reference pages generated/verified against frozen contracts; upgrade guide "beta series → 1.0" drafted.
+    - `Waffle\Contracts\Health\HealthCheckInterface` in contracts; components ship their own probes; fail-closed: an unregistered critical dependency means not-ready.
+        
+    - Constant-time, allocation-light handlers — these are hit every few seconds by orchestrators.
         
 
-### `[DOC-02]` RFC & Internal Doc Reconciliation
+### `[OPS-02]` Graceful Shutdown & Connection Draining
 
 - **Specification:**
     
-    - Pending rewrites land: RFC-021 universal-auth reframing (RFC/skill/AGENTS), `Roadmap_Post_v1.md` refreshed to remove absorbed items, Academy labs aligned with final APIs.
+    - Handle SIGTERM in the runtime: stop accepting work, flush deferred tasks (beta5 `[ASYNC-01]` if landed), return pooled connections (beta5 `[DBAL-01]`), close streams, then exit within the configurable grace period.
+        
+    - `/readyz` flips to not-ready immediately on SIGTERM so K8s stops routing before the drain.
         
 
-## ✅ ACCEPTANCE CRITERIA — FREEZE EXIT GATE
+### `[OPS-03]` Schema Migration Workflow Maturity
 
-Beta7 tags only when **all** of the following hold; this checklist is re-verified as RC1's entry gate:
+- **Specification:**
+    
+    - Build on the existing `data/src/Migration/MigrationRunner.php` — do not rewrite it.
+        
+    - Add versioned migration files, a ledger table, and console commands: `migrate`, `migrate:rollback`, `migrate:status`, `make:migration` (Maker conventions from RFC-020).
+        
+    - SQL dialects already supported by `data/` only; NoSQL backends are schema-less and out of scope.
+        
 
-1. Zero open spike decisions; post-v1 backlog updated with every cut.
-2. `contracts/` BC review 100% complete; `BC-POLICY.md` published; zero TODO/FIXME in contracts.
-3. 72h soak: zero memory drift, zero leaked connections/transactions, zero un-injected 5xx.
-4. Security audit: zero open criticals; report archived in `project_system/`.
-5. EcoShield-Gateway benchmark report produced; RAM factor documented.
-6. Docs complete for all components; Academy labs green against beta7.
-7. Standard gates everywhere: `composer mago && composer tests`, ≥95% coverage, zero baselines, `wfl igor` 0 KO.
+## 📜 AXE 4: API SURFACE TOOLING
+
+### `[API-01]` OpenAPI Generation (NEW COMPONENT `waffle-commons/openapi`)
+
+- **Specification:**
+    
+    - Generate `openapi.json` from existing `#[Route]` attributes and typed controller signatures/DTOs — zero manual YAML.
+        
+    - Build-time console command (`openapi:generate`) sharing the beta5 `[AOT-02]` metadata-parsing phase where possible; optional dev-only route serving the spec + Swagger UI.
+        
+    - Optional `#[OA\*]`-style attributes for response/description overrides; absence of attributes still yields a valid (if terse) spec.
+        
+
+### `[API-02]` DTO Serializer & Content Negotiation (NEW COMPONENT `waffle-commons/serializer`)
+
+- **Specification:**
+    
+    - Scoped normalizer for strictly-typed DTOs ↔ JSON (request hydration + response serialization) honoring PHP 8.5 property hooks and asymmetric visibility — **not** a general-purpose serializer.
+        
+    - **AOT alignment:** normalizers are compilable per-DTO classes generated at build time (same philosophy as beta5 `[AOT-01]`), reflection-free at runtime.
+        
+    - `Accept`-header content negotiation middleware (JSON committed; others post-v1).
+        
+    - `data/`'s Hydrator remains DB-only; this component owns the HTTP boundary.
+        
+
+## 🧪 AXE 5: TESTABILITY (NEW COMPONENT `waffle-commons/testing`)
+
+### `[TEST-01]` Kernel Testing Bridge
+
+- **Specification:**
+    
+    - `WaffleTestCase`: boots the kernel in-process, dispatches simulated PSR-7 requests through the real pipeline (no web server), returns typed responses for assertion.
+        
+    - Test doubles for time, queue (`InMemoryQueue` asserting dispatched messages), mailer contract, and HTTP client (record/replay).
+        
+    - Dev-only component (`require-dev` in userland); EcoShield-Gateway and Academy labs are the first consumers.
+        
+
+### `[DXP-01]` Dev Profiler Headers (stretch)
+
+- **Specification:**
+    
+    - Dev-mode middleware emitting `X-Waffle-Time`, `X-Waffle-Memory`, `X-Waffle-Queries` headers; no web toolbar (API-first).
+        
+
+## 🛡️ AXE 6: ECOSHIELD-GATEWAY ALPHA (DOGFOODING — stretch)
+
+### `[GATE-02]` Gateway Lab Bootstrap
+
+- **Specification:**
+    
+    - Grow the beta6 reverse-proxy POC (`Roadmap_Beta6.md` `[GATE-01]`) to **alpha** on beta7, in the gateway's own repository: legacy monolith lab + Waffle proxy app (catch-all `ProxyController` over the resilient client `[NET-02/03]`, strangler route served natively with cache + rate limiter `[NET-01]`).
+        
+    - Built **exclusively on public Waffle APIs** — any private-API reach-through is a framework design bug to fix, not to work around.
+        
+
+## ✅ ACCEPTANCE CRITERIA
+
+- **NET:** limiter correct under concurrent multi-worker load (no over-admission beyond bucket size); breaker opens/half-opens per thresholds in fault-injection tests; zero infinite timeouts possible by construction.
+- **QUEUE:** message survives worker crash (Redis Streams pending-list reclaim); failed messages land in the dead-letter store with full envelope; `queue:work` drains cleanly on SIGTERM.
+- **OPS:** `/readyz` flips on dependency failure and on SIGTERM; rolling-restart under k6 load loses zero in-flight requests; `migrate` + `migrate:rollback` round-trip on every supported SQL dialect.
+- **API:** generated `openapi.json` validates against the OpenAPI 3.1 schema; serializer round-trips every DTO shape in the test matrix (hooks, asymmetric visibility, nested DTOs, arrays).
+- **All items:** `composer mago && composer tests` green, $\geq 95\%$ coverage, zero Mago baselines, `wfl igor` 0 KO; contracts-first sequencing; new submodules (`queue`, `openapi`, `serializer`, `testing`) scaffolded from `component-template`.

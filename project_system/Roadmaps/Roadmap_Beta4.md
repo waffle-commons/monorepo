@@ -10,7 +10,7 @@ tags:
   - waffle
 aliases: []
 ---
-# 🧇 WAFFLE-COMMONS — OFFICIAL ECOSYSTEM ROADMAP v0.1.0-beta4
+# 🧇 WAFFLE-COMMONS — OFFICIAL ECOSYSTEM ROADMAP 0.1.0-beta4
 
 > **Status:** Approved Engineering Blueprint — Sprint Backlog
 > 

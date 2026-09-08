@@ -12,10 +12,13 @@
 #       A failing component no longer aborts the wave or hides its error — the
 #       loop processes all components and reports failures in the summary.
 #   R2  Fail-closed ALLOWLIST (RELEASE_INCLUDE) instead of a denylist: ONLY the
-#       paths listed there are tagged. The 16 framework components plus
-#       'documentation' and 'skeleton' (the create-project target) are released;
-#       'component-template' and 'workspace' are intentionally excluded and can
-#       never be tagged by accident.
+#       paths listed there are tagged. The 21 framework components plus
+#       'documentation' and 'skeleton' (the create-project target) are released
+#       — 23 in total; 'component-template', 'workspace' and the PRIVATE
+#       'academy' are intentionally excluded and can never be tagged by
+#       accident. The exclusion of 'academy' is load-bearing: it is the only
+#       private repo, so the allowlist gate is what keeps the wave from needing
+#       a token that can read it.
 #   R3  Token pre-flight fails fast with a clear message if the token is
 #       invalid/expired or lacks org access.
 #   R4  Canonical tag-format gate: a non-conforming umbrella tag (e.g. a 'v'

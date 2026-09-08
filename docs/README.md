@@ -2,7 +2,7 @@
 
 > **Audience:** contributors and maintainers of the Waffle Commons monorepo.
 > **Scope:** how to use *this* repository — submodules, Docker, scripts, releases.
-> **Release:** `0.1.0-beta5`
+> **Release:** `0.1.0-beta6`
 
 For framework usage (writing controllers, configuring routing, securing endpoints), see [`/documentation`](../documentation/) — the framework's own Diátaxis tree.
 
@@ -43,7 +43,7 @@ Documentation is organised by what you're trying to do, following the [Diátaxis
 - [**`CODEOWNERS`**](reference/codeowners.md) — review routing.
 
 ### Planning a change or proposing a feature?
-- [**`project_system/` — governance & roadmap**](reference/project-system.md) — the **official roadmap**, the RFC design specs, and per-release logs & retrospectives. Align your proposal with the current [roadmap](../project_system/Roadmaps/Roadmap_Beta5.md) and the relevant RFC **before** you build.
+- [**`project_system/` — governance & roadmap**](reference/project-system.md) — the **official roadmap**, the RFC design specs, and per-release logs & retrospectives. Align your proposal with the current [roadmap](../project_system/Roadmaps/Roadmap_Beta7.md) and the relevant RFC **before** you build.
 
 ### Why is it like this?
 - [**Why a monorepo of submodules?**](explanation/why-monorepo-of-submodules.md) — the rationale and trade-offs.

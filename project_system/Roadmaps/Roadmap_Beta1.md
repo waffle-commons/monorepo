@@ -12,7 +12,7 @@ aliases: []
 ---
 # ⚙️ Roadmap Waffle Core: Remediation & Proxying (Beta 1)
 
-**Target:** `v0.1.0-beta1` **Theme:** Worker-Native Security, Decoupling and Asynchronous Proxying.
+**Target:** `0.1.0-beta1` **Theme:** Worker-Native Security, Decoupling and Asynchronous Proxying.
 
 > **Context:** The post-Beta 0 audit revealed critical flaws (Insecure Deserialization, environment leakage via `putenv`) and architectural debt (tight Kernel coupling, reflection abuse). Before we can calmly turn Waffle into an "API Gateway" (the EcoShield project), **the absolute priority is to patch these vulnerabilities** to guarantee complete process isolation under FrankenPHP.
 

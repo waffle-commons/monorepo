@@ -12,7 +12,7 @@ aliases: []
 ---
 # 🗺️ Waffle Ecosystem Roadmap: Enterprise Auth & Stateless Data (Beta 3)
 
-**Target Release:** `v0.1.0-beta3`
+**Target Release:** `0.1.0-beta3`
 
 **Status:** `Approved by Architect`
 
@@ -24,7 +24,7 @@ aliases: []
 
 ## 1. Executive Summary
 
-Waffle Core `v0.1.0-beta2` successfully stabilized the core HTTP routing pipeline, optimized the dependency injection container, and eliminated technical debt across the codebase by enforcing a strict _Zero-Baseline Mago_ static analysis policy. Furthermore, all core refactoring of **Phase 4 (Skeleton Correction & Decoupling)** was completed ahead of schedule, validating our in-container DI-wiring and native PHP 8.5 Property Hook validations.
+Waffle Core `0.1.0-beta2` successfully stabilized the core HTTP routing pipeline, optimized the dependency injection container, and eliminated technical debt across the codebase by enforcing a strict _Zero-Baseline Mago_ static analysis policy. Furthermore, all core refactoring of **Phase 4 (Skeleton Correction & Decoupling)** was completed ahead of schedule, validating our in-container DI-wiring and native PHP 8.5 Property Hook validations.
 
 The core objective of the **Beta 3** wave is to transition Waffle from an ultra-fast HTTP execution pipeline into a **fully featured, enterprise-grade application ecosystem**. To achieve this, we are introducing two major, decoupled components designed from the ground up to respect FrankenPHP's resident memory worker execution constraints:
 
@@ -169,7 +169,7 @@ _The true strength of a micro-component architecture lies in the secure and seam
 
 ## 🛑 Definition of Done (DoD) for Beta 3
 
-The entire ecosystem will be certified and released under version `v0.1.0-beta3` only when:
+The entire ecosystem will be certified and released under version `0.1.0-beta3` only when:
 
 1. **Agnosticism Preserved:** The new `auth` and `data` packages contain no direct coupling or cross-imports, depending exclusively on `waffle-commons/contracts` and explicit PSR interfaces.
     

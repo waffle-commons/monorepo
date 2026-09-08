@@ -1,0 +1,15 @@
+# Bench stub (overwrites the doctrine-bundle recipe file) — Doctrine DBAL only,
+# no ORM. The connection reads the DB_* env vars injected by
+# docker-compose.bench.yml; the engine images bake matching defaults
+# (bench-postgres / waffle / waffle / waffle) so the app also boots standalone
+# on the bench network. Real environment variables always win over .env files.
+doctrine:
+    dbal:
+        driver: pdo_pgsql
+        host: '%env(DB_HOST)%'
+        port: '%env(int:DB_PORT)%'
+        dbname: '%env(DB_NAME)%'
+        user: '%env(DB_USER)%'
+        password: '%env(DB_PASSWORD)%'
+        server_version: '17'
+        charset: utf8
