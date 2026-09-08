@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-09-06
+date_updated: 2026-09-08
 type: project
 status: pending
 tags:
@@ -19,6 +19,8 @@ aliases: []
 > **Core Mandate:** Close every gap between "high-performance framework" and **full production-ready API ecosystem**: traffic protection, outbound resilience, background processing, Kubernetes operability, API tooling, and testability. This is the release where the missing components get built — beta8 then freezes, so anything not landed here is post-v1.
 > 
 > **Commitment Tiers:** Committed — AXE 1 (NET), AXE 2 (QUEUE contracts + driver), AXE 3 (OPS), AXE 5 (TEST) · High — AXE 4 (API) · Stretch — `[DXP-01]`, `[GATE-02]`.
+> 
+> **Capacity guard (added 2026-09-08):** beta7 is the **heaviest release of the train in the shortest window** — four brand-new repositories (`queue`, `openapi`, `serializer`, `testing`, each needing repo creation, scaffolding, CI, a `RELEASE_INCLUDE` entry and a first Packagist publication) plus eleven items across five axes. Plan against the measured evidence, not the intent: umbrella-tag cadence has run beta3→beta4 in 7 days, →beta5 in 24, →beta6 in 62; and beta6 was **code-complete on 2026-08-02/03 yet only tagged in September** — roughly five weeks of verification, documentation and wave prep for a release that added *zero* new components. Subtract that tail and conference week (Lille, Sep 17–18) from an October tag and ~3–4 weeks of build remain. **Therefore:** the stretch tier (`[DXP-01]`, `[GATE-02]`) is cut on first contact with the schedule, not renegotiated late; and if the four new repositories are not scaffolded and green on their own gates by **mid-October**, split the release — NET + OPS + QUEUE tag as beta7 in October, API + TEST fold into the beta8 window — instead of letting beta7 slide into November. **The freeze date (beta8, November) is what is being protected here; beta7's scope is not.**
 
 ## 🛡️ AXE 1: TRAFFIC PROTECTION & OUTBOUND RESILIENCE
 
@@ -181,7 +183,7 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
 
 - **Specification:**
     
-    - Execute Phase 1–2 of `Roadmap_EcoShield_Gateway.md` on beta7 (building on the beta6 reverse-proxy POC): legacy monolith lab + Waffle proxy app (catch-all `ProxyController` over the resilient client `[NET-02/03]`, strangler route served natively with cache + rate limiter `[NET-01]`).
+    - Grow the beta6 reverse-proxy POC (`Roadmap_Beta6.md` `[GATE-01]`) to **alpha** on beta7, in the gateway's own repository: legacy monolith lab + Waffle proxy app (catch-all `ProxyController` over the resilient client `[NET-02/03]`, strangler route served natively with cache + rate limiter `[NET-01]`).
         
     - Built **exclusively on public Waffle APIs** — any private-API reach-through is a framework design bug to fix, not to work around.
         

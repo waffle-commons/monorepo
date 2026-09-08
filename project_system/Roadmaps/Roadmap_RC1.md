@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (RC 1)"
 date_created: 2026-06-07
-date_updated: 2026-09-06
+date_updated: 2026-09-08
 type: project
 status: pending
 tags:
@@ -20,6 +20,8 @@ aliases: []
 > **Core Mandate:** Prove that nothing needs changing. An RC adds **zero** features — it certifies the beta8 freeze under real conditions. If RC1 needs anything beyond a bug fix, that work was beta8's and the freeze date moves; it does not leak into the RC.
 > 
 > **Versioning:** tagged `1.0.0-RC1` (not `0.1.0-RC1`) — the RC certifies the v1 API and must order correctly for Composer. Branch: `pre-release/1.0.0-RC1` in every component.
+> 
+> **Schedule guard (added 2026-09-08):** the ≥4-week soak — not the tag — is the binding constraint. A **January 2027 Gold requires the `1.0.0-RC1` tag by ~December 5, 2026**: the soak clock starts at the tag, and a mid-December tag ends it mid-January with no room left for the Gold wave. Two facts belong in the plan rather than in the retrospective — the soak window straddles the year-end holidays (incident response must be staffed, or the soak certifies nothing), and an RC2 trigger **restarts the four-week clock**, putting Gold in February–March 2027. If beta8 (November) slips, RC1 and Gold slip by the same amount: **the soak is never shortened to recover a date.**
 
 ## 🏁 AXE 1: FREEZE CERTIFICATION
 

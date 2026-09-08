@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 8)"
 date_created: 2026-06-07
-date_updated: 2026-09-06
+date_updated: 2026-09-08
 type: project
 status: pending
 tags:
@@ -85,7 +85,7 @@ _The three beta5 research spikes get their final verdict. "Go" means landing the
 
 - **Specification:**
     
-    - Execute Phase 3 of `Roadmap_EcoShield_Gateway.md` on beta8: k6 $\geq 1000$ rps, Scenario A (direct legacy PHP-FPM) vs Scenario B (gateway) — RAM ceiling, latency, breaking point.
+    - Take EcoShield-Gateway to **beta** on beta8 (from the beta7 alpha, `[GATE-02]`) and run the FinOps benchmark in its own repository: k6 $\geq 1000$ rps, Scenario A (direct legacy PHP-FPM) vs Scenario B (gateway) — RAM ceiling, latency, breaking point.
         
     - The benchmark report is a v1 launch asset **and** the empirical proof for success indicator #2 (memory-growth slope + measured RAM factor + crossover point, per the beta6 `[BENCH-05]` reframing — never a bare "$5\text{–}10\times$").
         

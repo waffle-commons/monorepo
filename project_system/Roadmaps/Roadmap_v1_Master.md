@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: Release Train to v1.0 (Master)"
 date_created: 2026-06-07
-date_updated: 2026-09-06
+date_updated: 2026-09-08
 type: project
 status: 🏗️ wip
 tags:
@@ -19,7 +19,7 @@ aliases: []
 > 
 > **Vision:** A **full, production-ready PHP ecosystem** for building secured APIs on FrankenPHP, Docker, and Kubernetes. Philosophy unchanged: **"Strict, Secure, Fast."**
 > 
-> **Validation project:** **EcoShield-Gateway** (replaces Sentinel) — the Strangler-Fig API gateway POC (`Roadmap_EcoShield_Gateway.md`). A gateway is the perfect dogfooding target: it exercises proxying, resilience, rate limiting, auth, observability, and worker-mode endurance — exactly the surface v1 must prove.
+> **Validation project:** **EcoShield-Gateway** (replaces Sentinel) — the Strangler-Fig API gateway POC, developed in its own repository outside this monorepo (the POC record and its maturity ladder — POC at beta6 → alpha at beta7 → beta at beta8 → soak on RC1 — live in `Roadmap_Beta6.md` AXE 4). A gateway is the perfect dogfooding target: it exercises proxying, resilience, rate limiting, auth, observability, and worker-mode endurance — exactly the surface v1 must prove.
 
 ## 🚆 THE RELEASE TRAIN
 
@@ -33,6 +33,12 @@ aliases: []
 | `1.0.0-RC1` | **December 2026** | Freeze certification + EcoShield-Gateway soak | `Roadmap_RC1.md` |
 | `1.0.0-RC2` | contingency only | Critical blockers found in RC1 — never planned, only triggered | clause in `Roadmap_RC1.md` |
 | `1.0.0` (Gold) | **January 2027** | Launch | `Roadmap_v1_Gold.md` |
+
+> **Schedule guards (added 2026-09-08) — read these before re-committing to any date above.** Two milestones carry a written guard in their own roadmap, and both bind this table:
+> - **beta7 · capacity** (`Roadmap_Beta7.md`) — the heaviest release of the train (four new repositories + eleven items) in its shortest window. The stretch tier is cut on first contact with the schedule, and an unscaffolded-by-mid-October state splits the release rather than sliding it into November. **The November freeze is protected; beta7's scope is not.**
+> - **RC1 · schedule** (`Roadmap_RC1.md`) — the ≥4-week soak, not the tag, is the binding constraint: a January 2027 Gold needs the `1.0.0-RC1` tag by **~December 5, 2026**. The soak straddles the year-end holidays, and an RC2 restarts the clock (Gold → February–March 2027). **The soak is never shortened to recover a date.**
+>
+> Corollary for this table: a slip at beta7 or beta8 moves every later row by the same amount — the rows above are re-dated together, never absorbed by compressing the freeze or the soak.
 
 > **Version jump rationale:** the RC is tagged `1.0.0-RC1`, not `0.1.0-RC1`. SemVer pre-release ordering makes `0.1.0-RC1 < 0.1.0-beta4` ambiguous for Composer users, and the RC certifies the **v1 API**, so it must carry the v1 version. Branch naming follows the established scheme: `pre-release/0.1.0-beta6`, `pre-release/0.1.0-beta7`, `pre-release/0.1.0-beta8`, `pre-release/1.0.0-RC1`, then `release/1.0.0`.
 

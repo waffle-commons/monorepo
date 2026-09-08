@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (v1.0 Gold)"
 date_created: 2026-06-07
-date_updated: 2026-09-06
+date_updated: 2026-09-08
 type: project
 status: pending
 tags:
@@ -49,7 +49,7 @@ aliases: []
 
 ### `[LAUNCH-03]` Launch Material
 
-- The EcoShield-Gateway story as flagship case study: Strangler-Fig architecture, FinOps benchmark (RC-sourced numbers), "Audit & Rescue" packaging per `Roadmap_EcoShield_Gateway.md` Phase 4.
+- The EcoShield-Gateway story as flagship case study: Strangler-Fig architecture, FinOps benchmark (RC-sourced numbers), and the "Audit & Rescue" packaging — productizing that offer is itself post-v1 (`Roadmap_Post_v1.md` §4).
     
 - Announcement post + Academy as the public on-ramp (`/academy` labs against v1.0).
     
