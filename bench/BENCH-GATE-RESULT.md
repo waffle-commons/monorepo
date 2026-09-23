@@ -1,6 +1,6 @@
 # BENCH-GATE-RESULT — Beta6 AXE 5 (tri-engine k6 benchmark)
 
-- **Date:** 2026-08-02 / 2026-08-03 (full-length soaks)
+- **Date:** 2026-08-02 / 2026-08-03 (full-length soaks) · Engine C corrections recorded 2026-09-23
 - **Subject:** `waffle-commons/skeleton` @ `pre-release/0.1.0-beta6`, FrankenPHP 1.12.2 / PHP 8.5
 - **Harness:** `bench/` (this directory) — `run-bench.sh <engine> <scenario> [workload]`
 - **Raw data:** `bench/results/*.json` + `*-mem.csv` (gitignored; archived to
@@ -10,11 +10,15 @@
 |---|---|---|---|
 | **A** | Waffle-Commons (skeleton, prod image) | FrankenPHP worker, 4 workers | subject |
 | **B** | Symfony (shared app) | php-fpm + nginx, `pm.static` 16 | classic-stack baseline |
-| **C** | Symfony (same app) | FrankenPHP worker, 4 workers | runtime-held-constant control |
+| **C** | Symfony (same app) | FrankenPHP worker, 4 workers, via `runtime/frankenphp-symfony` (restarted every 500 requests — see *Engine C corrections*) | runtime-held-constant control |
 
 Pinned identically: 2 CPUs, 1 GiB, `APP_ENV=prod`, opcache `validate_timestamps=0`,
-JIT `1234` / 128 M buffer, `MAX_REQUESTS=1000000`, one engine running at a time,
+JIT `1234` / 128 M buffer, one engine running at a time,
 30 s warm-up before every measured window, identical 10 000-row `users` dataset.
+
+**Correction (2026-09-17): worker recycling was *not* pinned identically.** `MAX_REQUESTS=1000000`
+reached Engine A only; Engine C's workers restarted every 500 requests. The Engine C readings in
+BENCH-02 and BENCH-03 are annotated accordingly — see *Engine C corrections*.
 
 ---
 
@@ -25,7 +29,7 @@ JIT `1234` / 128 M buffer, `MAX_REQUESTS=1000000`, one engine running at a time,
 | `[BENCH-01]` reproducible tri-engine harness | **PASS** | one command per run; Symfony app bootstrap-scripted |
 | `[BENCH-02]` constant-load percentiles | **PASS** (latency) | vs PHP-FPM: decisive win. vs Symfony-on-worker: parity to 200 rps on dbread / 400 on dbtxn, earlier knee after |
 | `[BENCH-02]` 5–10× RAM factor | **NOT TESTABLE HERE** | pinning made the claim unmeasurable — superseded by BENCH-05 |
-| `[BENCH-03]` soak ΔM = 0 | **PASS** (full window) | 3 h/engine, 1.62 M requests each, ΔM negative on both |
+| `[BENCH-03]` soak ΔM = 0 | **PASS** (full window, Engine A) | 3 h, 1.62 M requests, zero restarts, ΔM −1.76 MiB. Engine C's run restarted its workers every 500 requests — not a leak test |
 | `[BENCH-04]` pool-starvation behaviour | **PASS** | 8× oversubscription, bounded, zero errors |
 | `[BENCH-05]` memory vs concurrency | **PASS — claim REFRAMED** | FPM grows **10.5× faster** per concurrent request; 2.37× total at 128 concurrency; bare "5–10×" is **not** publishable as stated |
 
@@ -110,6 +114,11 @@ is already queueing at 400 (883 ms) where C is still at 1.6 ms. Investigated rat
 > Beta7 should add an "equivalent-features Symfony" engine (security-bundle + CSRF +
 > a transaction subscriber) to separate the two.
 
+> **Engine C caveat (post-run audit, 2026-09-17 — see *Engine C corrections*).** C ran through
+> the external `runtime/frankenphp-symfony` bridge, and its workers restarted every 500 requests,
+> each restart booting the Symfony kernel again. Restarts most likely add latency to C, so the
+> reading above stands; if anything, C's lead is understated.
+
 **Actionable optimisation identified:** make ping-before-dispense skippable for
 connections leased within a freshness window — halves DB round trips on the hot path.
 Recorded as a beta7 item.
@@ -119,17 +128,20 @@ Recorded as a beta7 item.
 ## `[BENCH-03]` Soak — ΔM
 
 Method: constant 150 rps, all five workloads round-robin, **3 hours per worker engine** (the full
-window the roadmap specifies), RSS sampled every 5 s, `MAX_REQUESTS=1000000` so the worker loop
-never recycles and cannot mask a leak.
+window the roadmap specifies), RSS sampled every 5 s, `MAX_REQUESTS=1000000` so Engine A's worker
+loop never recycles and cannot mask a leak. **Engine C did not get the equivalent setting:** its
+workers restarted every 500 requests (see *Engine C corrections*).
 
 | Engine | Requests | p50 / p99 | First window | Last window | ΔM | Verdict |
 |---|---:|---|---|---|---|---|
 | A (Waffle worker) | 1 620 001 | 1.85 / 6.23 ms | 73.21 MiB | 71.45 MiB | **−1.76 MiB** | **PASS** |
-| C (Symfony worker) | 1 620 001 | 1.68 / 4.80 ms | 60.78 MiB | 60.49 MiB | **−0.29 MiB** | **PASS** |
+| C (Symfony worker) | 1 620 001 | 1.68 / 4.80 ms | 60.78 MiB | 60.49 MiB | −0.29 MiB | **not a leak test** (restarted every 500 requests) |
 
 Zero failed requests on either engine across 1.62 million requests each (1 729 RSS samples per run,
-tolerance ±5 MiB). **Both deltas are negative** — memory ended *lower* than it began, which is the
-opposite of a leak rather than merely a small one. Peak RSS: A 76.0 MiB, C 64.4 MiB. Cross-checked
+tolerance ±5 MiB). **Both deltas are negative, but only Engine A's is a leak result.** A never
+recycled, so memory ending *lower* than it began is the opposite of a leak rather than merely a small
+one. C's workers restarted every 500 requests, and each restart discards whatever the worker had
+accumulated, so C's run cannot detect a slow leak. Peak RSS: A 76.0 MiB, C 64.4 MiB. Cross-checked
 against `wfl igor` (0 KO) on the same build.
 
 **Why the full window mattered.** The initial 30-minute pass reported +1.5 MiB and, read alone,
@@ -257,6 +269,35 @@ throughput at 8.7× the p50 latency.
    classmap.
 5. **`intl` is not installed on engines B/C.** Unused by every workload and the single
    slowest build step; opcache/JIT parity — what actually shapes throughput — is intact.
+
+## Engine C corrections (post-run audit, 2026-09-17)
+
+Found after this report was published and, unlike the deviations above, not deliberate. Engine C
+has not been re-run yet: the affected readings are annotated in place, and no measured number in
+this report has changed.
+
+1. **Engine C's workers restarted every 500 requests; Engine A's never did.** Engine C runs Symfony
+   through `runtime/frankenphp-symfony` 1.0.0, whose worker loop exits after `frankenphp_loop_max`
+   requests — **500** by default, overridden only by that runtime option or `FRANKENPHP_LOOP_MAX`.
+   The rig set `MAX_REQUESTS=1000000`, which Engine A's worker script reads and this package does
+   not, and set nothing for Engine C (`docker-compose.bench.yml`, service `engine-c`). FrankenPHP
+   then restarts the worker script, which boots the Symfony kernel again.
+   - **BENCH-03:** each restart discards whatever the worker had accumulated, so C's soak cannot
+     detect a slow leak. Its row stays for the record, not as a PASS. Engine A's result is
+     unaffected.
+   - **BENCH-02:** restarts most likely add latency to C, mostly in the tail. The A-vs-C reading
+     stands; if anything, C's lead is understated.
+2. **Engine C used the external bridge, not Symfony's native runner.** `symfony/runtime` 7.4
+   (7.4.14 installed) ships `FrankenPhpWorkerRunner` and detects worker mode on its own, but
+   `APP_RUNTIME=Runtime\FrankenPhpSymfony\Runtime` (compose and `engines/symfony-worker/Dockerfile`)
+   forces the older package. Engine C therefore measures Symfony on FrankenPHP through that bridge,
+   not through Symfony's built-in integration. The bridge is also why the baseline is Symfony 7.4
+   rather than 8.x: it does not install against Symfony 8 (`scripts/bootstrap-symfony.sh`).
+
+**Next run:** remove `APP_RUNTIME` from Engine C (compose and Dockerfile) so Symfony auto-detects
+worker mode, and set `FRANKENPHP_LOOP_MAX=1000000`. The native runner reads the same variable and
+**also defaults to 500**, so switching runners alone would not stop the restarts. Then re-run
+BENCH-02 and BENCH-03 for Engine C.
 
 ## Defects found by this benchmark (all fixed at source)
 
