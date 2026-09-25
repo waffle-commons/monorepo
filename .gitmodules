@@ -76,3 +76,15 @@
 [submodule "academy"]
 	path = academy
 	url = git@github.com:waffle-commons/academy.git
+[submodule "queue"]
+	path = queue
+	url = git@github.com:waffle-commons/queue.git
+[submodule "openapi"]
+	path = openapi
+	url = git@github.com:waffle-commons/openapi.git
+[submodule "serializer"]
+	path = serializer
+	url = git@github.com:waffle-commons/serializer.git
+[submodule "testing"]
+	path = testing
+	url = git@github.com:waffle-commons/testing.git
