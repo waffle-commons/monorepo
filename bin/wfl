@@ -181,6 +181,8 @@ ${C_DIM}DEVELOPMENT${C_RST}
   pre-release [comp|--all]      release-readiness: dod + version stamp (0.1.0-betaN) + CHANGELOG entry
   docker:reset                  recreate the dev stack: compose down + prune + up --build
   mcp:check                     verify MCP prereqs (npx/docker/postgres/mongo/redis/GitHub token)
+  rulesets:check [repo…]        compare every public repo's GitHub rulesets to the root *-ruleset.json files
+  rulesets:sync [repo…]         create/update GitHub rulesets to match the root *-ruleset.json files
 
 ${C_DIM}ENV${C_RST}
   Containers : $CONTAINER, $CONTAINER_LEGACY, $CONTAINER_REDIS
@@ -920,6 +922,13 @@ cmd_pre_release() {
   exec "$REPO_ROOT/scripts/pre-release.sh" "$@"
 }
 
+# Compare (check) or align (sync) every repo's GitHub rulesets with the root
+# *-ruleset.json files. See scripts/rulesets.sh.
+cmd_rulesets() {
+  [ -x "$REPO_ROOT/scripts/rulesets.sh" ] || die "scripts/rulesets.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/rulesets.sh" "$@"
+}
+
 # Scaffold a brand-new submodule from component-template, then run the DoD.
 # See scripts/new-component.sh.
 cmd_new_component() {
@@ -1021,6 +1030,8 @@ main() {
     pre-release)   cmd_pre_release   "$@" ;;
     docker:reset)  cmd_docker_reset  "$@" ;;
     mcp:check)     cmd_mcp_check     "$@" ;;
+    rulesets:check) cmd_rulesets check "$@" ;;
+    rulesets:sync)  cmd_rulesets sync  "$@" ;;
     coverage:gaps) cmd_coverage_gaps "$@" ;;
     xref)          cmd_xref          "$@" ;;
     changed)       cmd_changed       "$@" ;;
