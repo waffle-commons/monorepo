@@ -9,13 +9,15 @@ two deployments, so each comparison isolates exactly one variable:
 
 Published numbers live in the tracked [`BENCH-GATE-RESULT.md`](./BENCH-GATE-RESULT.md)
 (benchmark-gate convention: baseline → representative load → verdict vs threshold → record).
+The beta6 results there were measured on FrankenPHP 1.12.2; the rig now pins 1.12.7 (a 1.12.5
+security fix, plus native `max_requests` thread recycling since 1.12.3), so a new run is a new series.
 
 ## Engine matrix & fairness pinning
 
 | | Engine A | Engine B | Engine C |
 |---|---|---|---|
 | App | Waffle skeleton (prod image stage) | Symfony (shared app, gitignored) | same Symfony app |
-| Runtime | FrankenPHP 1.12.2 worker | php:8.5-fpm + nginx | FrankenPHP worker (`runtime/frankenphp-symfony`) |
+| Runtime | FrankenPHP 1.12.7 worker | php:8.5-fpm + nginx | FrankenPHP worker (`runtime/frankenphp-symfony`) |
 | Workers | **4** (pinned via `FRANKENPHP_CONFIG="worker ./public/index.php 4"`) | `pm.static`, **16** children | **4** (pinned) |
 | HTTP (in-network) | `http://engine-a` | `http://engine-b` | `http://engine-c` |
 | Host smoke port | `127.0.0.1:8081` | `127.0.0.1:8082` | `127.0.0.1:8083` |

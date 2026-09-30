@@ -5,13 +5,13 @@
 # (framework held constant); A-vs-C isolates the framework (runtime constant).
 #
 # Base tag matches skeleton/docker/Dockerfile exactly (engine A parity):
-# FrankenPHP 1.12.2 / PHP 8.5 / trixie.
+# FrankenPHP 1.12.7 / PHP 8.5 / trixie.
 #
 # Build context = bench/ root:
 #   docker build -f engines/symfony-worker/Dockerfile -t bench-engine-c .
 # Prerequisite: scripts/bootstrap-symfony.sh has generated engines/symfony-app/.
 # =============================================================================
-FROM dunglas/frankenphp:1.12.2-php8-trixie
+FROM dunglas/frankenphp:1.12.7-php8-trixie
 
 # `intl` deliberately omitted — see the rationale in engines/symfony-fpm/Dockerfile:
 # unused by every bench workload, slowest build step, not on any hot path. Engine B
