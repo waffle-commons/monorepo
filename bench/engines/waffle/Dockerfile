@@ -53,6 +53,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         gd \
         intl \
         opcache \
+        pcntl \
         pdo_pgsql \
         pdo_mysql \
         zip \
