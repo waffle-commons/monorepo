@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-09-29
+date_updated: 2026-09-30
 type: project
 status: in-progress
 tags:
@@ -38,7 +38,12 @@ aliases: []
   psalm 6.19, igor-php **0.9.7** (pinned by `.igor-version`, enforced in CI and in `wfl dod`), GitHub
   Actions checkout v7 / cache v6 / codecov v7 / paths-filter v4, TruffleHog pinned to a release instead
   of `main`, FrankenPHP **1.12.7** / PHP 8.5.11 (1.12.5 was a security release). PHPUnit 13 is a major and
-  stays out of this release unless an item needs it.
+  stays out of this release unless an item needs it. **`pcntl`** joined the development image, the
+  skeleton `base` stage and the bench engine on 2026-09-30: the SIGTERM drain of `queue:work`
+  (`[QUEUE-02]`, `[OPS-02]`) depends on it.
+- **RFC homes (2026-09-30):** `[OPS-01]`/`[OPS-02]` are specified in **RFC-023** (Kubernetes Operability) and
+  `[NET-02]`/`[NET-03]` in **RFC-024** (Outbound Resilience); `[OPS-03]` stays in RFC-014 and `[NET-01]` in
+  RFC-017 §3.1. Each RFC lists the design questions to settle before its code lands.
 - **Guard-rails added:** one canonical component CI workflow (`wfl ci:check` reports any drift), igor pin
   robust to the vendor cache, `wfl mcp:check` proving every MCP server with a real session, read-only
   `wfl sync:status`.
@@ -93,6 +98,22 @@ aliases: []
   stock config 200×50 in worker mode; classic mode 200×50 with the fix, 500×50 without it. Still to do: a
   production-image smoke test (build + request) in CI, and hot reload for the skeleton's dev compose (it now
   inherits worker mode, so code changes need a container restart).
+  **Follow-up 2026-09-30:** FrankenPHP 1.12.2 does not export `FRANKENPHP_WORKER`, so the flag-only detection
+  put every 1.12.2 worker in a restart loop, each one serving a bogus boot-time request (seen live on
+  `waffle-downstream`). When the flag is absent, the runtime now lets the first `frankenphp_handle_request()`
+  call settle the mode — in classic mode FrankenPHP refuses with a `RuntimeException` before touching the
+  handler. Verified on real FrankenPHP 1.12.2 and 1.12.7, in worker and classic mode.
+- **`[CARRY-10]` Framework defects surfaced by the EcoShield Gateway — fixed 2026-09-30:**
+  - `error-handler`: `ErrorHandlerMiddleware` logged every exception at `critical` with a full stack
+    trace, client errors included, so any client could grow the log at will and alerting on `critical`
+    was meaningless. It now renders first and logs by the rendered status: 5xx at `critical` with the
+    trace, 4xx at `notice` without it; a renderer failure still logs the original fault.
+  - `http`: `GlobalsFactory` emitted `mkdir(): File exists` whenever workers booting together raced to
+    create the upload root. The creation now runs under a scoped error handler (no `@`), and the
+    `is_dir()` re-check still throws when the directory really cannot be created.
+  - Both are covered by regression tests (the `mkdir` one fails when the fix is reverted); `wfl dod` passes
+    on both components. The gateway itself moved to the beta7 toolchain the same day (mago 1.50, igor
+    0.9.7 pinned in its CI) — its own repository, its own CHANGELOG.
 
 ## 🛡️ AXE 1: TRAFFIC PROTECTION & OUTBOUND RESILIENCE
 
@@ -115,6 +136,8 @@ _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams
 
 ### `[NET-02]` HTTP Client Resilience Policies
 
+- **RFC:** RFC-024 §3.1 (outbound resilience policy).
+
 - **Specification:**
     
     - Extend `waffle-commons/http-client` with declarative per-request policies: connect/total timeout (mandatory defaults — no infinite timeouts anywhere), bounded retry with exponential backoff + jitter, and idempotency awareness (never auto-retry non-idempotent methods unless explicitly opted in).
@@ -125,6 +148,8 @@ _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams
         
 
 ### `[NET-03]` Circuit Breaker
+
+- **RFC:** RFC-024 §3.2–3.3 (circuit breaker, composition with retries).
 
 - **Specification:**
     
@@ -174,6 +199,8 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
 
 ### `[OPS-01]` Health & Readiness Endpoints
 
+- **RFC:** RFC-023 §3.1–3.3 (health contract, endpoints, component probes).
+
 - **Specification:**
     
     - Lightweight middleware exposing `/healthz` (liveness: process responsive) and `/readyz` (readiness: aggregated `HealthCheckInterface` probes — DB pool, Redis, queue driver, disk).
@@ -184,6 +211,8 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
         
 
 ### `[OPS-02]` Graceful Shutdown & Connection Draining
+
+- **RFC:** RFC-023 §3.4 (worker-mode signal path, shutdown sequence, CLI consumers).
 
 - **Specification:**
     
