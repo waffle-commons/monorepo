@@ -63,6 +63,16 @@ AOT artifact", AOT-01/02/03/04.
   operator MUST regenerate with `bin/waffle container:compile` after ANY code change, since a stale
   artifact silently serves an outdated graph.
 
+## Open items (beta7 → beta8)
+- **`[CARRY-06]` compiled-memo runtime write-through:** give inlined singletons a single identity
+  authority. Today a runtime-side closure factory that resolves an inlined id builds a second instance;
+  each copy still resets exactly once, and the constraint is documented in `ContainerCompiler` and
+  `reference/aot.md`.
+- **`[API-02]`** compiles per-DTO normalizers at build time in the same spirit; share the build phase
+  where possible (`[[api-surface]]`).
+- **`[STAB-01]`** soaks compiled-vs-runtime parity on real apps with snapshot diffs
+  (`[[soak-endurance]]`).
+
 ## Regenerate after any code change
 ```bash
 docker exec -it -w /waffle-commons/{app} waffle-dev bin/waffle container:compile   # → var/cache/CompiledContainer.php

@@ -1,4 +1,5 @@
 ---
+name: flake-hunter
 description: Loops a single Waffle component's PHPUnit suite N times, captures the failing testcase from JUnit XML, and reports the root cause plus a fix recommendation
 mode: subagent
 hidden: true

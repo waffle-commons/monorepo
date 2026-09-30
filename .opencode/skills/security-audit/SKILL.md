@@ -47,3 +47,33 @@ wfl compare-audit {component}
 ```
 Produce a graded report: Statelessness · Superglobal purge · Fail-closed ABAC · DTO safety ·
 Crypto/SSRF. For the Universal Authentication Bridge specifically, defer to `auth-bridge-audit`.
+
+## Final-surface re-audit (beta8 `[AUD-01]`) — RC1 inherits zero open criticals
+Re-run the complete audit against the **final** surface.
+
+**Regression of every earlier fix:** beta4 SEC-01..05, the beta5 AXE0 hardening, and the 17 beta6
+`[FIX-01]` items (the table in `Roadmap_Beta6.md`).
+
+**Surface added since the beta6 audit:**
+
+| Surface | What to try to break |
+|---|---|
+| Rate limiter `[NET-01]` | key spoofing through `X-Forwarded-For`, or every client sharing one key behind a proxy; non-atomic storage (over-admission); key cardinality as a memory DoS on the store; the fail mode while Redis is down; `RateLimit-*` / `Retry-After` leaking internals |
+| Resilient client + breaker `[NET-02/03]` | SSRF re-validation on every retry; retries of non-idempotent methods; unbounded total time across attempts; breaker state shared across tenants that should be isolated |
+| Queue payloads `[QUEUE-*]` | `unserialize()`, or a class name taken from the payload; envelope tampering (attempts, available-at); dead-letter content exposure; trace-context header injection |
+| Health endpoints `[OPS-01]` | dependency topology in public bodies; probes as a DoS amplifier (a DB query per hit); placement before `TrustedHostMiddleware` without an equivalent check |
+| OpenAPI / Swagger dev routes `[API-01]` | reachable in production; third-party scripts without a CSP decision; internal routes in the spec |
+| Serializer `[API-02]` | hydration that bypasses a `set` hook; depth or size bombs; mass assignment |
+| `/waffle-metrics`, connection pooling, WebAuthn | re-check under the final wiring |
+| EcoShield proxy path | header smuggling; hop-by-hop handling, including `Connection`-named fields; request smuggling (CL/TE ambiguity); `Host` / `X-Forwarded-*` trust; cache confidentiality (no shared caching of `Authorization` or `Cookie` responses); egress pinning. The gateway's perimeter campaign (280 assertions) is the regression baseline (`[[ecoshield]]`) |
+
+**Method (the beta6 precedent):** more than one independent engine; every candidate re-verified by a
+reviewer told to refute before confirming; one consolidated triage ledger (dedupe, reconcile severity,
+adjudicate disagreements with code evidence).
+
+**Disposition:** every finding is fixed in beta8 or formally **risk-accepted with sign-off** in the
+report (who, when, why, residual risk). The report goes under `project_system/Audits/Beta8/`. `Audits/`
+is gitignored, so the archive is local: say where it lives in `Roadmap_Beta8.md`.
+
+Dispatch the `security-auditor` agent per component, `auth-bridge-audit` and the `webauthn-auditor`
+agent for `auth`.

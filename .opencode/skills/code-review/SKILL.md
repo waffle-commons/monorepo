@@ -46,7 +46,11 @@ Only review or integrate files that were created or meaningfully changed within 
 ### Documentation
 - [ ] If applicable, documentation in `waffle-commons/documentation/` is updated.
 - [ ] Documentation updates respect the Diátaxis framework (Tutorials, How-to, Reference, Explanation).
-- [ ] Modern PHP attributes (`#[Route]`, `#[Rule]`) and hooks are documented.
+- [ ] Modern PHP attributes and hooks are documented with their real shapes — the contracts attributes are `#[Route]`, `#[Dto]`, `#[Voter]`, `#[PublicAccess]`, `#[RequiresCsrfToken]` and `#[Broadcast]` (there is no `#[Rule]` attribute).
+
+### Release phase
+- [ ] The change is allowed in the current phase (`tech-lead` §0). After the beta8 tag, any new public symbol, signature change or rename is **Blocking**.
+- [ ] A deprecation uses the form the engine accepts: native `#[\Deprecated]` on functions, methods, class constants, enum cases, constants and traits; a `@deprecated` docblock on classes, interfaces, enums and properties (the attribute is a fatal error there — `api-freeze`).
 
 ## Output format
 Report findings grouped by severity:

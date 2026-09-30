@@ -1,4 +1,5 @@
 ---
+name: webauthn-auditor
 description: Audits the WebAuthn (passkey) surface — UV enforcement, challenge binding + single-use, monotonic clone detection, stateless authenticator, fixed-keypair fixtures, narrowed mago permit — grading each PASS/FAIL with file:line
 mode: subagent
 hidden: true

@@ -39,3 +39,14 @@ paraphrased or invented:
 - Release dates are month-precision: `## [0.1.0-beta6] — 2026-09` in a CHANGELOG, "September 2026"
   in prose. Never `YYYY-MM-DD`. Non-release dates (front-matter, audit dates) keep full precision.
 - The direction these docs track lives in `project_system/` — see `[[roadmap-steward]]`.
+
+## Toward the freeze (beta8 `[DOC-01]`)
+- **Coverage:** `documentation/` covers every component at its v1 API state, including the four beta7
+  newcomers (`queue`, `openapi`, `serializer`, `testing`) — each with at least a Reference page, plus a
+  How-to or Tutorial where a user has a task to do.
+- **Reference against the freeze:** Reference pages are re-verified symbol by symbol against the
+  **frozen** contracts (`[[api-freeze]]`). `contracts/BC-POLICY.md` is linked wherever the BC promise
+  matters.
+- **Upgrade guide:** "beta series → 1.0" is a How-to, written when the freeze fixes the final names.
+- **EcoShield docs are not here:** they are French and live in the gateway's own repository
+  (`[[ecoshield]]`).

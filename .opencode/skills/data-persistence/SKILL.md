@@ -93,6 +93,20 @@ The generalised, worker-safe connection pool landed in beta5. Read the real code
   re-establishes `$issued` to exactly the warm idle handles (so the set never grows unbounded). The
   sockets stay open so the next request reuses warm connections.
 
+## Beta7 → RC1: what touches this layer
+- **`[CARRY-01]` Ping freshness window:** make the heal-on-lease ping skippable when the connection was
+  verified recently. The beta6 benchmark traced Waffle's early saturation knee to the doubled round
+  trip. It is benchmark-gated (`[[benchmark-gate]]`): the fail-safe for stale connections stays, and a
+  pool-contract change goes contracts-first.
+- **`[OPS-01]` Readiness probes:** the pools ship `HealthCheckInterface` probes that **lease** a
+  connection (heal-on-lease already pings) instead of opening new ones, each with its own timeout
+  (`[[k8s-ops]]`).
+- **`[OPS-03]` Migrations:** `Migration/MigrationRunner.php` gains rollback and status behind the
+  existing `db:migrate`. Mind that DDL is not transactional on MySQL, MariaDB or Oracle
+  (`[[k8s-ops]]`).
+- **`[STAB-01]` Soak:** pool exhaustion and reconnect under chaos, and zero leaked connections over
+  72 h (`[[soak-endurance]]`).
+
 ## Done (RFC-022 §7)
 - Flat memory curve over 50k worker requests (no leaks); `mago analyze` zero errors/warnings, no
   baselines; all driver errors rethrown as `DatabaseExceptionInterface` (defined in `contracts`).

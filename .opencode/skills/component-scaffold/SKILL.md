@@ -61,6 +61,13 @@ wfl dod <slug>
 ## 5. Build it contracts-first
 Every interface the component implements lands in `waffle-commons/contracts` **before** the component
 uses it (`contracts-first`). Perimeter: `contracts` + `utils` + PSR — never a sibling's concrete class.
+A component that needs another third-party namespace (e.g. `testing` extending PHPUnit's `TestCase`)
+permits it explicitly in its own `mago.toml` guard.
+
+**Beta7 newcomers (2026-09-30):** `queue`, `openapi`, `serializer` and `testing` are configured and pass
+DoD in scaffold mode. Their first class switches tests and coverage on. Each joins `RELEASE_INCLUDE`
+only once it ships code, and each gets its first stable-channel publication at RC1 (`[RC-06]`).
+Perimeter decisions to settle before the first class: `[CARRY-04]` in `contracts-first`.
 
 ## 6. Verify and report
 - `wfl ci:check` → no drift (canonical CI byte-identical, Dependabot, toolchain, description, filter).

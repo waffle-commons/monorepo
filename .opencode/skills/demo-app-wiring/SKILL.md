@@ -40,6 +40,17 @@ listener in the kernel factory", "the workspace doesn't pick up my contracts cha
   **fail-closed**; `#[PublicAccess]` is the only opt-out of ABAC.
 - **Config:** add keys under the existing `config/app.yaml` security/section with **French** comments.
 
+## Beta7 wiring targets
+- **`/healthz` + `/readyz`:** mount them before `TrustedHostMiddleware`, as `MetricsMiddleware` already
+  is — kubelet probes carry the pod IP as `Host` (`[[k8s-ops]]`).
+- **Rate limiter:** in the security part of the stack, keyed as the app decides; document the
+  single-worker in-memory fallback (`[[resilience-net]]`).
+- **OpenAPI route:** dev only, 404 in production (`[[api-surface]]`).
+- **Testing bridge:** the Academy labs and the gateway are its first consumers (`[[testing-bridge]]`).
+- **Carried from `[CARRY-09]`:** a production-image smoke test (build + one request) in CI, and hot
+  reload for the skeleton's dev compose, which now inherits worker mode (code changes need a container
+  restart).
+
 ## Language policy
 `skeleton`, `workspace`, and `academy` (incl. academy's `docs/`/`labs/`/`sandbox/`) are **French** for
 every comment, docblock, YAML/TOML/compose comment, and user-facing string. Code, namespaces, and

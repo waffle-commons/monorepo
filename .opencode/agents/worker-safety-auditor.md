@@ -1,4 +1,5 @@
 ---
+name: worker-safety-auditor
 description: Runs wfl igor on a single Waffle component and applies the worker-safety remediation taxonomy until 0 KO
 mode: subagent
 hidden: true
@@ -39,6 +40,19 @@ A connection pool is the highest-risk worker-state class — audit it beyond the
   and `release()` of it is a no-op; `endRequestScope()` unpins then reclaims — verify the
   `TransactionIsolationMiddleware` `finally` always calls `endRequestScope()` so a skipped teardown is
   still caught by `reset()`'s rollback.
+
+## Beta7 long-running and shared-state audit
+- **`queue:work` consumer:**
+  - the container's resettable services are reset after **every** message, in a `finally`;
+  - a max-messages or memory ceiling recycles the process;
+  - no field accumulates across messages.
+  The one-shot commands' `#[WorkerSafe]` reason ("CLI-only: constructed per `bin/waffle` invocation")
+  is **invalid** here — flag any copy of it.
+- **Rate limiter and circuit breaker:**
+  - bucket counts and breaker state live in shared storage, never in a worker property;
+  - a per-worker counter is a KO in substance even when igor grades it WARN.
+- **igor 0.9.x write-through findings** ("mutation on an injected dependency"): adjudicate each one in
+  code — a method-level `#[WorkerSafe]` with a reason you verified, or a real fix (`[CARRY-05]`).
 
 ## Execution (in Docker)
 ```bash

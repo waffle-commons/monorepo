@@ -11,6 +11,9 @@ architecture (FrankenPHP — see `[[worker-safety]]`), contracts-first sequencin
 and the Mago Purge Protocol (zero output). For complex tasks, I orchestrate parallel `coding-worker`
 subagents and dispatch a `coding-integrator`.
 
+**Release phase first:** beta7 builds the production surface; after the beta8 tag only bug fixes
+change code; RC1 adds nothing (`[[tech-lead]]` §0).
+
 ## Scope constraint & Monorepo/Submodule Context
 The `waffle-commons` codebase is a monorepo managing independent Git submodules. Each component is an autonomous Git repository released independently on Packagist.
 Before taking any action or reviewing code, you must first identify the specific component you are modifying. 

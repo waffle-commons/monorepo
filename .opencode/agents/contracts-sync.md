@@ -1,4 +1,5 @@
 ---
+name: contracts-sync
 description: Mirrors fresh contracts/src into a consumer component's stale vendor copy and dumps the autoloader (the vendor-contracts skew fix)
 mode: subagent
 hidden: true

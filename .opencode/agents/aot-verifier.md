@@ -1,4 +1,5 @@
 ---
+name: aot-verifier
 description: Verifies the AOT compilation surface — container:compile + route:compile, the graph-identity snapshot test, the WAFFLE_AOT=1 fast-path and missing/corrupt-artifact reflection fallback — and reports PASS/FAIL
 mode: subagent
 hidden: true

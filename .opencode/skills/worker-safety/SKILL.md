@@ -59,6 +59,38 @@ The 0.9 line (pinned since beta7 kickoff: 0.9.7) added detectors; the first swee
 The `reason` must state *why* nothing survives the request — "per request" alone is not a reason.
 Verify every claim you write (e.g. "ended in finally") against the code before annotating.
 
+## Long-running consumers (beta7 `queue:work`)
+A queue worker is a resident process like the HTTP worker, with messages instead of requests:
+- reset the container's resettable services after **every** message, in a `finally`;
+- recycle on a max-messages or memory ceiling;
+- audit its classes with igor like any worker code.
+
+The one-shot console commands' `#[WorkerSafe]` reason ("CLI-only: constructed per `bin/waffle`
+invocation …") is valid for them and **false** for `queue:work` — never copy it there.
+
+Rate-limiter and circuit-breaker state belongs in shared storage (`[[resilience-net]]`). In worker
+memory it is both a leak and a correctness bug, because each worker would count separately.
+
+## "Keeps state on purpose" (`[CARRY-03]` — decide as an RFC-001 amendment, not code)
+At the API Platform Conference (2026-09-17), the suggestion was to make `ResettableInterface` optional
+for services that must keep state. That is already how the runtime behaves: `Container::reset()` resets
+only Resettable services. The strictness lives in the dev-mode `ComplianceScanner`
+(`container/src/Compliance/`) and in the igor gate, with `#[WorkerSafe]` as the only escape hatch.
+
+The open question is whether a first-class "intentional state" marker is needed, and how it would differ
+from `#[WorkerSafe]`. Record the decision before beta8 freezes contracts.
+
+## Upstreaming a detector fix (`[CARRY-05]`)
+igor 0.9.x flags writes *through* an injected service (`$this->cache->set(…)`) as a mutation.
+1. Adjudicate each case in code: fix it, or add a method-level `#[WorkerSafe]` with a verified reason.
+2. Propose the detector fix in the fork at `contributions/igor-php` (origin = the fork, upstream =
+   `igor-php/igor-php`). The maintainer requires the Go core, tests and comments to stay
+   framework-agnostic: only Symfony may be named, fixtures use `App\`, and Waffle appears only in the
+   README bridges table.
+3. Verify with `go build ./... && go test ./...` plus an empty `grep -rin waffle --include='*.go'`.
+
+Opening the PR is the maintainer's action.
+
 ## Execution (in Docker)
 ```bash
 docker exec -it -w /waffle-commons/{component} waffle-dev composer igor   # per component: 0 KO required

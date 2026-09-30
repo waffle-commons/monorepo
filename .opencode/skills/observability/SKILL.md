@@ -52,6 +52,15 @@ span", OBS-01/02.
   in the export store (`ApcuMetricStore`), not worker memory. `PrometheusExporter` emits
   `# HELP`/`# TYPE` once per metric name.
 
+## Beta7 additions (not built yet)
+- **Breaker transitions `[NET-03]`** are exported as metrics through the `MetricsRegistryInterface`,
+  alongside their events (`[[resilience-net]]`).
+- **Health endpoints `[OPS-01]` are not metrics.** `/readyz` answers orchestrators, `/waffle-metrics`
+  answers scrapers; keep them separate, with the same fail-closed stance on detail (`[[k8s-ops]]`).
+- **`[DXP-01]` dev profiler headers (stretch, RFC-018 §3.2):** `X-Waffle-Time`, `X-Waffle-Memory` and
+  `X-Waffle-Queries`, emitted **only** in dev mode — never in production, where they would leak timing
+  and footprint. It is a stretch item: cut first under the beta7 capacity guard.
+
 ## Gate
 W3C trace context propagated end-to-end across two services; `/waffle-metrics` scrape overhead
 **< 5ms** (`[[benchmark-gate]]`); the no-op default adds ~zero overhead when no SDK is bound; the

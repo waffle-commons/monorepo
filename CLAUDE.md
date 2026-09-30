@@ -44,6 +44,10 @@ messages. Native-first fixes; never a baseline or suppression.
 >
 > 🔒 **Git & release safety:** agents edit files; the human commits, pushes, tags, merges and releases —
 > each only on an explicit request for that operation. See **`AGENTS.md` §6**.
+>
+> 🤖 **Subagents:** `.claude/agents` → `.opencode/agents` (the same files serve opencode and
+> AntigravityCLI). Each file needs a `name:` field or Claude Code does not register it — roster and
+> frontmatter rule in `AGENTS.md`.
 
 ## 🧭 Redirection directive (NON-NEGOTIABLE)
 
@@ -52,9 +56,11 @@ Before planning or editing **anything**, READ:
 1. **[`/AGENTS.md`](./AGENTS.md)** — PHP 8.5 strict standards, FrankenPHP statelessness mandate,
    the Mago Purge Protocol, and the **Skills Routing Table** (intent → skill).
 2. The matching **`.opencode/skills/<skill>/SKILL.md`** for the task. When unsure, start with `tech-lead`.
-3. **`project_system/`** — the source of truth for project **direction**: `RFCs/` (RFC-001…022) and
+3. **`project_system/`** — the source of truth for project **direction**: `RFCs/` (RFC-001…024) and
    `Roadmaps/` (`Roadmap_Alpha5 → Roadmap_v1_Gold` and `Roadmap_Post_v1`, plus `Roadmap_v1_Master`). Consult it before
    planning roadmap work; see the `roadmap-steward` skill.
+4. **The release phase** — beta7 build → beta8 freeze → RC1 certification. What each phase allows is in
+   `AGENTS.md` §5b; `tech-lead` routes by phase.
 
 Hard invariants: components depend **only** on `waffle-commons/contracts` (plus `waffle-commons/utils`,
 which itself requires only contracts); zero Mago baselines and zero non-empty Mago output; stateless

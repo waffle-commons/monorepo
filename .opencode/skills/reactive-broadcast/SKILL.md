@@ -67,3 +67,6 @@ docker exec -it -w /waffle-commons/waffle   waffle-dev composer igor   # buffer 
 ```
 Definition of done unchanged: `composer mago` zero output, `composer tests` ≥95%, `wfl igor` 0 KO
 (`wfl dod` runs the full per-component gate).
+
+**Beta8 `[SPK-02]`** records the formal go / no-go on REACTIVE-01 (`[[api-freeze]]`). If cut, SSE stays
+available through explicit event dispatch.

@@ -72,7 +72,10 @@ Services must be **stateless and resettable** across requests (resident-memory w
   shared foundation, which itself requires only `contracts`). Never a sibling's concrete classes; push
   reusable primitives down into `utils`.
 - **Done = green:** `composer mago && composer tests` (PHPUnit 12.5, ≥95% coverage) pass for every
-  modified component, in Docker, **and** `wfl igor` reports 0 KO (see §5).
+  modified component, in Docker, **and** `wfl igor` reports 0 KO (see §5). "Pass" means a clean
+  `OK (…)` verdict: a run ending `OK, but …` (PHPUnit issues, skipped, incomplete or risky tests) is not
+  green, even though PHPUnit exits 0 — `wfl dod` and `wfl check:all --with-tests` reject it
+  (`scripts/phpunit-verdict.sh`).
 
 ## 4. Architecture & PSR
 
@@ -87,7 +90,8 @@ Services must be **stateless and resettable** across requests (resident-memory w
     `testing` — each configured from `component-template` (see the `component-scaffold` skill); tests
     and coverage switch on with their first class. **Beta6** added no new packages —
     the `ecoshield-gateway` reverse-proxy POC lives in its own repository outside this monorepo
-    (gitignored here, see `.gitignore`), and is deliberately absent from the release wave.
+    (checked out at `contributions/ecoshield-gateway/`, gitignored here), is deliberately absent from
+    the release wave, and is the v1 adoption dogfood — see the `ecoshield` skill.
 - **PSR enforcement:** PSR-15 middleware, PSR-14 events, PSR-3 logging, PSR-7/17 HTTP messages &
   factories, PSR-18 HTTP client.
 - **Contracts-first sequencing:** every new interface lands in `waffle-commons/contracts` **before**
@@ -144,6 +148,22 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 - **Release mechanics (umbrella wave):** one `pre-release/<version>` branch per component → umbrella
   tag pushed to the remote → dispatch **dry-run on the pushed tag** (`ref:<tag>` must already exist) →
   LIVE wave. Per-component steps live in `release-manager`; the orchestration lives in `release-wave`.
+- **What each phase allows** (binding guards from `Roadmap_v1_Master.md`):
+  - **beta7 (build):** the `Roadmap_Beta7.md` items.
+    - The stretch tier (`[DXP-01]`, `[GATE-02]`) is cut first.
+    - If `queue`/`openapi`/`serializer`/`testing` are not green on their own gates by mid-October, the
+      release splits: NET + OPS + QUEUE as beta7, API + TEST into the beta8 window.
+    - The November freeze is what is protected, not beta7's scope.
+  - **beta8 (freeze):** the tag *is* the feature freeze. The release holds the spike verdicts, the
+    contracts BC review + `contracts/BC-POLICY.md`, deprecations, the naming pass, the 72 h soak, the
+    final security re-audit and the docs. After the tag, bug fixes only; an item that slips leaves v1
+    (`api-freeze` skill).
+  - **RC1 (certification):** tagged `1.0.0-RC1` (never `0.1.0-RC1`) by ~5 December 2026 (`rc-certification`
+    skill).
+    - Zero features; the beta8 deprecations are removed.
+    - A ≥4-week EcoShield soak that is never shortened.
+    - RC2 only on a critical defect, and it restarts the soak clock.
+    - Gold = zero code delta from the soaked RC.
 
 ## 6. Git & release safety (every agent, every runtime)
 
@@ -163,6 +183,24 @@ The human drives every git and GitHub write. An agent edits files; it does not p
   `pre-release/*` branch. Use `wfl sync:status` (read-only).
 - **Tooling enforces it:** the GitHub MCP server runs read-only, the Claude Code permission rules ask
   before every git/GitHub write and deny force-pushes; other runtimes must follow the same rule.
+
+## 7. Evidence & measurement
+
+A claim is only as good as its measurement, whether it sits in a roadmap, a README, a conference slide
+or a commercial offer.
+
+- **Acceptance means evidence.** A roadmap item is done when its acceptance criteria are shown by
+  tests, command output or reports (the `acceptance-verifier` agent), not when its code exists.
+- **Measure the production image.** Give baselines the capacity their curve assumes, pin
+  `MAX_REQUESTS` above the run's total, and record the environment with every run.
+- **A leak is a positive slope, published with its 95 % bound** over a settled window.
+  - Memory claims are slope + crossover, never a flat factor.
+  - Keep invalidated series, and never overwrite a run.
+- **A laptop cannot measure capacity or hold a multi-day soak.** Say so instead of publishing.
+- **Commercial texts (EcoShield) stay measurable:** no warranty wording, no invented or unmeasured
+  claim.
+
+Procedures: the `benchmark-gate`, `soak-endurance` and `ecoshield` skills.
 
 ## 🧠 Specialized AI Skills — Routing Table
 
@@ -225,15 +263,29 @@ When unsure, default to **`tech-lead`** (it orchestrates the others). All skill 
 | `observability` | Contract-first `TracerInterface` + OTel bridge (`telemetry-otel`) + Prometheus `/waffle-metrics` (`telemetry`). | beta5 OBS (RFC-005) |
 | `reactive-broadcast` | `#[Broadcast]` write-hooks → request-scoped buffer → finish-request SSE flush; no I/O in the hook. | beta5 REACTIVE (RFC-018) |
 
-**Roadmap-forward (operating procedures staged ahead of the code — flagged "not yet built")**
+**Beta7 — production surface (in progress: procedures staged ahead of the code, "not built yet" until it lands)**
 
 | Skill | Trigger / Use when… | Roadmap |
 |-------|---------------------|---------|
-| `resilience-net` | Rate limiter, retry/backoff, circuit breaker. | beta7 NET (RFC-017) |
-| `queue-worker` | Background processing (`queue` component, Redis Streams). | beta7 QUEUE (RFC-015) |
+| `resilience-net` | Rate limiter (atomic, shared storage), client timeout/retry policies, circuit breaker. | beta7 NET (RFC-017 §3.1 for NET-01 · RFC-024 for NET-02/03) |
+| `queue-worker` | Background processing (`queue` component, Redis Streams, `queue:work`, SIGTERM drain). | beta7 QUEUE (RFC-015) |
+| `k8s-ops` | `/healthz` + `/readyz`, graceful drain, migrations on the existing `db:migrate`. | beta7 OPS (RFC-023 for OPS-01/02 · RFC-014 for OPS-03) |
 | `api-surface` | OpenAPI generation + DTO serializer / content negotiation. | beta7 API (RFC-016) |
-| `k8s-ops` | Health/readiness probes, graceful drain, migration maturity. | beta7 OPS (RFC-014) |
 | `testing-bridge` | `WaffleTestCase` in-process kernel + test doubles. | beta7 TEST (RFC-018 §3.3) |
+
+**Beta8 freeze → RC1 certification**
+
+| Skill | Trigger / Use when… | Roadmap |
+|-------|---------------------|---------|
+| `api-freeze` | Spike verdicts, contracts BC review + `BC-POLICY.md`, deprecations, naming pass, the freeze exit gate, "is this allowed after the freeze?". | beta8 AXE 1–2 |
+| `soak-endurance` | 72 h soak, ≥4-week soak, memory drift, chaos injection, "is this soak valid?". | beta8 STAB-01 · RC1 RC-04 |
+| `rc-certification` | `1.0.0-RC1`: exit-gate re-run, deprecation removal, packaging pass, RC2 clause, Gold entry gate. | RC1 |
+
+**Dogfood — the v1 adoption criterion**
+
+| Skill | Trigger / Use when… | Roadmap |
+|-------|---------------------|---------|
+| `ecoshield` | The standalone `ecoshield-gateway` repo: alpha on NET, FinOps benchmark, RC soak, French docs, measurable claims. | beta7 GATE-02 · beta8 GATE-03 · RC1 RC-04/05 |
 
 ## 🤖 Subagents (`.opencode/agents/<name>.md`, `mode: subagent`)
 
@@ -248,3 +300,18 @@ phpunit, isolate the flaky testcase from JUnit; knows the leading-zero-keypair c
 (wire one shipped feature into one app — workspace symlink / skeleton rsync), **`aot-verifier`**
 (`container:compile`/`route:compile` + graph-identity snapshot + `WAFFLE_AOT` fast-path/fallback),
 **`webauthn-auditor`** (passkey UV / challenge-binding / sign-counter clone-detection / statelessness audit).
+**Beta7 → RC1 additions:**
+- **`acceptance-verifier`** — a roadmap item's or release gate's acceptance criteria → evidence →
+  PASS / FAIL / UNVERIFIED.
+- **`soak-analyst`** — slope ± 95 % bound, settled-baseline, recycle and instrument checks on a
+  memory series.
+- **`chaos-runner`** — one fault injected into a bench/soak stack under load, reaction checked; never
+  `waffle-dev`.
+- **`bc-reviewer`** — one contracts namespace against the freeze checklist, plus a usage map.
+
+**Frontmatter (every runtime reads the same files):** `name` (= the file name), `description`,
+`mode: subagent`, `hidden: true`.
+- Claude Code registers an agent by its `name`; without it the agent does not load.
+- opencode names the agent from its file and accepts the extra key.
+- Never add `model:` or `tools:` — the runtimes use incompatible formats. State tool limits (read-only,
+  no git writes) in the body instead.

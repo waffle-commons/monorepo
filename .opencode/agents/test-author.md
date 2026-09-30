@@ -1,4 +1,5 @@
 ---
+name: test-author
 description: Writes and extends PHPUnit 12.5 tests in a single Waffle component to ≥95% coverage, stateless and mock-notice-clean
 mode: subagent
 hidden: true
@@ -27,6 +28,13 @@ to **≥95%** with well-structured, stateless PHPUnit 12.5 tests.
 - **Flaky-test triage:** if a test passes/fails intermittently, do NOT paper over it — run
   `wfl flake-hunt {component}` (or dispatch the `flake-hunter` agent) to loop the suite, capture the
   failing testcase from the JUnit XML, and pin the root cause before changing assertions.
+- **Beta7 patterns** (the `test` skill has the detail):
+  - a limiter's atomicity needs several processes against a real Redis — a single-process test is not
+    evidence;
+  - breaker transitions are driven by an injected clock, never by `sleep()`;
+  - migration round-trips run on `pdo_mysql`, `pdo_pgsql` and `pdo_sqlite` (all in `waffle-dev`);
+  - queue tests kill a consumer mid-message and assert the reclaim and the dead-letter envelope;
+  - outbound HTTP goes through a record/replay double.
 
 ## Execution (in Docker)
 ```bash

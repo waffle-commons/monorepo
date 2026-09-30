@@ -1,4 +1,5 @@
 ---
+name: coding-worker
 description: Implements a single well-scoped coding task in a specific Waffle component
 mode: subagent
 hidden: true

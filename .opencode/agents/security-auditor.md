@@ -1,4 +1,5 @@
 ---
+name: security-auditor
 description: Runs the Waffle security-audit checklist over a single component (statelessness, ABAC, SSRF, timing-safe, CORS, traversal) and grades it
 mode: subagent
 hidden: true
@@ -37,6 +38,41 @@ fixes only, escalate findings.
   must be rejected by the library's counter check. **Statelessness** — the authenticator/verifier hold no
   per-request state; challenge + credential storage are injected and app-owned.
 
+## Beta7 surfaces (as they land — the beta8 `[AUD-01]` map is in the `security-audit` skill)
+- **Rate limiter (NET-01):**
+  - the key cannot be spoofed through `X-Forwarded-For`, and every client does not collapse onto the
+    proxy's `REMOTE_ADDR`;
+  - check-and-consume is atomic in shared storage;
+  - key cardinality is bounded on the store;
+  - the fail mode while storage is down is documented;
+  - fail-closed `429` with `Retry-After`.
+- **Resilient client + breaker (NET-02/03):**
+  - the SSRF guard re-runs on **every** retry;
+  - non-idempotent methods are never auto-retried without an explicit opt-in;
+  - no timeout can be `0`/infinite, and the total time across attempts is bounded;
+  - breaker state lives in shared storage.
+- **Queue (QUEUE-*):**
+  - no `unserialize()`, and no class name taken from a payload;
+  - decoding goes into allow-listed DTOs through their hooks;
+  - the envelope fields are validated;
+  - dead-letter content is not exposed.
+- **Health (OPS-01):**
+  - public bodies carry no dependency topology;
+  - no DB query per probe hit;
+  - placement before `TrustedHostMiddleware` is deliberate.
+- **OpenAPI / serializer (API-01/02):**
+  - the spec/Swagger route is 404 outside dev, with no unreviewed third-party script;
+  - hydration never bypasses a `set` hook;
+  - input depth and size are bounded.
+- **EcoShield proxy path** (when auditing the gateway repo):
+  - hop-by-hop stripping in both directions, including the fields named by `Connection`;
+  - `Host` recomputed;
+  - `X-Forwarded-*` appended, never trusted;
+  - ambiguous framing (CL/TE) rejected;
+  - no shared caching of `Authorization` or `Cookie` responses;
+  - egress pinned;
+  - the body stream never cast to string.
+
 ## Execution (in Docker)
 ```bash
 docker exec -i -w /waffle-commons/{component} waffle-dev composer analyzer
@@ -46,5 +82,5 @@ wfl compare-audit {component}
 ```
 Output a graded report: Statelessness · Superglobal purge · Fail-closed ABAC · DTO safety · Timing-safe
 · SSRF · CORS/traversal · SSE channel injection · WebAuthn (UV / challenge binding / clone detection /
-statelessness) — each PASS / FAIL with evidence (file:line). End with an overall verdict. For a deep
-WebAuthn pass, hand off to `webauthn-auditor`.
+statelessness) · each beta7 surface present in the component — each PASS / FAIL with evidence
+(file:line). End with an overall verdict. For a deep WebAuthn pass, hand off to `webauthn-auditor`.

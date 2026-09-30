@@ -23,6 +23,11 @@ or PSR-14 event pair.
 | `make:http-client [Name] [--base-uri=…]` | `final readonly` PSR-18 wrapper; maps network failures to `HttpClientExceptionInterface`. |
 | `make:command [Name] [--command-name=app:task]` | `final` class extending `AbstractCommand`; `configure()` + `execute()` returning an `ExitCode`. |
 | `make:event-pair [Name]` | `final` event extending `AbstractStoppableEvent` + `final readonly` listener with `#[AsEventListener]` on `__invoke`. |
+| `make:entity` | An immutable persistence entity with validation hooks (RFC-022). Arguments: `bin/waffle make:entity --help`. |
+| `make:repository` | A stateless repository and its data-mapper pair (RFC-022). Arguments: `bin/waffle make:repository --help`. |
+
+Beta7 `[OPS-03]` adds `make:migration` here (`[[k8s-ops]]`). Beta8 `[FRZ-03]` reviews every command
+name against the `domain:action` convention.
 
 ## Generation rules (RFC-020 §5)
 - **Zero-debt output:** every stub passes `mago lint` + `mago analyze` with **zero errors/warnings,

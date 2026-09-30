@@ -1,4 +1,5 @@
 ---
+name: coding-integrator
 description: Integrates the output of parallel coding-worker subagents across Waffle components
 mode: subagent
 hidden: true

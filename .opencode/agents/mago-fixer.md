@@ -1,4 +1,5 @@
 ---
+name: mago-fixer
 description: Purges Mago findings in a single Waffle component to zero output, native-first, zero-baseline
 mode: subagent
 hidden: true

@@ -72,3 +72,5 @@ budget", ASYNC-01/02.
 - Statelessness: `wfl igor` clean across worker iterations (no leaked Fiber/promise state).
   Definition of done unchanged: `composer mago` zero output, `composer tests` ≥95%, `wfl igor` 0 KO
   (`wfl dod` runs the full per-component gate).
+- **Beta8 `[SPK-01]`** records the formal go / no-go on ASYNC-01 with this evidence (`[[api-freeze]]`).
+  Anything beyond bounded deferral belongs to `[[queue-worker]]`.

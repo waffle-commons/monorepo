@@ -1,4 +1,5 @@
 ---
+name: demo-wiring-worker
 description: Wires ONE shipped framework feature into ONE template app (workspace|skeleton) per the demo-app-wiring conventions, then gates it
 mode: subagent
 hidden: true

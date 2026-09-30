@@ -67,6 +67,13 @@ docker exec -w /waffle-commons/contracts waffle-dev composer mago
 Verify RFC-021 §6: tampered / expired / IP-mismatched assertions ⇒ **403**; tampered /
 `none` / wrong-issuer JWTs ⇒ **401**; missing secret ⇒ fatal boot; coverage ≥95%.
 
+**Beta7 → beta8:**
+- Brute-force limiting and lockout on the authentication endpoints arrive with the rate limiter
+  `[NET-01]` (`[[resilience-net]]`). Assertion IP-binding and IP-keyed limiting both depend on how the
+  client IP is resolved behind a proxy — today it is `REMOTE_ADDR`.
+- The RFC-021 universal-auth reframing (RFC, skill and AGENTS) is part of beta8 `[DOC-02]`.
+- The bridge is on the `[AUD-01]` final re-audit list (`[[security-audit]]`).
+
 > **Language note:** the bridge lives in framework components — all comments, logs, and
 > exceptions are **English** (French only in the `skeleton/`, `workspace/`, and `academy/` template
 > apps).

@@ -45,9 +45,27 @@ single component out of band.
 5. **Verify** Packagist resolves each package at the new version; confirm the wave's CI is green.
 
 ## New components in a wave
-When a release introduces packages (beta7: `queue`, `openapi`, `serializer`, `testing`), scaffold each
-from `component-template` (`[[component-scaffold]]`), register it in `.gitmodules` + `bin/wfl`, and
-include it in the branch/tag set before the umbrella tag.
+When a release introduces packages (beta7: `queue`, `openapi`, `serializer`, `testing`):
+- **Scaffold** each from `component-template` (`[[component-scaffold]]`). The tooling reads the
+  component list from `.gitmodules` (`scripts/list-components.sh`), so no script needs registering.
+- **Register each on Packagist before its first tag.**
+- **Add each to `RELEASE_INCLUDE`** in `.github/workflows/release-wave.yml` once it ships code (23 → up
+  to 27). A newcomer without code — for instance one moved to beta8 by the capacity split — stays out.
+
+## Around the tag
+- **Relock the workspace** after committing the component changes and before tagging:
+  `workspace/composer.lock` records the path-repository HEADs.
+- **Write the release-day records:** `project_system/Logs/Releases/Log_<Release>.md` and
+  `Logs/Retrospectives/Retro_<Release>.md` (`[[roadmap-steward]]`).
+
+## RC1 and Gold
+- **RC1 is `1.0.0-RC1`**, never `0.1.0-RC1`, cut from `pre-release/1.0.0-RC1` in every component;
+  `release/1.0.0` follows.
+- **`[RC-06]` wave rehearsal:** the full protocol on the RC tag, validating Packagist metadata for every
+  `RELEASE_INCLUDE` repo, including the newcomers' first stable-channel publication
+  (`[[rc-certification]]`).
+- **Gold** is `1.0.0` on the soaked RC SHA set with zero code delta. A delta means RC2, and the
+  four-week soak restarts.
 
 ## Execution
 ```bash

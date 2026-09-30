@@ -82,6 +82,9 @@ cryptographic rejection, not mocks); unknown/expired ceremony or credential ⇒ 
 unsupported UV requirement ⇒ fatal at construction; coverage ≥95%. Definition of done unchanged:
 `composer mago` zero output, `composer tests` ≥95%, `wfl igor` 0 KO (`wfl dod` runs the full gate).
 
+**Beta8 `[SPK-03]`** records the formal verdict on AUTH-01. "Go" requires green W3C test vectors and a
+passed security audit; a half-implemented authentication scheme never ships in v1 (`[[api-freeze]]`).
+
 > **Language note:** the auth bridge lives in framework components — all comments, logs, and
 > exceptions are **English** (French only in the `skeleton/`, `workspace/`, and `academy/` template
 > apps).

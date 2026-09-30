@@ -10,6 +10,8 @@ Execute safe refactors across Waffle components to improve structure, enforce PH
 ## Before touching anything
 1. Establish a green baseline in Docker: `docker exec -it -w /waffle-commons/{component} waffle-dev composer tests` **and** `composer mago` (zero output) **and** `composer igor` (0 KO). Capture it before changing anything — you must end at least as green.
 2. If tests are missing, load the `test` skill first.
+3. **Check the release phase.** After the beta8 tag the public API is frozen: a refactor may change
+   internals only — no public symbol renamed, moved or re-signed (`api-freeze`).
 
 ## Refactoring rules
 
