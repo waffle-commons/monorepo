@@ -9,7 +9,7 @@ aliases: []
 
 # RFC-017: Advanced Security & Edge Protection
 
-**Status:** In progress — rate limiting (§3.1, `[NET-01]`) for `0.1.0-beta7`; OAuth2/OIDC moved to RFC-021; webhook HMAC (§3.3) not yet scheduled **Components:** `waffle-commons/security` (the Beta 7 roadmap places the limiter in `security/` as a middleware instead of a separate `security-extra` package) **Author:** DevSecOps Lead **Tags:** rate-limiting, oauth2, oidc, hmac
+**Status:** In progress — rate limiting (§3.1, `[NET-01]`) for `0.1.0-beta7`; outbound resilience (`[NET-02]` client policies, `[NET-03]` circuit breaker) is specified in RFC-024, which shares the limiter's state-storage family; OAuth2/OIDC moved to RFC-021; webhook HMAC (§3.3) not yet scheduled **Components:** `waffle-commons/security` (the Beta 7 roadmap places the limiter in `security/` as a middleware instead of a separate `security-extra` package) **Author:** DevSecOps Lead **Tags:** rate-limiting, oauth2, oidc, hmac
 
 ## 1. Summary
 
