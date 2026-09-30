@@ -9,7 +9,7 @@ aliases: []
 
 # RFC-015: Asynchronous Execution & Parallelism
 
-**Status:** Planned for v1.x (Post-v1.0) **Components:** `waffle-commons/async` **Author:** Core Architect **Tags:** fibers, frankenphp, mercure, async
+**Status:** Implemented in part — finish-request deferral and concurrent HTTP fan-out (`[ASYNC-01]`, `[ASYNC-02]`, `0.1.0-beta5`); background processing (`waffle-commons/queue`, `[QUEUE-01..03]`) in progress for `0.1.0-beta7` **Components:** `waffle-commons/async`, `waffle-commons/queue` **Author:** Core Architect **Tags:** fibers, frankenphp, mercure, async
 
 ## 1. Summary
 

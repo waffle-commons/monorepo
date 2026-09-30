@@ -65,7 +65,7 @@ _The three beta5 research spikes get their final verdict. "Go" means landing the
 
 - **Specification:**
     
-    - One sweep across all components: namespace conventions (`Waffle\Commons\*` / `Waffle\Contracts\*`), exception hierarchies, config key naming, console command naming (`domain:action`), error response shapes.
+    - One sweep across all components: namespace conventions (`Waffle\Commons\*` / `Waffle\Commons\Contracts\*`), exception hierarchies, config key naming, console command naming (`domain:action`), error response shapes.
         
     - Inconsistencies found after v1 are permanent — this is the last cheap moment.
         

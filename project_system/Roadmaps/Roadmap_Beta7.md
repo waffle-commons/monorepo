@@ -1,9 +1,9 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-09-08
+date_updated: 2026-09-29
 type: project
-status: pending
+status: in-progress
 tags:
   - project
   - roadmap
@@ -12,7 +12,7 @@ aliases: []
 ---
 # 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta7
 
-> **Status:** Pending Validation — Draft (Subject to revision after the beta6 retrospective)
+> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below)
 > 
 > **Target Release:** **October 2026** (the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
@@ -22,6 +22,65 @@ aliases: []
 > 
 > **Capacity guard (added 2026-09-08):** beta7 is the **heaviest release of the train in the shortest window** — four brand-new repositories (`queue`, `openapi`, `serializer`, `testing`, each needing repo creation, scaffolding, CI, a `RELEASE_INCLUDE` entry and a first Packagist publication) plus eleven items across five axes. Plan against the measured evidence, not the intent: umbrella-tag cadence has run beta3→beta4 in 7 days, →beta5 in 24, →beta6 in 62; and beta6 was **code-complete on 2026-08-02/03 yet only tagged in September** — roughly five weeks of verification, documentation and wave prep for a release that added *zero* new components. Subtract that tail and conference week (Lille, Sep 17–18) from an October tag and ~3–4 weeks of build remain. **Therefore:** the stretch tier (`[DXP-01]`, `[GATE-02]`) is cut on first contact with the schedule, not renegotiated late; and if the four new repositories are not scaffolded and green on their own gates by **mid-October**, split the release — NET + OPS + QUEUE tag as beta7 in October, API + TEST fold into the beta8 window — instead of letting beta7 slide into November. **The freeze date (beta8, November) is what is being protected here; beta7's scope is not.**
 
+## 🧰 KICKOFF STATE & CARRY-OVERS (2026-09-29)
+
+### Where the release starts
+
+- **Branches:** every repository (umbrella + 30 submodules) is on `pre-release/0.1.0-beta7`.
+- **New components scaffolded** from `component-template` (namespace · package): `queue`
+  (`Waffle\Commons\Queue`), `openapi` (`Waffle\Commons\OpenApi`), `serializer` (`Waffle\Commons\Serializer`),
+  `testing` (`Waffle\Commons\Testing`). Each passes its Definition of Done on the empty scaffold (mago zero
+  output, igor 0 KO; tests and coverage start with the first class), is in the `umbrella-ci` paths filter,
+  and has its git hooks. **Maintainer actions still open:** commit the configured files and gitlinks,
+  register the four packages on Packagist, set merge-commit-only + delete-branch-on-merge on the four
+  repositories, add each one to `RELEASE_INCLUDE` when it ships code.
+- **Toolchain baseline for the release** (the whole Dependabot backlog, applied in lockstep): mago 1.50,
+  psalm 6.19, igor-php **0.9.7** (pinned by `.igor-version`, enforced in CI and in `wfl dod`), GitHub
+  Actions checkout v7 / cache v6 / codecov v7 / paths-filter v4, TruffleHog pinned to a release instead
+  of `main`, FrankenPHP **1.12.7** / PHP 8.5.11 (1.12.5 was a security release). PHPUnit 13 is a major and
+  stays out of this release unless an item needs it.
+- **Guard-rails added:** one canonical component CI workflow (`wfl ci:check` reports any drift), igor pin
+  robust to the vendor cache, `wfl mcp:check` proving every MCP server with a real session, read-only
+  `wfl sync:status`.
+
+### Carried over — schedule these alongside the axes
+
+- **`[CARRY-01]` Pool ping-before-dispense within a freshness window** (Retro_Beta6 §6): the benchmark traced
+  Waffle's early saturation knee to the doubled DB round trip. Make the ping skippable when the
+  connection was verified recently; keep the fail-safe for stale ones. Contracts-first if the pool
+  contract changes.
+- **`[CARRY-02]` Benchmark harness hardening** (before any new public number): run-unique result file
+  names (a re-run must never overwrite a series); Engine C on symfony/runtime 7.4's native
+  `FrankenPhpWorkerRunner` with `FRANKENPHP_LOOP_MAX=1000000` and no `APP_RUNTIME` override (its
+  500-request default invalidated the beta6 soak comparison); Engine C in the memory test; an
+  equivalent-features Symfony engine (security + CSRF + transaction subscriber) next to the bare one;
+  host hardware recorded with every run; least-squares slopes published with their uncertainty.
+- **`[CARRY-03]` "Keeps state on purpose" design note** (API Platform Conference feedback, 2026-09-17):
+  runtime reset is already opt-in (`Container::reset()` resets only Resettable services); the strictness
+  lives in the dev-mode `ComplianceScanner` and the igor gate, with `#[WorkerSafe]` as the only escape
+  hatch. Decide — as an RFC-001 amendment, not code — whether a first-class "intentional state" marker
+  is needed and how it differs from `#[WorkerSafe]`.
+- **`[CARRY-04]` Perimeter design for `testing` and `openapi`** (decide before their first class):
+  `WaffleTestCase` must boot a kernel and `openapi:generate` must read route and DTO metadata without
+  importing a sibling's concrete classes. Put the seams in `waffle-commons/contracts` first (kernel
+  factory / route-metadata interfaces), or record the exception explicitly.
+- **`[CARRY-05]` igor 0.9.x write-through false positives:** 0.9.x flags writes *through* an injected
+  service (`$this->cache->set(…)`) as "mutation on an injected dependency". Each case in this release is
+  adjudicated in code (fixed or `#[WorkerSafe]` with its reason); propose the detector fix upstream in
+  the igor-php fork.
+- **`[CARRY-06]` Small follow-ups** (Retro_Beta6 §6): `Constant::ATTR_PARAMS` promotion, AOT compiled-memo
+  runtime write-through, a PHPUnit step in the workspace CI job.
+- **`[CARRY-07]` Workspace coverage policy — decided 2026-09-30:** the workspace demo app's coverage
+  (54.40 %) is reported, not gated, in `scripts/dod.sh` as well — the same demo-app policy as `umbrella-ci`.
+  It still has to pass mago, tests and igor; everything released (skeleton included) keeps the 95 % bar.
+- **`[CARRY-08]` Skeleton production image** (found while verifying FrankenPHP 1.12.7, 2026-09-30):
+  `config/preload.php` runs `opcache_compile_file()` over `vendor/waffle-commons` in directory order, which
+  compiles without linking dependencies — every PHP start of the prod image logs 140 "Can't preload unlinked
+  class" warnings and those classes are not preloaded (PSR interfaces sit outside the scanned tree).
+  Fix: `require_once` through the Composer autoloader so parents and interfaces autoload and link, then
+  re-measure (the beta6 benchmark ran this image). Also: the builder stage copies `composer.lock`, which
+  is gitignored since beta6, so a `docker build` from a fresh clone fails at that `COPY`.
+
 ## 🛡️ AXE 1: TRAFFIC PROTECTION & OUTBOUND RESILIENCE
 
 _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams is not production-ready. These are also hard prerequisites for EcoShield-Gateway._
@@ -30,7 +89,7 @@ _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams
 
 - **Specification:**
     
-    - Introduce `Waffle\Contracts\RateLimit\RateLimiterInterface` + `LimiterStateStorageInterface` in contracts (contracts-first).
+    - Introduce `Waffle\Commons\Contracts\RateLimit\RateLimiterInterface` + `LimiterStateStorageInterface` in contracts (contracts-first).
         
     - Implement a Token Bucket limiter as a `security/` middleware, keyed by IP, authenticated subject (`UserIdentityInterface`), or API token.
         
@@ -71,7 +130,7 @@ _Beta5 `[ASYNC-01]` is finish-request deferral and explicitly **not** background
 
 - **Specification:**
     
-    - `Waffle\Contracts\Queue\`: `MessageInterface`, `QueueDispatcherInterface`, `QueueConsumerInterface`, `FailedMessageStoreInterface`.
+    - `Waffle\Commons\Contracts\Queue\`: `MessageInterface`, `QueueDispatcherInterface`, `QueueConsumerInterface`, `FailedMessageStoreInterface`.
         
     - Messages are strictly-typed, serializable DTOs (no closures, no object graphs); envelope carries id, attempts, available-at, and trace context (W3C propagation from beta5 `[OBS-01]`).
         
@@ -91,7 +150,7 @@ _Beta5 `[ASYNC-01]` is finish-request deferral and explicitly **not** background
 
 - **Specification:**
     
-    - Ship `Waffle\Contracts\Mailer\MailerInterface` + message DTO **contract only**; transactional mail is dispatched as a queue message.
+    - Ship `Waffle\Commons\Contracts\Mailer\MailerInterface` + message DTO **contract only**; transactional mail is dispatched as a queue message.
         
     - SMTP/API transport adapters are explicitly **post-v1** (non-goal in the master roadmap); userland may bind any PSR-compatible mailer to the interface meanwhile.
         
@@ -106,7 +165,7 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
     
     - Lightweight middleware exposing `/healthz` (liveness: process responsive) and `/readyz` (readiness: aggregated `HealthCheckInterface` probes — DB pool, Redis, queue driver, disk).
         
-    - `Waffle\Contracts\Health\HealthCheckInterface` in contracts; components ship their own probes; fail-closed: an unregistered critical dependency means not-ready.
+    - `Waffle\Commons\Contracts\Health\HealthCheckInterface` in contracts; components ship their own probes; fail-closed: an unregistered critical dependency means not-ready.
         
     - Constant-time, allocation-light handlers — these are hit every few seconds by orchestrators.
         

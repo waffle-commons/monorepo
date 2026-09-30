@@ -9,7 +9,7 @@ aliases: []
 
 # RFC-014: Data & Persistence Layer
 
-**Status:** Planned for v1.x (Post-v1.0) **Components:** `waffle-commons/data` **Author:** Lead Engineer **Tags:** dbal, database, persistence, worker-safe
+**Status:** Implemented in part — the data layer ships through RFC-022 (`waffle-commons/data`) and the Beta 5 connection pooling (`[DBAL-01]`, `[DBAL-02]`); schema-migration workflow maturity (`[OPS-03]`) in progress for `0.1.0-beta7` **Components:** `waffle-commons/data` **Author:** Lead Engineer **Tags:** dbal, database, persistence, worker-safe
 
 ## 1. Summary
 
