@@ -73,13 +73,23 @@ aliases: []
 - **`[CARRY-07]` Workspace coverage policy — decided 2026-09-30:** the workspace demo app's coverage
   (54.40 %) is reported, not gated, in `scripts/dod.sh` as well — the same demo-app policy as `umbrella-ci`.
   It still has to pass mago, tests and igor; everything released (skeleton included) keeps the 95 % bar.
-- **`[CARRY-08]` Skeleton production image** (found while verifying FrankenPHP 1.12.7, 2026-09-30):
-  `config/preload.php` runs `opcache_compile_file()` over `vendor/waffle-commons` in directory order, which
-  compiles without linking dependencies — every PHP start of the prod image logs 140 "Can't preload unlinked
-  class" warnings and those classes are not preloaded (PSR interfaces sit outside the scanned tree).
-  Fix: `require_once` through the Composer autoloader so parents and interfaces autoload and link, then
-  re-measure (the beta6 benchmark ran this image). Also: the builder stage copies `composer.lock`, which
-  is gitignored since beta6, so a `docker build` from a fresh clone fails at that `COPY`.
+- **`[CARRY-08]` Skeleton OPcache preload — fixed 2026-09-30:**
+  `config/preload.php` ran `opcache_compile_file()` over `vendor/waffle-commons` in directory order, which
+  compiles without linking dependencies: 70 "Can't preload unlinked class" warnings at every PHP start, and
+  those classes were not preloaded. The fix loads the framework classes through the Composer
+  loader (`class_exists`), so parents and interfaces link first: 0 warnings, 470 → 503 preloaded classes,
+  200/200 worker-mode requests served. The builder stage now runs `composer dump-autoload` before enabling
+  preload (a file read during preload stays pinned for the whole process, so Composer read a stale map).
+  Re-measure before quoting the beta6 benchmark again (it ran this image). Also open: the builder copies
+  `composer.lock`, gitignored since beta6, so a `docker build` from a fresh clone fails at that `COPY`.
+- **`[CARRY-09]` The stock skeleton production image cannot serve a request** (found 2026-09-30, predates
+  beta7): the skeleton Caddyfile's `frankenphp` block has no `{$FRANKENPHP_CONFIG}`, so the Dockerfile's
+  `FRANKENPHP_CONFIG="worker ./public/index.php"` is ignored and requests run in classic mode, where
+  `WaffleRuntime::loop()` still calls `frankenphp_handle_request()` (it only checks that the function exists)
+  and FrankenPHP throws — HTTP 500 on every request. With a Caddyfile that interpolates the variable, the
+  same image serves 200 (the bench engine does exactly that). Fix both: interpolate `{$FRANKENPHP_CONFIG}` in
+  the skeleton Caddyfile, and make the runtime fall back to single-request handling outside worker mode; then
+  add a production-image smoke test (build + one request) to CI so this cannot ship again.
 
 ## 🛡️ AXE 1: TRAFFIC PROTECTION & OUTBOUND RESILIENCE
 
