@@ -33,13 +33,13 @@ jobs:
       workspace:  ${{ steps.filter.outputs.workspace }}
     steps:
       - name: Checkout umbrella
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Filter changed paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           list-files: none
           filters: |
@@ -56,12 +56,16 @@ jobs:
             http:             'http/**'
             http-client:      'http-client/**'
             log:              'log/**'
+            openapi:          'openapi/**'
             pipeline:         'pipeline/**'
+            queue:            'queue/**'
             routing:          'routing/**'
             runtime:          'runtime/**'
             security:         'security/**'
+            serializer:       'serializer/**'
             telemetry:        'telemetry/**'
             telemetry-otel:   'telemetry-otel/**'
+            testing:          'testing/**'
             utils:            'utils/**'
             waffle:           'waffle/**'
             workspace:        'workspace/**'
@@ -101,7 +105,7 @@ jobs:
 
     steps:
       - name: Checkout umbrella (no submodules)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -132,7 +136,7 @@ jobs:
           extensions: mbstring, intl, opcache, xml, dom, tokenizer
 
       - name: Cache composer
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ matrix.component }}/vendor
           key:  composer-${{ runner.os }}-${{ matrix.component }}-${{ hashFiles(format('{0}/composer.lock', matrix.component)) }}
@@ -165,30 +169,38 @@ jobs:
 
       # The composer package is only a bootstrapper: bin/igor-php resolves
       # releases/latest from the GitHub API and downloads THAT binary, so the
-      # composer constraint and composer.lock pin nothing. Seed the version file
-      # it reads, then assert the pin actually took — otherwise an upstream
-      # release silently changes what this gate audits.
+      # composer constraint and composer.lock pin nothing. vendor/ is cached
+      # above, so a restored binary of any version may already sit there: drop
+      # it, seed the version file, then assert against the BINARY's own banner
+      # (`--version` prints to stderr; the bootstrapper's download message also
+      # contains the version, so only an exact-line match proves it).
+      # Keep IGOR_VERSION equal to .igor-version (wfl ci:check enforces it).
       - name: Pin the Igor auditor
         working-directory: ${{ matrix.component }}
         env:
-          IGOR_VERSION: '0.7.0'
+          IGOR_VERSION: '0.9.7'
         run: |
-          mkdir -p vendor/igor-php/igor-php/resources/bin
-          printf '%s' "$IGOR_VERSION" > vendor/igor-php/igor-php/resources/bin/.version
-          vendor/bin/igor-php --version | grep -qF "$IGOR_VERSION"
+          bin_dir=vendor/igor-php/igor-php/resources/bin
+          rm -rf "$bin_dir" && mkdir -p "$bin_dir"
+          printf '%s' "$IGOR_VERSION" > "$bin_dir/.version"
+          vendor/bin/igor-php --version 2>&1 | tee /dev/stderr | grep -qFx "igor-php version $IGOR_VERSION"
 
       - name: igor-php
         working-directory: ${{ matrix.component }}
         run: vendor/bin/igor-php .
 
+      # A fresh scaffold has no source: nothing to test or measure yet. The
+      # first PHP file under src/ switches the full test + coverage gate on.
       - name: composer tests
+        if: hashFiles(format('{0}/src/**/*.php', matrix.component)) != ''
         working-directory: ${{ matrix.component }}
         env:
           XDEBUG_MODE: coverage
         run: vendor/bin/phpunit --coverage-clover ./var/data/phpunit-coverage/clover.xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        if: hashFiles(format('{0}/src/**/*.php', matrix.component)) != ''
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./var/data/phpunit-coverage/clover.xml
@@ -207,7 +219,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout umbrella (no submodules)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -219,11 +231,12 @@ jobs:
       - name: Init workspace + its 21 path-repo components
         run: |
           set -euo pipefail
-          COMPONENTS="workspace contracts utils config container http http-client routing pipeline event-dispatcher log error-handler cache security auth console data runtime waffle async telemetry telemetry-otel"
+          COMPONENTS=(workspace contracts utils config container http http-client routing pipeline
+                      event-dispatcher log error-handler cache security auth console data runtime waffle
+                      async telemetry telemetry-otel)
           git config --global url."https://github.com/".insteadOf "git@github.com:"
-          # shellcheck disable=SC2086 — word-splitting is intentional here.
-          git submodule sync -- $COMPONENTS
-          git submodule update --init --depth=1 -- $COMPONENTS
+          git submodule sync -- "${COMPONENTS[@]}"
+          git submodule update --init --depth=1 -- "${COMPONENTS[@]}"
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
@@ -234,7 +247,7 @@ jobs:
           extensions: mbstring, intl, opcache, xml, dom, tokenizer, yaml
 
       - name: Cache composer
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: workspace/vendor
           key:  composer-${{ runner.os }}-workspace-${{ hashFiles('workspace/composer.lock') }}
@@ -281,7 +294,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout umbrella (no submodules)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
