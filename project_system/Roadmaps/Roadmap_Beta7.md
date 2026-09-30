@@ -82,14 +82,17 @@ aliases: []
   preload (a file read during preload stays pinned for the whole process, so Composer read a stale map).
   Re-measure before quoting the beta6 benchmark again (it ran this image). Also open: the builder copies
   `composer.lock`, gitignored since beta6, so a `docker build` from a fresh clone fails at that `COPY`.
-- **`[CARRY-09]` The stock skeleton production image cannot serve a request** (found 2026-09-30, predates
-  beta7): the skeleton Caddyfile's `frankenphp` block has no `{$FRANKENPHP_CONFIG}`, so the Dockerfile's
-  `FRANKENPHP_CONFIG="worker ./public/index.php"` is ignored and requests run in classic mode, where
-  `WaffleRuntime::loop()` still calls `frankenphp_handle_request()` (it only checks that the function exists)
-  and FrankenPHP throws — HTTP 500 on every request. With a Caddyfile that interpolates the variable, the
-  same image serves 200 (the bench engine does exactly that). Fix both: interpolate `{$FRANKENPHP_CONFIG}` in
-  the skeleton Caddyfile, and make the runtime fall back to single-request handling outside worker mode; then
-  add a production-image smoke test (build + one request) to CI so this cannot ship again.
+- **`[CARRY-09]` The stock skeleton production image could not serve a request — fixed 2026-09-30:**
+  the skeleton Caddyfile's `frankenphp` block had no `{$FRANKENPHP_CONFIG}`, so
+  the Dockerfile's `FRANKENPHP_CONFIG="worker ./public/index.php"` was ignored and requests ran in classic mode,
+  where `WaffleRuntime::loop()` still called `frankenphp_handle_request()` (it only checked that the function
+  exists) and FrankenPHP threw — HTTP 500 on every request, in the prod image and in the skeleton's dev compose.
+  Fix: the Caddyfile interpolates `{$FRANKENPHP_CONFIG}` (as FrankenPHP's official one does), and the runtime
+  detects worker mode through the `FRANKENPHP_WORKER` process variable (set only for worker scripts, readable
+  at boot and in every request), handling exactly one request otherwise. Verified on the rebuilt prod image:
+  stock config 200×50 in worker mode; classic mode 200×50 with the fix, 500×50 without it. Still to do: a
+  production-image smoke test (build + request) in CI, and hot reload for the skeleton's dev compose (it now
+  inherits worker mode, so code changes need a container restart).
 
 ## 🛡️ AXE 1: TRAFFIC PROTECTION & OUTBOUND RESILIENCE
 
