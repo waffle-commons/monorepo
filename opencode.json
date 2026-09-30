@@ -24,66 +24,41 @@
     "filesystem": {
       "type": "local",
       "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/Users/lesliepetrimaux/Git/Perso/waffle-commons"
+        "bash",
+        "scripts/mcp/filesystem.sh"
       ],
       "enabled": true
     },
     "postgres": {
       "type": "local",
       "command": [
-        "npx",
-        "-y",
-        "@henkey/postgres-mcp-server",
-        "--connection-string",
-        "{env:WAFFLE_PG_DSN}"
+        "bash",
+        "scripts/mcp/postgres.sh"
       ],
       "enabled": true
     },
     "mongo": {
       "type": "local",
       "command": [
-        "npx",
-        "-y",
-        "mongodb-mcp-server"
+        "bash",
+        "scripts/mcp/mongo.sh"
       ],
-      "environment": {
-        "MDB_MCP_CONNECTION_STRING": "{env:WAFFLE_MONGO_URI}"
-      },
       "enabled": true
     },
     "redis": {
       "type": "local",
       "command": [
-        "docker",
-        "run",
-        "--rm",
-        "-i",
-        "--network=host",
-        "-e",
-        "REDIS_HOST={env:WAFFLE_REDIS_HOST}",
-        "-e",
-        "REDIS_PORT=6379",
-        "mcp/redis"
+        "bash",
+        "scripts/mcp/redis.sh"
       ],
       "enabled": true
     },
     "github": {
       "type": "local",
       "command": [
-        "docker",
-        "run",
-        "--rm",
-        "-i",
-        "-e",
-        "GITHUB_PERSONAL_ACCESS_TOKEN",
-        "ghcr.io/github/github-mcp-server"
+        "bash",
+        "scripts/mcp/github.sh"
       ],
-      "environment": {
-        "GITHUB_PERSONAL_ACCESS_TOKEN": "{env:GITHUB_TOKEN}"
-      },
       "enabled": true
     }
   }
