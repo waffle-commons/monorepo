@@ -6,8 +6,12 @@
 #   1. composer mago   → ZERO output (zero errors AND zero warnings/info/help)
 #   2. composer tests  → green
 #   3. line coverage   → ≥ 95% (scripts/coverage-percent.php, not HTML scraping)
-#   4. composer igor   → 0 KO   ("not defined" is tolerated: no worker-safety run)
+#   4. composer igor   → 0 KO with the pinned auditor (.igor-version); a stale
+#                        binary fails the gate ("not defined" is tolerated)
 #   5. compare-audit   → optional SEC-03 gate (--compare-audit), 0 findings
+#
+# Steps 2–3 are N/A only while the component holds no PHP outside tests/ (a
+# fresh scaffold); the first class switches the full bar on.
 #
 # Everything runs inside the dev container (waffle-dev) via docker exec.
 #
@@ -19,6 +23,10 @@ set -uo pipefail
 REPO_ROOT="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTAINER="waffle-dev"
 THRESHOLD=95
+# Demo-app policy, the same as umbrella-ci's workspace job: the contributor
+# playground keeps the mago, tests-green and igor gates, but its coverage is
+# reported, not gated. Everything released (skeleton included) holds the bar.
+COVERAGE_EXEMPT=" workspace "
 
 if [ -t 1 ]; then
   C_RED=$'\033[0;31m'; C_GRN=$'\033[0;32m'; C_YEL=$'\033[0;33m'
@@ -61,6 +69,9 @@ printf '%s%s═══ Definition of Done — %s ═══%s\n' "$C_BLD" "$C_CYA"
 fail=0
 
 # --- 1. mago (zero output is clean) --------------------------------------
+# The mago composer package fetches its binary on first use and prints a
+# download progress bar; warm it first so that banner is never read as a finding.
+dx sh -c 'test -x vendor/bin/mago && vendor/bin/mago --version' >/dev/null 2>&1 || true
 info "1/5 composer mago (must be ZERO output)…"
 mago_out="$(dx composer mago 2>&1)"; mago_code=$?
 # "Zero output" means zero DIAGNOSTICS. A clean mago run still emits its own
@@ -76,9 +87,21 @@ else
   printf '%s\n' "$mago_out" | sed 's/^/      /' >&2
 fi
 
+# A freshly scaffolded component has no source yet: PHPUnit has no test to run
+# and no file to measure. Tests and coverage are N/A until the first PHP file
+# lands outside tests/ (src/, or app/ for the workspace) — from then on the full
+# bar applies. mago and igor always run.
+scaffold=0
+if ! find "$REPO_ROOT/$COMP" \( -name vendor -o -name tests -o -name var -o -name .git \) -prune \
+     -o -type f -name '*.php' -print 2>/dev/null | grep -q .; then
+  scaffold=1
+fi
+
 # --- 2. tests ------------------------------------------------------------
 info "2/5 composer tests…"
-if dx composer tests >/tmp/dod-tests.$$ 2>&1; then
+if [ "$scaffold" -eq 1 ]; then
+  ok "tests N/A — scaffold: no PHP source outside tests/ yet"
+elif dx composer tests >/tmp/dod-tests.$$ 2>&1; then
   ok "tests green"
 else
   fail=1; warn "tests FAILED"
@@ -88,21 +111,39 @@ rm -f /tmp/dod-tests.$$
 
 # --- 3. coverage ≥ threshold --------------------------------------------
 info "3/5 line coverage (≥ ${THRESHOLD}%)…"
-pct="$(docker exec -w /waffle-commons "$CONTAINER" php scripts/coverage-percent.php "$COMP" 2>/tmp/dod-cov.$$)"; cov_code=$?
-if [ "$cov_code" -ne 0 ] || [ -z "$pct" ]; then
+pct=""; cov_code=0
+[ "$scaffold" -eq 0 ] && { pct="$(docker exec -w /waffle-commons "$CONTAINER" php scripts/coverage-percent.php "$COMP" 2>/tmp/dod-cov.$$)"; cov_code=$?; }
+if [ "$scaffold" -eq 1 ]; then
+  ok "coverage N/A — scaffold: no PHP source outside tests/ yet"
+elif [ "$cov_code" -ne 0 ] || [ -z "$pct" ]; then
   fail=1; warn "coverage unavailable"
   sed 's/^/      /' /tmp/dod-cov.$$ >&2
 elif awk -v p="$pct" -v t="$THRESHOLD" 'BEGIN { exit !(p >= t) }'; then
   ok "coverage ${pct}% (≥ ${THRESHOLD}%)"
+elif [[ "$COVERAGE_EXEMPT" == *" $COMP "* ]]; then
+  ok "coverage ${pct}% — reported, not gated (demo-app policy, as in umbrella-ci)"
 else
   fail=1; warn "coverage ${pct}% (< ${THRESHOLD}%)"
 fi
 rm -f /tmp/dod-cov.$$
 
 # --- 4. igor (0 KO; "not defined" tolerated) -----------------------------
-info "4/5 composer igor (0 KO)…"
+# The bootstrapper downloads releases/latest unless its version file says
+# otherwise, so seed the pinned auditor (.igor-version, as igor.sh and CI do)
+# and refuse to trust a result produced by any other binary.
+IGOR_VERSION="${IGOR_VERSION:-$(tr -d '[:space:]' < "$REPO_ROOT/.igor-version")}"
+info "4/5 composer igor (0 KO, auditor ${IGOR_VERSION})…"
+igor_bin_dir="vendor/igor-php/igor-php/resources/bin"
+igor_version_out=""
+if dx test -x vendor/bin/igor-php 2>/dev/null; then
+  dx sh -c "mkdir -p '$igor_bin_dir' && printf '%s' '$IGOR_VERSION' > '$igor_bin_dir/.version'" >/dev/null 2>&1
+  igor_version_out="$(dx vendor/bin/igor-php --version 2>&1 || true)"
+fi
 igor_out="$(dx composer igor 2>&1)"; igor_code=$?
-if printf '%s' "$igor_out" | grep -qiE 'not defined|no such|script .* is not'; then
+if [ -n "$igor_version_out" ] && ! printf '%s\n' "$igor_version_out" | grep -qFx "igor-php version $IGOR_VERSION"; then
+  fail=1; warn "igor auditor is not ${IGOR_VERSION} — a stale binary sits in $igor_bin_dir (delete it to re-fetch)"
+  printf '%s\n' "$igor_version_out" | sed 's/^/      /' >&2
+elif printf '%s' "$igor_out" | grep -qiE 'not defined|no such|script .* is not'; then
   ok "igor not defined for '$COMP' (tolerated — no worker-safety surface)"
 elif [ "$igor_code" -eq 0 ] && ! printf '%s' "$igor_out" | grep -qiE 'mutation of state|KO \(Dangerous State\): *[1-9]'; then
   # Trust Igor's own "KO (Dangerous State): N" tally (mirrors the canonical

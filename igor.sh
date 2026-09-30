@@ -39,10 +39,12 @@ WORK_DIR_BASE="/waffle-commons"
 IGOR_BIN="vendor/bin/igor-php"
 # The composer package is only a BOOTSTRAPPER: vendor/bin/igor-php asks the
 # GitHub API for releases/latest and downloads that binary, so the composer
-# constraint ("^0.7.0") and composer.lock pin nothing at all. Seed the version
-# file the bootstrapper reads so the audited version is deterministic and CI
-# agrees with local; override with IGOR_VERSION=x.y.z to try another auditor.
-IGOR_VERSION="${IGOR_VERSION:-0.7.0}"
+# constraint and composer.lock pin nothing at all. Seed the version file the
+# bootstrapper reads so the audited version is deterministic and CI agrees with
+# local. The single source of truth is .igor-version at the umbrella root (CI
+# workflows repeat it; `wfl ci:check` fails if they disagree); override with
+# IGOR_VERSION=x.y.z to try another auditor.
+IGOR_VERSION="${IGOR_VERSION:-$(tr -d '[:space:]' < "$SCRIPT_DIR/.igor-version")}"
 IGOR_BOOTSTRAP_DIR="vendor/igor-php/igor-php/resources/bin"
 OUTPUT_MODE="VERBOSE"        # VERBOSE | SILENT
 MODE=""                      # docker | local (auto-detected when empty)
