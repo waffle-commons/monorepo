@@ -4,7 +4,8 @@
 #
 # Per the project bar, a modified component is "done" only when ALL of:
 #   1. composer mago   → ZERO output (zero errors AND zero warnings/info/help)
-#   2. composer tests  → green
+#   2. composer tests  → green: exit 0 AND a clean "OK (…)" verdict — no issues,
+#                        skipped, incomplete or risky tests (phpunit-verdict.sh)
 #   3. line coverage   → ≥ 95% (scripts/coverage-percent.php, not HTML scraping)
 #   4. composer igor   → 0 KO with the pinned auditor (.igor-version); a stale
 #                        binary fails the gate ("not defined" is tolerated)
@@ -98,11 +99,21 @@ if ! find "$REPO_ROOT/$COMP" \( -name vendor -o -name tests -o -name var -o -nam
 fi
 
 # --- 2. tests ------------------------------------------------------------
+# A zero exit code is not enough: PHPUnit exits 0 on "OK, but there were
+# issues!" unless phpunit.xml opts into failOn*, so its verdict line is read
+# too (scripts/phpunit-verdict.sh) — only a clean "OK (…)" is green.
 info "2/5 composer tests…"
 if [ "$scaffold" -eq 1 ]; then
   ok "tests N/A — scaffold: no PHP source outside tests/ yet"
 elif dx composer tests >/tmp/dod-tests.$$ 2>&1; then
-  ok "tests green"
+  if verdict="$("$REPO_ROOT/scripts/phpunit-verdict.sh" /tmp/dod-tests.$$ 2>&1)"; then
+    ok "tests green"
+  else
+    fail=1; warn "tests passed with PHPUnit issues — only a clean \"OK (…)\" run is green"
+    printf '%s\n' "$verdict" | sed 's/^/      /' >&2
+    printf '      details: docker exec -w /waffle-commons/%s %s vendor/bin/phpunit --no-coverage --display-all-issues\n' \
+      "$COMP" "$CONTAINER" >&2
+  fi
 else
   fail=1; warn "tests FAILED"
   sed 's/^/      /' /tmp/dod-tests.$$ >&2

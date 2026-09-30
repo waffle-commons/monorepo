@@ -807,6 +807,13 @@ cmd_check_all() {
   # finding: such a component is re-run alone once before it counts as failed.
   local emfile_re='Too many open files|os error 24|No such file or directory \(os error 2\)'
 
+  # A zero exit code is not a clean test run: PHPUnit exits 0 on "OK, but there
+  # were issues!" unless phpunit.xml opts into failOn*, so for `tests` its verdict
+  # line is read too (scripts/phpunit-verdict.sh, shared with scripts/dod.sh).
+  _clean_run() { # $1=composer-script  $2=output file
+    [ "$1" != tests ] || "$REPO_ROOT/scripts/phpunit-verdict.sh" "$2" >/dev/null 2>&1
+  }
+
   _sweep() { # $1=composer-script  $2=label
     local script="$1" label="$2" c host_flake=0
     info "check:all — 'composer $script' across ${#comps[@]} components (≤${max_jobs} parallel)…"
@@ -820,7 +827,8 @@ cmd_check_all() {
         continue
       fi
       while [ "$(jobs -rp | wc -l | tr -d ' ')" -ge "$max_jobs" ]; do sleep 0.2; done
-      ( if docker exec -w "/waffle-commons/$c" "$CONTAINER" composer "$script" >"$tmp/$c.$script" 2>&1
+      ( if docker exec -w "/waffle-commons/$c" "$CONTAINER" composer "$script" >"$tmp/$c.$script" 2>&1 \
+             && _clean_run "$script" "$tmp/$c.$script"
         then printf 'PASS' >"$tmp/$c.$script.ok"; else printf 'FAIL' >"$tmp/$c.$script.ok"; fi ) &
     done
     wait
@@ -831,7 +839,8 @@ cmd_check_all() {
       fi
       if [ "$(cat "$tmp/$c.$script.ok" 2>/dev/null)" != PASS ] && grep -qE "$emfile_re" "$tmp/$c.$script"; then
         host_flake=$((host_flake + 1))
-        if docker exec -w "/waffle-commons/$c" "$CONTAINER" composer "$script" >"$tmp/$c.$script" 2>&1; then
+        if docker exec -w "/waffle-commons/$c" "$CONTAINER" composer "$script" >"$tmp/$c.$script" 2>&1 \
+             && _clean_run "$script" "$tmp/$c.$script"; then
           printf 'PASS' >"$tmp/$c.$script.ok"
         fi
       fi
@@ -842,6 +851,8 @@ cmd_check_all() {
         sed 's/^/      /' "$tmp/$c.$script" >&2
         if grep -qE "$emfile_re" "$tmp/$c.$script"; then
           warn "  ↳ host file-descriptor exhaustion (Docker file share), not a code finding — restart Docker Desktop, or re-run with WFL_CHECK_JOBS=1"
+        elif [ "$script" = tests ] && sed -E $'s/\x1b\\[[0-9;]*m//g' "$tmp/$c.$script" | grep -qE '^OK, but'; then
+          warn "  ↳ PHPUnit passed with issues — only a clean \"OK (…)\" run is green; details: vendor/bin/phpunit --no-coverage --display-all-issues"
         fi
       fi
     done
