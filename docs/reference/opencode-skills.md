@@ -70,11 +70,11 @@
 
 | Skill | Trigger | Roadmap |
 | :--- | :--- | :--- |
-| **resilience-net** | Rate limiter, retry/backoff, circuit breaker. | beta6 (RFC-017) |
-| **queue-worker** | Background processing (`queue` component, Redis Streams). | beta6 (RFC-015) |
-| **api-surface** | OpenAPI generation + DTO serializer / content negotiation. | beta6 (RFC-016) |
-| **k8s-ops** | Health/readiness probes, graceful drain, migration maturity. | beta6 (RFC-014) |
-| **testing-bridge** | `WaffleTestCase` in-process kernel + test doubles. | beta6 (RFC-012) |
+| **resilience-net** | Rate limiter, retry/backoff, circuit breaker. | beta7 (RFC-017) |
+| **queue-worker** | Background processing (`queue` component, Redis Streams). | beta7 (RFC-015) |
+| **api-surface** | OpenAPI generation + DTO serializer / content negotiation. | beta7 (RFC-016) |
+| **k8s-ops** | Health/readiness probes, graceful drain, migration maturity. | beta7 (RFC-014) |
+| **testing-bridge** | `WaffleTestCase` in-process kernel + test doubles. | beta7 (RFC-018 §3.3) |
 
 ## Subagents (`.opencode/agents/<name>.md`, `mode: subagent`)
 

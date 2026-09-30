@@ -33,12 +33,17 @@ messages. Native-first fixes; never a baseline or suppression.
 > `wfl new-component <Name> <url>`, `wfl docker:reset`, `wfl mcp:check`. **Diagnostics / agent helpers:**
 > `wfl coverage:gaps <comp>` (files under 95% + uncovered count), `wfl xref <Symbol> [--tests]`
 > (fixed-string symbol search, vendor-excluded, sanity-checked), `wfl changed` (dirty submodules — commit
-> prep), `wfl boot-smoke <app>` (kernel boots without HTTP), `wfl wf-report <file>` (digest a workflow/agent
-> JSON output). Run `wfl help` for the full surface.
+> prep), `wfl sync:status [--fetch]` (read-only branch/ahead/behind/gitlink report), `wfl ci:check` (CI,
+> Dependabot and toolchain drift against `component-template`), `wfl rulesets:check`, `wfl boot-smoke <app>`
+> (kernel boots without HTTP), `wfl wf-report <file>` (digest a workflow/agent JSON output). Run `wfl help`
+> for the full surface.
 >
-> 🔌 **MCP:** five servers (filesystem · postgres · mongo · redis · github) are declared for Claude Code
-> (`.mcp.json`), opencode (`opencode.json`), and AntigravityCLI (`.antigravitycli/mcp_config.json`). Secrets
-> are env-var refs; run `wfl mcp:check` for prerequisites. See **[`/MCP.md`](./MCP.md)**.
+> 🔌 **MCP:** every server starts through a pinned launcher in `scripts/mcp/`. Claude Code enables postgres ·
+> mongo · redis · github (`.mcp.json`); opencode and AntigravityCLI also get filesystem. GitHub and Mongo are
+> read-only. `wfl mcp:check` opens a real session with each one. See **[`/MCP.md`](./MCP.md)**.
+>
+> 🔒 **Git & release safety:** agents edit files; the human commits, pushes, tags, merges and releases —
+> each only on an explicit request for that operation. See **`AGENTS.md` §6**.
 
 ## 🧭 Redirection directive (NON-NEGOTIABLE)
 

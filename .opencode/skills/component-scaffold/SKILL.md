@@ -1,40 +1,69 @@
 ---
 name: component-scaffold
-description: Act as the Infrastructure Architect for creating new autonomous Waffle components
+description: Act as the Infrastructure Architect for creating new autonomous Waffle components — scaffold from component-template, prove the gates, and wire the umbrella, GitHub and Packagist
 compatibility: opencode
 ---
 
 ## What I do
-I create entirely new Waffle components (e.g., the beta7 `queue`, `openapi`, `serializer`, `testing`
-packages) adhering to the monorepo architecture: independent git submodules, each released on
-Packagist, PHP 8.5 strict. **The canonical starting point is the `component-template` submodule** —
-never hand-roll the skeleton; copy and adapt it so every gate (`mago.toml`, CI, `composer.json`
-scripts) is already wired.
+I bring a new autonomous component (its own repository, a submodule of the umbrella, a Packagist
+package) from nothing to "integrated". **A component is not integrated until every item below is
+done** — the onboarding bit twice on Beta5 release day (a missing umbrella gitlink, a broken
+template-app vendor entry). File edits are mine; every git, GitHub and Packagist action is the
+maintainer's (`AGENTS.md` §6).
 
-## Scaffold Process
-When asked to create a new component, execute in order:
+## 1. Scaffold
+The canonical source is **`component-template`**. Never hand-roll a skeleton and never `cp -R` + `git
+init`: the component must be a submodule whose history starts from its own remote.
 
-1. **Seed from `component-template`:**
-   ```bash
-   cp -R component-template {component_name}          # brings mago.toml, composer scripts, src/, tests/
-   cd {component_name} && rm -rf .git && git init     # fresh autonomous repo
-   ```
-2. **Rename & strip the perimeter:**
-   - Set the package name (`waffle-commons/{component_name}`) and PSR-4 namespace in `composer.json`.
-   - Depend **only** on `waffle-commons/contracts` (+ `waffle-commons/utils` if you need shared
-     primitives — utils itself requires only contracts). Never require a sibling's concrete classes;
-     `mago guard` enforces this perimeter.
-   - **Contracts-first:** any interface the component implements lands in `contracts` **before** this
-     package — see `[[contracts-first]]`.
-3. **Verify the inherited gates pass empty:**
-   ```bash
-   docker exec -it -w /waffle-commons/{component_name} waffle-dev composer mago    # ZERO output
-   docker exec -it -w /waffle-commons/{component_name} waffle-dev composer tests   # ≥95%
-   docker exec -it -w /waffle-commons/{component_name} waffle-dev composer igor    # 0 KO
-   ```
-   The inherited `mago.toml` carries **no baselines** — keep it that way.
-4. **Register as a submodule:** add it to the umbrella `.gitmodules` + `bin/wfl` component list once
-   the remote exists.
-5. **Release:** components tag as `X.Y.Z` — **no `v` prefix** — and ship via the umbrella wave, not a
-   lone `git tag`. See `[[release-manager]]` and `[[release-wave]]`.
-6. **Report:** confirm the new repo, the perimeter, and that all three gates pass on the empty scaffold.
+- **From the umbrella (preferred):**
+  `wfl new-component <PascalName> <git-url> "<one-sentence description>" [package-slug]`
+  → `git submodule add` (only when the human asked for the component), seeds the template, runs the
+  configure script, `composer install`, then `wfl dod`.
+- **Repository created from the GitHub template** (e.g. the beta7 `queue`, `openapi`, `serializer`,
+  `testing`): it holds the template as of its creation date. Sync the current template files first
+  (`rsync -a --exclude .git --exclude vendor/ --exclude graphify-out/ component-template/ <slug>/`),
+  then run `./configure-component.sh <PascalName> [package-slug] "<description>"` inside it.
+
+`configure-component.sh` replaces `{COMPONENT_NAME}` (PSR-4 segment: `Waffle\Commons\OpenApi`),
+`{COMPONENT_SLUG}` (lowercase Composer name, derived from the PascalCase name unless given:
+`openapi`) and `{COMPONENT_DESCRIPTION}` (what Packagist shows — never leave a placeholder; 17 packages
+once shipped "X component for Waffle framework."). It installs the component README, removes
+`images/`, fails if a placeholder survives, and deletes itself.
+
+## 2. Prove the gates on the empty scaffold
+```bash
+docker exec -w /waffle-commons/<slug> waffle-dev composer install   # writes composer.lock (tracked)
+wfl dod <slug>
+```
+- `composer mago` → **zero output**. The template ships the ecosystem policy; no baseline, ever.
+- Tests and coverage are **N/A only while `src/` holds no PHP file**; the first class switches the full
+  bar on (PHPUnit green, ≥ 95 %). The canonical CI applies the same rule (`hashFiles('src/**/*.php')`).
+- `composer igor` → 0 KO with the pinned auditor (`.igor-version`; a stale binary fails the gate).
+
+## 3. Wire the umbrella (file edits; commits are the maintainer's)
+- **Gitlink (Gap 2):** `.gitmodules` entry **and** a committed gitlink — `git ls-files -s <slug>` must show
+  `160000 <sha>`. Without it every CI `git submodule update --init -- <slug>` fails with a pathspec error.
+- **umbrella-ci:** add `<slug>` to the `dorny/paths-filter` list (`wfl ci:check` flags a missing entry).
+- **Git hooks:** `scripts/install-git-hooks.sh` (idempotent).
+- **SEC-03:** if the component compares secrets, tokens or signatures, add it to the `sec03` job's init
+  list **and** audit arguments (a missing scan target is silently skipped).
+- **`RELEASE_INCLUDE`** (`release-wave.yml`): at release preparation, once the component ships code.
+- **Template apps (Gap 1):** only when a feature is wired into `skeleton`/`workspace` — mirror the
+  component's `composer.lock` entry in `vendor/composer/installed.json` (see `demo-app-wiring`).
+
+## 4. GitHub and Packagist (maintainer actions — prepare, never execute)
+- Repository settings: **merge commits only** (squash and rebase off — the release wave requires every
+  pinned gitlink to be an ancestor of `main`), delete branch on merge, a real description.
+- Rulesets: `wfl rulesets:check <slug>` (the maintainer runs `rulesets:sync`).
+- Packagist: register `waffle-commons/<slug>` **before its first tag**.
+- Dependabot PRs opened against the raw template are superseded once the configured files land.
+
+## 5. Build it contracts-first
+Every interface the component implements lands in `waffle-commons/contracts` **before** the component
+uses it (`contracts-first`). Perimeter: `contracts` + `utils` + PSR — never a sibling's concrete class.
+
+## 6. Verify and report
+- `wfl ci:check` → no drift (canonical CI byte-identical, Dependabot, toolchain, description, filter).
+- `wfl sync:status` → the new repo sits on the release branch, gitlink `match`.
+- Report the repository, package name, namespace, perimeter, the gate results, and the list of
+  maintainer actions still pending (gitlink commit, settings, Packagist, `RELEASE_INCLUDE`).

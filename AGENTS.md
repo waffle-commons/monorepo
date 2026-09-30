@@ -83,8 +83,9 @@ Services must be **stateless and resettable** across requests (resident-memory w
     `http-client`, `security`, `auth`, `data`, `cache`, `container`, `config`, `console`, `log`,
     `event-dispatcher`, `error-handler`, `telemetry`, `telemetry-otel`, `async`.
   - **Template / docs:** `skeleton`, `workspace`, `academy`, `documentation`, `component-template`.
-  - **Planned (beta7):** `queue`, `openapi`, `serializer`, `testing` — each scaffolded from
-    `component-template` (see the `component-scaffold` skill). **Beta6** added no new packages —
+  - **Beta7 (scaffolded 2026-09-29, code lands this release):** `queue`, `openapi`, `serializer`,
+    `testing` — each configured from `component-template` (see the `component-scaffold` skill); tests
+    and coverage switch on with their first class. **Beta6** added no new packages —
     the `ecoshield-gateway` reverse-proxy POC lives in its own repository outside this monorepo
     (gitignored here, see `.gitignore`), and is deliberately absent from the release wave.
 - **PSR enforcement:** PSR-15 middleware, PSR-14 events, PSR-3 logging, PSR-7/17 HTTP messages &
@@ -95,11 +96,15 @@ Services must be **stateless and resettable** across requests (resident-memory w
 - **Documentation (Diátaxis):** lives in `documentation/` — `tutorials/`, `how-to/`, `reference/`,
   `explanation/`. See the `diataxis-doc` skill.
 
-## 5. Worker-Safety Gate (`wfl igor` — igor-php 0.7)
+## 5. Worker-Safety Gate (`wfl igor` — igor-php, pinned by `.igor-version`)
 
 FrankenPHP keeps services resident, so state that leaks across requests is a bug. `wfl igor`
 (`composer igor` per component) audits this and is part of the definition of done:
 
+- **One auditor version everywhere.** `vendor/bin/igor-php` is a bootstrapper that downloads
+  `releases/latest` unless told otherwise, so the version lives in `.igor-version` (currently 0.9.7):
+  `igor.sh`, `wfl dod` and every CI workflow seed it and fail when the resolved binary differs.
+  `wfl ci:check` catches a CI pin that drifts from the file.
 - **0 KO required.** igor grades each stateful class **KO** / **WARN** / OK — **only KO fails the
   gate** ("Mutation of state '<prop>' in <method>()"); WARN passes.
 - **`#[WorkerSafe]`** (`IgorPhp\IgorBundle\Attribute\WorkerSafe`) marks a property/class as an
@@ -139,6 +144,25 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 - **Release mechanics (umbrella wave):** one `pre-release/<version>` branch per component → umbrella
   tag pushed to the remote → dispatch **dry-run on the pushed tag** (`ref:<tag>` must already exist) →
   LIVE wave. Per-component steps live in `release-manager`; the orchestration lives in `release-wave`.
+
+## 6. Git & release safety (every agent, every runtime)
+
+The human drives every git and GitHub write. An agent edits files; it does not publish them.
+
+- **Never implied:** commit, push, tag, merge, rebase, reset, branch, stash, `git submodule update`,
+  PR create/merge, release, workflow dispatch, repository or ruleset settings — each needs an
+  explicit request **for that specific operation**. "Make the changes" means edit files, nothing more.
+  A command listed *for the human to run* is not permission to run it.
+- **Tags are live:** pushing a tag matching `N.N.N[-*]` fires the LIVE release wave to Packagist.
+  Never create or push one incidentally, not even to "test" the workflow.
+- **Released repos are artefacts:** once a wave ships, add nothing to a component's `main` unless that
+  repo is named in the request. Report a sibling bug; don't fix it in passing.
+- **Merges to `main` are merge commits, never squash:** the release wave requires every pinned gitlink
+  to be an ancestor of the component's default branch; a squash orphans it and the wave exits 3.
+- **Never "sync" with `git submodule update --remote`:** it detaches every submodule from its local
+  `pre-release/*` branch. Use `wfl sync:status` (read-only).
+- **Tooling enforces it:** the GitHub MCP server runs read-only, the Claude Code permission rules ask
+  before every git/GitHub write and deny force-pushes; other runtimes must follow the same rule.
 
 ## 🧠 Specialized AI Skills — Routing Table
 
@@ -209,7 +233,7 @@ When unsure, default to **`tech-lead`** (it orchestrates the others). All skill 
 | `queue-worker` | Background processing (`queue` component, Redis Streams). | beta7 QUEUE (RFC-015) |
 | `api-surface` | OpenAPI generation + DTO serializer / content negotiation. | beta7 API (RFC-016) |
 | `k8s-ops` | Health/readiness probes, graceful drain, migration maturity. | beta7 OPS (RFC-014) |
-| `testing-bridge` | `WaffleTestCase` in-process kernel + test doubles. | beta7 TEST (RFC-012) |
+| `testing-bridge` | `WaffleTestCase` in-process kernel + test doubles. | beta7 TEST (RFC-018 §3.3) |
 
 ## 🤖 Subagents (`.opencode/agents/<name>.md`, `mode: subagent`)
 

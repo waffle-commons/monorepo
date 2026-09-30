@@ -16,7 +16,7 @@ I design **real background job processing** — distinct from beta5 finish-reque
 "queue / job / worker", "dispatch a background task", "dead-letter / retry", "queue:work", beta7 QUEUE.
 
 ## Mandates
-- **QUEUE-01 — contracts:** `Waffle\Contracts\Queue\` — `MessageInterface`, `QueueDispatcherInterface`,
+- **QUEUE-01 — contracts:** `Waffle\Commons\Contracts\Queue\` — `MessageInterface`, `QueueDispatcherInterface`,
   `QueueConsumerInterface`, `FailedMessageStoreInterface`. Messages are strictly-typed serializable
   DTOs (**no closures, no object graphs**); the envelope carries id, attempts, available-at, and W3C
   trace context (from `[[observability]]`).
@@ -25,7 +25,7 @@ I design **real background job processing** — distinct from beta5 finish-reque
   only): bounded retries, dead-letter via `FailedMessageStoreInterface`, **graceful SIGTERM drain**
   (ties into `[[k8s-ops]]` OPS-02). The worker is itself a long-running process — it **must pass `wfl
   igor` between messages** (no state bleed message-to-message).
-- **QUEUE-03 — mailer scoping:** ship `Waffle\Contracts\Mailer\MailerInterface` + message DTO
+- **QUEUE-03 — mailer scoping:** ship `Waffle\Commons\Contracts\Mailer\MailerInterface` + message DTO
   **contract only**; transactional mail is dispatched as a queue message. SMTP/API transports are
   **post-v1** (non-goal).
 

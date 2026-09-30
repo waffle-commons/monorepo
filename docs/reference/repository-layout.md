@@ -12,12 +12,13 @@
 | `.opencode/` | dir | yes | OpenCode IDE config + `skills/` AI prompt library. |
 | `build/` | dir | gitignored | Output of `zip-project.sh` (audit archives, dated). |
 | `async/`, `auth/`, `cache/`, `config/`, `console/`, `container/`, `contracts/`, `data/`, `error-handler/`, `event-dispatcher/`, `http/`, `http-client/`, `log/`, `pipeline/`, `routing/`, `runtime/`, `security/`, `telemetry/`, `telemetry-otel/`, `utils/`, `waffle/` | submodules | yes | The 21 framework components. Each is its own Git repo released on Packagist. |
-| `component-template/` | submodule | yes | Scaffold for new components. Used via `configure-component.sh`. |
+| `queue/`, `openapi/`, `serializer/`, `testing/` | submodules | yes | The four beta7 components (scaffolded at the beta7 kickoff; code lands during the release). |
+| `component-template/` | submodule | yes | Scaffold for new components (`configure-component.sh`); its CI workflow is the canonical copy every component carries. |
 | `docs/` | dir | yes | Monorepo contributor documentation (this Diátaxis tree). |
 | `documentation/` | submodule | yes | Framework user documentation (separate Diátaxis tree). |
 | `graphify-out/` | dir | gitignored | Project Graphify generated graph artifacts. |
 | `project_system/` | dir | partly tracked | **Official project governance & roadmap.** Tracked & shared: `RFCs/`, `Roadmaps/`, `Logs/Releases/`, `Logs/Retrospectives/`. Gitignored (maintainers' private): `Audits/`, `Notes/`, `TODOs/`, `*.pem`. See the [project-system reference](project-system.md). |
-| `scripts/` | dir | yes | Git hook installer (`install-git-hooks.sh`) plus hook payloads in `scripts/hooks/` (`pre-commit-mago.sh`, `pre-push-sanity.sh`). |
+| `scripts/` | dir | yes | The scripts behind `wfl` (gates, reports, drift checks), the git hook installer (`install-git-hooks.sh`) with its payloads in `scripts/hooks/`, and the MCP launchers in `scripts/mcp/`. |
 | `skeleton/` | submodule | yes | `composer create-project` template (FrankenPHP + Docker + sample). |
 | `tmp/` | dir | gitignored | Local scratch space. |
 | `workspace/` | submodule | yes | Contributor dev environment: Docker, path repos, integration tests. |
@@ -40,9 +41,11 @@
 | `scripts/install-git-hooks.sh` | Install pre-commit Mago + pre-push sanity hooks (and Project Graphify hooks) in every submodule. See [Install Git hooks](../how-to/install-git-hooks.md). |
 | `scripts/hooks/pre-commit-mago.sh` | Incremental Mago gate fired by `git commit`; targets only staged PHP files. |
 | `scripts/hooks/pre-push-sanity.sh` | Full `composer mago` + `composer tests` gate fired by `git push` when the ref is ahead of remote. |
+| `scripts/mcp/*.sh` | Pinned launchers for the MCP servers (postgres, mongo, redis, github, filesystem), shared by Claude Code, opencode and AntigravityCLI. See [`MCP.md`](../../MCP.md). |
+| `.igor-version` | The single igor-php auditor version, read by `igor.sh`, `wfl dod` and `wfl ci:check`. |
 | `keystore.jks` | Java keystore used by signing tooling (rare; see your team's release docs). |
 | `TODO.md` | Working notes. Not authoritative. |
-| `.gitmodules` | The canonical list of submodule paths + remote URLs. 26 entries (one per submodule, including `academy`). |
+| `.gitmodules` | The canonical list of submodule paths + remote URLs (one entry per submodule, including `academy`); `scripts/list-components.sh` parses it. |
 
 ## Per-submodule layout
 

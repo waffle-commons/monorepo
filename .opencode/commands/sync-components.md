@@ -1,17 +1,33 @@
 ---
-description: Synchronize all Waffle components (Git submodules) to their latest state
+description: Report the sync state of the umbrella and every component (read-only — never moves a branch)
 ---
 
 # /sync-components
 
-Because `waffle-commons` is a monorepo containing independent submodules, you must run this command to ensure all components are synchronized with their respective remotes.
+`waffle-commons` is an umbrella of independent submodules, each on its own
+`pre-release/<version>` branch while a release is in progress. Those branches are
+often **local only**, so this command is a **read-only report**. It never
+updates, checks out or pulls anything.
 
 ## Execution
 
-Run the following command at the root of the project:
+Run at the root of the project:
 
 ```bash
-git submodule update --init --recursive --remote
+wfl sync:status --fetch
 ```
 
-This will pull the latest commits for all components, ensuring you are working with the most up-to-date codebase across the monorepo.
+For every repo it prints the current branch, uncommitted files, commits ahead of and
+behind `origin/main` (and the branch's own upstream, if any), and whether the umbrella
+gitlink still matches the submodule `HEAD`. `--fetch` refreshes the remote-tracking
+refs (`refs/remotes/*`) first; drop it to report from the last fetch.
+
+## What NOT to run
+
+**Never run `git submodule update --remote`** (with or without `--init --recursive`) as a
+"sync". It checks out each remote default branch in a detached HEAD, abandons the local
+`pre-release/*` branches, dirties every gitlink in the umbrella, and `--recursive` tries
+to clone the private `academy` sub-repos.
+
+Moving a branch, pulling, or bumping a gitlink is a git write. It happens only when the
+human asks for that specific operation (see `AGENTS.md` → "Git & release safety").

@@ -1,6 +1,6 @@
 ---
 name: testing-bridge
-description: "[Beta7 / RFC-012 — NOT YET BUILT] New waffle-commons/testing: WaffleTestCase that boots the kernel in-process and dispatches simulated PSR-7 requests, plus time/queue/mailer/http test doubles"
+description: "[Beta7 / RFC-018 §3.3 — NOT YET BUILT] New waffle-commons/testing: WaffleTestCase that boots the kernel in-process and dispatches simulated PSR-7 requests, plus time/queue/mailer/http test doubles"
 compatibility: opencode
 ---
 

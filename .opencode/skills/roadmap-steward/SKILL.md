@@ -32,7 +32,7 @@ v1", any planning that needs the canonical direction.
 Inside `project_system/`, `RFCs/`, `Roadmaps/`, and `Logs/` **are git-tracked** — roadmap edits have
 real history and belong on the current `pre-release/<version>` branch (use `git mv` to rename tracked
 roadmap files). **Only** `Audits/`, `Notes/`, `TODOs/`, and `*.pem` are gitignored (per
-`project_system/.gitignore`). The user drives all commits/pushes — edit and stage, but never commit.
+`project_system/.gitignore`). The user drives every git write — edit files only; staging, commits and pushes are theirs (`AGENTS.md` §6).
 
 ## Conventions
 - **Version stamps:** `0.1.0-betaN` — **no `v` prefix** (the tag gate rejects a leading `v`). Fix the

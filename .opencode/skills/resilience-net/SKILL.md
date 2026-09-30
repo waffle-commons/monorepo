@@ -16,7 +16,7 @@ flaky upstreams — all stateless, with shared-storage state so it is correct ac
 "rate limit / throttle", "429 / Retry-After", "retry with backoff", "circuit breaker", beta7 NET.
 
 ## Mandates
-- **NET-01 — Token-bucket rate limiter:** `Waffle\Contracts\RateLimit\RateLimiterInterface` +
+- **NET-01 — Token-bucket rate limiter:** `Waffle\Commons\Contracts\RateLimit\RateLimiterInterface` +
   `LimiterStateStorageInterface` in `contracts` first. Implement as a `security/` middleware keyed by
   IP / authenticated subject (`UserIdentityInterface`) / API token. Storage via the existing **cache
   contracts** (Redis for multi-worker correctness; in-memory fallback documented single-worker only).

@@ -19,7 +19,7 @@ clean shutdown, and a versioned migration workflow. See `[[contracts-first]]`, `
 ## Mandates
 - **OPS-01 — Health & readiness:** lightweight middleware exposing `/healthz` (liveness: process
   responsive) and `/readyz` (readiness: aggregated `HealthCheckInterface` probes — DB pool, Redis,
-  queue driver, disk). `Waffle\Contracts\Health\HealthCheckInterface` in `contracts`; components ship
+  queue driver, disk). `Waffle\Commons\Contracts\Health\HealthCheckInterface` in `contracts`; components ship
   their own probes; **fail-closed** — an unregistered critical dependency means not-ready. Handlers are
   constant-time and allocation-light (hit every few seconds by orchestrators).
 - **OPS-02 — Graceful shutdown & draining:** handle SIGTERM in the runtime — stop accepting work,
