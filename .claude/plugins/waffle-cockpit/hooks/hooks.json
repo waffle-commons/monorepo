@@ -1,0 +1,4 @@
+{
+  "description": "The Waffle cockpit: the status band above the prompt, /dod and /cockpit, and the Bash guard",
+  "modules": ["./register.tsx"]
+}

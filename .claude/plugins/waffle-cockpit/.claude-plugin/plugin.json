@@ -1,0 +1,8 @@
+{
+  "name": "waffle-cockpit",
+  "version": "0.1.0",
+  "description": "Waffle-Commons cockpit: a status band (phase, branch, waffle-dev, dirty repos, igor pin), /dod in a pane with no model turn, and a Bash guard for host-side PHP, submodule --remote syncs and release-tag pushes.",
+  "author": { "name": "Waffle-Commons" },
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
