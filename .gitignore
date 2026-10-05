@@ -7,8 +7,8 @@
 **/.DS_Store
 
 # Tools
-.antigravitycli/*.json
-.claude/*.json
+.claude/settings.local.json
+.claude/*.bak
 .devtool/
 node_modules/
 .tooling-venv/
@@ -30,3 +30,8 @@ TODO.md
 
 # EcoShield POC (AXE 4): local application repo, excluded from monorepo history
 ecoshield-gateway/
+
+# Claude Code: generated mod types, agent scratch notes, Python caches
+.claude/plugins/*/.claude-plugin/types/
+.scratch/
+__pycache__/
