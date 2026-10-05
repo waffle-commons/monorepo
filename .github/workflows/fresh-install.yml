@@ -1,0 +1,51 @@
+# ============================================================================
+# Waffle fresh install — the documented first install, from a clean clone
+# ----------------------------------------------------------------------------
+# Runs as an outsider: no SSH key, and no access to the private `academy`
+# submodule, which wfl init must skip without failing. Then proves one
+# component green. Heavy (it builds the dev image), so manual + weekly only.
+# ============================================================================
+
+name: fresh-install
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 4 * * 1'   # Mondays, 04:17 UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  group: fresh-install
+  cancel-in-progress: true
+
+jobs:
+  fresh-install:
+    name: bin/wfl init on a clean clone
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout umbrella (no submodules, as a plain git clone)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+          submodules: false
+
+      - name: bin/wfl init (HTTPS, no MCP warm-up, no PATH link)
+        run: bin/wfl init --https --skip-ai --no-link
+
+      - name: The private academy was skipped, every public submodule initialised
+        run: |
+          set -euo pipefail
+          git submodule status
+          if git submodule status | awk '/^-/ {print $2}' | grep -vx 'academy' | grep -q .; then
+            echo "::error::a public submodule was not initialised"
+            exit 1
+          fi
+
+      - name: wfl doctor
+        run: bin/wfl doctor
+
+      - name: Prove one component green (wfl dod contracts)
+        run: bin/wfl dod contracts

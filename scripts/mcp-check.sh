@@ -82,7 +82,7 @@ if command -v node >/dev/null 2>&1 && command -v npx >/dev/null 2>&1; then
     _ok "node / npx" "$node_v"
   fi
 else
-  _fail "node / npx" "install Node.js 22+ (postgres/filesystem launchers use npx)"
+  _fail "node / npx" "install Node.js 22+ (the postgres launcher uses npx)"
 fi
 
 if [ -d "$HOME/.npm" ] && [ -n "$(find "$HOME/.npm" -user 0 -print -quit 2>/dev/null)" ]; then
@@ -122,8 +122,8 @@ unset token
 # ---------------------------------------------------------------------------
 _head "Wiring"
 
-# Every server declared for Claude Code / opencode must go through a launcher
-# that exists, and no tracked config may carry a personal absolute path.
+# Every server declared in .mcp.json must go through a launcher that exists,
+# and no tracked config may carry a personal absolute path.
 if command -v python3 >/dev/null 2>&1; then
   wiring="$(cd "$REPO_ROOT" && python3 - <<'PY'
 import json, os
@@ -145,11 +145,6 @@ try:
     check(".mcp.json", mcp, lambda s: [s.get("command", "")] + s.get("args", []))
 except Exception as e:
     problems.append(f".mcp.json unreadable: {e}")
-try:
-    oc = json.load(open("opencode.json")).get("mcp", {})
-    check("opencode.json", oc, lambda s: s.get("command", []))
-except Exception as e:
-    problems.append(f"opencode.json unreadable: {e}")
 for p in problems: print("FAIL " + p)
 print("OK " + ", ".join(notes))
 PY
@@ -170,8 +165,7 @@ if [ "$QUICK" -eq 0 ]; then
       "postgres|pg_monitor_database|{}" \
       "mongo|list-connections|{}" \
       "redis|dbsize|{}" \
-      "github|get_me|{}" \
-      "filesystem|list_allowed_directories|{}"; do
+      "github|get_me|{}"; do
     name="${entry%%|*}"; rest="${entry#*|}"; tool="${rest%%|*}"; args="${rest#*|}"
     launcher="$REPO_ROOT/scripts/mcp/$name.sh"
     if [ ! -f "$launcher" ]; then

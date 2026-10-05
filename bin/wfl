@@ -127,7 +127,10 @@ ${C_DIM}USAGE${C_RST}
   wfl <command> [args]
 
 ${C_DIM}LIFECYCLE${C_RST}
-  init                  init submodules, boot docker, install hooks, symlink wfl into ~/.local/bin
+  init [--https] [--skip-docker] [--skip-composer] [--skip-ai] [--no-link]
+                        fresh clone → working checkout: submodules (private ones skipped), docker,
+                        composer install per component, hooks, wfl on PATH, MCP warm-up. Safe to re-run
+  doctor [--prereqs]    is this machine / checkout ready? ✓ / ! / ✗ with the fix for each check
   build [args...]       docker compose build (extra args passed through)
   up [args...]          docker compose up -d (extra args passed through)
   down [args...]        docker compose down (extra args passed through)
@@ -153,6 +156,7 @@ ${C_DIM}DIAGNOSTICS / AGENT HELPERS${C_RST}
   ci:check              report CI / Dependabot / toolchain drift of every component against component-template
   boot-smoke <app>      boot a template app's kernel without HTTP (runs its Boot/Smoke test)
   wf-report <file>      summarize a workflow/agent JSON output file (per-item findings/created/updated)
+  ai:check [--no-claude]  lint the Claude Code layer: skills, agents, plugins, references (+ claude plugin validate/test)
 
 ${C_DIM}ACADEMY${C_RST}
   academy:test [--lab=N_MM]   run the labs TDD suite + render the progress card (academy/labs, in container)
@@ -193,32 +197,22 @@ ${C_DIM}ENV${C_RST}
 EOF
 }
 
+# Fresh clone → working checkout, idempotent. See scripts/init.sh.
 cmd_init() {
-  info "initializing submodules..."
-  (cd "$REPO_ROOT" && git submodule update --init --recursive)
-  ok "submodules ready"
+  [ -x "$REPO_ROOT/scripts/init.sh" ] || die "scripts/init.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/init.sh" "$@"
+}
 
-  _ensure_compose
-  info "booting docker stack..."
-  (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" up --build -d)
-  ok "docker stack up"
+# Machine + checkout readiness report. See scripts/doctor.sh.
+cmd_doctor() {
+  [ -x "$REPO_ROOT/scripts/doctor.sh" ] || die "scripts/doctor.sh not found or not executable"
+  exec "$REPO_ROOT/scripts/doctor.sh" "$@"
+}
 
-  if [ -x "$REPO_ROOT/scripts/install-git-hooks.sh" ]; then
-    info "installing git hooks..."
-    (cd "$REPO_ROOT" && ./scripts/install-git-hooks.sh)
-  else
-    warn "scripts/install-git-hooks.sh not found or not executable; skipping hooks"
-  fi
-
-  local target="$HOME/.local/bin/wfl"
-  mkdir -p "$HOME/.local/bin"
-  ln -sfn "$BIN_DIR/wfl" "$target"
-  ok "symlinked $target → $BIN_DIR/wfl"
-
-  case ":$PATH:" in
-    *":$HOME/.local/bin:"*) : ;;
-    *) warn "\$HOME/.local/bin is not on \$PATH — add it to your shell rc to use 'wfl' globally" ;;
-  esac
+# Lint the Claude Code operating layer. See scripts/ai-check.py.
+cmd_ai_check() {
+  command -v python3 >/dev/null 2>&1 || die "python3 is required for ai:check"
+  exec python3 "$REPO_ROOT/scripts/ai-check.py" "$@"
 }
 
 cmd_build()   { _ensure_compose; (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" build "$@"); }
@@ -1051,6 +1045,8 @@ main() {
   local sub="${1:-help}"; shift || true
   case "$sub" in
     init)        cmd_init        "$@" ;;
+    doctor)      cmd_doctor      "$@" ;;
+    ai:check)    cmd_ai_check    "$@" ;;
     up)          cmd_up          "$@" ;;
     build)       cmd_build       "$@" ;;
     down)        cmd_down        "$@" ;;

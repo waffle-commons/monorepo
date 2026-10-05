@@ -320,11 +320,28 @@ jobs:
         run: php scripts/sec03-compare-audit.php auth security http http-client data cache telemetry
 
   # --------------------------------------------------------------------------
-  # 5. Single aggregating gate so branch protection can pin one required check.
+  # 5. Claude Code operating layer: skills, agents, plugins, references
+  #    (scripts/ai-check.py). Needs no submodule, PHP or Docker; paths inside a
+  #    submodule that is not checked out are skipped.
+  # --------------------------------------------------------------------------
+  ai-check:
+    name: AI operating layer (wfl ai:check)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout umbrella (no submodules)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Lint skills, agents, plugins and references
+        run: python3 scripts/ai-check.py --no-claude
+
+  # --------------------------------------------------------------------------
+  # 6. Single aggregating gate so branch protection can pin one required check.
   # --------------------------------------------------------------------------
   gate:
     name: umbrella-ci gate
-    needs: [detect-changes, check, workspace, sec03]
+    needs: [detect-changes, check, workspace, sec03, ai-check]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -341,6 +358,10 @@ jobs:
           fi
           if [ "${{ needs.sec03.result }}" != "success" ]; then
             echo "::error::SEC-03 timing-safe comparison gate failed (result: ${{ needs.sec03.result }})"
+            exit 1
+          fi
+          if [ "${{ needs.ai-check.result }}" != "success" ]; then
+            echo "::error::AI operating-layer check failed (result: ${{ needs.ai-check.result }})"
             exit 1
           fi
           if [ "${{ needs.workspace.result }}" != "success" ] && [ "${{ needs.workspace.result }}" != "skipped" ]; then

@@ -43,6 +43,22 @@ ensure_executable() {  # $1=hook-file
   [ -f "$1" ] && chmod +x "$1"
 }
 
+# Remove the retired Project Graphify blocks (their target script exited without
+# doing anything) from every hook in a hooks directory. A hook left with nothing
+# but the stub this installer writes is deleted; a hook with any other content is
+# kept as it is.
+strip_legacy_graphify() {  # $1=hooks-dir
+  local d="$1" f
+  for f in "$d/pre-commit" "$d/post-checkout" "$d/post-merge" "$d/post-rewrite"; do
+    [ -f "$f" ] || continue
+    strip_waffle_block "$f" "PROJECT GRAPHIFY PRE-COMMIT"
+    strip_waffle_block "$f" "PROJECT GRAPHIFY REFRESH"
+    if ! grep -v -x -e '#!/usr/bin/env bash' -e 'set -euo pipefail' -e '' "$f" >/dev/null; then
+      rm -f "$f"
+    fi
+  done
+}
+
 # Colors
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
@@ -65,6 +81,7 @@ echo -e "${CYAN}Installing Git hooks in the umbrella root repository...${NC}"
 ROOT_GIT_DIR=$(git rev-parse --git-dir)
 ROOT_HOOKS_DIR="$ROOT_GIT_DIR/hooks"
 mkdir -p "$ROOT_HOOKS_DIR"
+strip_legacy_graphify "$ROOT_HOOKS_DIR"
 
 # Install pre-commit hook
 PRE_COMMIT="$ROOT_HOOKS_DIR/pre-commit"
@@ -126,9 +143,10 @@ for sub in $submodules; do
   SUB_GIT_DIR=$(cd "$sub" && cd "$relative_sub_git_dir" && pwd)
   SUB_HOOKS_DIR="$SUB_GIT_DIR/hooks"
   mkdir -p "$SUB_HOOKS_DIR"
-  
-  echo "Installing Waffle and Graphify hooks in submodule: $sub..."
-  
+  strip_legacy_graphify "$SUB_HOOKS_DIR"
+
+  echo "Installing Waffle hooks in submodule: $sub..."
+
   # A. Install Waffle pre-commit hook
   SUB_PRE_COMMIT="$SUB_HOOKS_DIR/pre-commit"
   if [ ! -f "$SUB_PRE_COMMIT" ]; then
@@ -145,27 +163,9 @@ if [ -x "../scripts/hooks/pre-commit-mago.sh" ]; then
 fi
 # END WAFFLE PRE-COMMIT HOOK
 EOF
-  
-  # B. Install Graphify hooks (existing hooks)
-  if ! grep -q "BEGIN PROJECT GRAPHIFY PRE-COMMIT HOOK" "$SUB_PRE_COMMIT"; then
-    cat >> "$SUB_PRE_COMMIT" <<'EOF'
-
-# BEGIN PROJECT GRAPHIFY PRE-COMMIT HOOK
-# Go to the umbrella root to run the global update script
-CUR_DIR="$(pwd)"
-while [ "$CUR_DIR" != "/" ]; do
-  if [ -x "$CUR_DIR/scripts/update-project-graphify.sh" ]; then
-    (cd "$CUR_DIR" && ./scripts/update-project-graphify.sh)
-    break
-  fi
-  CUR_DIR="$(dirname "$CUR_DIR")"
-done
-# END PROJECT GRAPHIFY PRE-COMMIT HOOK
-EOF
-  fi
   ensure_executable "$SUB_PRE_COMMIT"
 
-  # C. Install Waffle pre-push hook
+  # B. Install Waffle pre-push hook
   SUB_PRE_PUSH="$SUB_HOOKS_DIR/pre-push"
   if [ ! -f "$SUB_PRE_PUSH" ]; then
     echo -e "#!/usr/bin/env bash\nset -euo pipefail" > "$SUB_PRE_PUSH"
@@ -182,32 +182,6 @@ fi
 # END WAFFLE PRE-PUSH HOOK
 EOF
   ensure_executable "$SUB_PRE_PUSH"
-
-  # D. Install Graphify post hooks (existing hooks)
-  for HOOK_NAME in post-checkout post-merge post-rewrite; do
-    SUB_HOOK_FILE="$SUB_HOOKS_DIR/$HOOK_NAME"
-    if [ ! -f "$SUB_HOOK_FILE" ]; then
-      echo -e "#!/usr/bin/env bash\nset -euo pipefail" > "$SUB_HOOK_FILE"
-    fi
-    chmod +x "$SUB_HOOK_FILE"
-    
-    if ! grep -q "BEGIN PROJECT GRAPHIFY REFRESH HOOK" "$SUB_HOOK_FILE"; then
-      cat >> "$SUB_HOOK_FILE" <<'EOF'
-
-# BEGIN PROJECT GRAPHIFY REFRESH HOOK
-CUR_DIR="$(pwd)"
-while [ "$CUR_DIR" != "/" ]; do
-  if [ -x "$CUR_DIR/scripts/update-project-graphify.sh" ]; then
-    (cd "$CUR_DIR" && ./scripts/update-project-graphify.sh)
-    break
-  fi
-  CUR_DIR="$(dirname "$CUR_DIR")"
-done
-# END PROJECT GRAPHIFY REFRESH HOOK
-EOF
-    fi
-    ensure_executable "$SUB_HOOK_FILE"
-  done
 done
 
-echo -e "\n${GREEN}✓ All Waffle and Graphify Git hooks successfully wired up!${NC}"
+echo -e "\n${GREEN}✓ All Waffle Git hooks wired up (retired Graphify blocks removed)${NC}"
