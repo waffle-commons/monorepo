@@ -11,8 +11,8 @@
 - [**`CODEOWNERS`**](codeowners.md) — who reviews what.
 - [**`component-ruleset.json`**](component-ruleset.md) — GitHub branch-protection ruleset shipped with this repo.
 - [**`AGENTS.md` — the central brain**](agents-md.md) — the binding operating standards (coding, statelessness, Mago Purge, worker-safety, skills routing).
-- [**`CLAUDE.md` conventions**](claude-md.md) — the thin CLI router → `AGENTS.md` (the canonical standards) + AI-assistant routing.
-- [**OpenCode skills**](opencode-skills.md) — the `.opencode/skills/*` AI prompt library.
+- [**`CLAUDE.md` conventions**](claude-md.md) — imports `AGENTS.md` (the canonical standards) and adds the Claude Code specifics.
+- [**Claude Code skills, subagents & plugins**](claude-skills.md) — the `.claude/` layer and the repository marketplace.
 
 ### Development environment
 
@@ -22,7 +22,7 @@
 
 - [**`loop.sh`**](../how-to/run-checks-across-components.md) — fan a command across every component.
 - [**`coverage.sh`**](../how-to/check-coverage-across-components.md) — read PHPUnit coverage and enforce the 95% bar.
-- [**`scripts/install-git-hooks.sh`**](../how-to/install-git-hooks.md) — install pre-commit Mago + pre-push sanity hooks (and Project Graphify hooks) in every submodule.
+- [**`scripts/install-git-hooks.sh`**](../how-to/install-git-hooks.md) — install the pre-commit Mago and pre-push sanity hooks in the umbrella and every submodule.
 - **`zip-project.sh`** — package the umbrella for distribution.
 
 ### CI / release workflows

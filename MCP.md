@@ -1,22 +1,20 @@
 # MCP.md — Model Context Protocol servers for waffle-commons
 
-> **Scope:** developer tooling only. MCP servers are an *editor/agent* convenience (Claude Code,
-> opencode, AntigravityCLI); they are **not** part of the framework runtime and ship with **no** secrets.
+> **Scope:** developer tooling only. MCP servers are a Claude Code convenience; they are **not** part of
+> the framework runtime and ship with **no** secrets.
 
-Agents get the local development databases and GitHub through five MCP servers. Every server starts
-through a **launcher** in [`scripts/mcp/`](./scripts/mcp/), and the three runtimes point at the same
-launchers. Versions are therefore pinned in one place, no personal path is committed, and
-`wfl mcp:check` can prove each one works.
+Claude Code gets the local development databases and GitHub through four MCP servers. Every server
+starts through a **launcher** in [`scripts/mcp/`](./scripts/mcp/), so versions are pinned in one place,
+no personal path is committed, and `wfl mcp:check` can prove each one works.
 
 ## 🔌 Servers
 
-| Server | Runs via | Pinned version | Access | Claude Code | opencode / Antigravity |
-|---|---|---|---|---|---|
-| `postgres` | `npx` | `@henkey/postgres-mcp-server@1.0.7` | read + write (writes ask) | ✅ | ✅ |
-| `mongo` | Docker | `mongodb/mongodb-mcp-server:3.0.4` | **read-only** | ✅ | ✅ |
-| `redis` | Docker | `mcp/redis@sha256:e886a7e9…` | read + write (writes ask) | ✅ | ✅ |
-| `github` | Docker | `ghcr.io/github/github-mcp-server:v1.12.2` | **read-only** (`default,actions` toolsets) | ✅ | ✅ |
-| `filesystem` | `npx` | `@modelcontextprotocol/server-filesystem@2026.8.31` | this repository only | — | ✅ |
+| Server | Runs via | Pinned version | Access |
+|---|---|---|---|
+| `postgres` | `npx` | `@henkey/postgres-mcp-server@1.0.7` | read + write (writes ask) |
+| `mongo` | Docker | `mongodb/mongodb-mcp-server:3.0.4` | **read-only** |
+| `redis` | Docker | `mcp/redis@sha256:e886a7e9…` | read + write (writes ask) |
+| `github` | Docker | `ghcr.io/github/github-mcp-server:v1.12.2` | **read-only** (`default,actions` toolsets) |
 
 - **`postgres`** targets the workspace `waffle-postgres` (`localhost:5432`). The original
   `@modelcontextprotocol/server-postgres` is archived; `@henkey/postgres-mcp-server` is the maintained
@@ -29,20 +27,17 @@ launchers. Versions are therefore pinned in one place, no personal path is commi
 - **`github`** is **read-only by design**: merges, pushes, releases and repository settings stay with the
   human, through `gh` and its own prompts (see `AGENTS.md` §6, "Git & release safety"). The `actions`
   toolset adds read access to workflow runs and logs.
-- **`filesystem`** is enabled for opencode and AntigravityCLI only. Claude Code's native file tools cover
-  the same ground, and a second write path would bypass its edit review.
 
-In Claude Code, the Postgres and Redis *write* tools are listed under `permissions.ask` in
-`.claude/settings.local.json`, so each one prompts before it runs.
+The Postgres and Redis *write* tools are listed under `permissions.ask` in the team settings
+(`.claude/settings.json`), so each one prompts before it runs, on every clone.
 
 ## 🗂️ Configuration files
 
-| File | Consumer | Content |
+| File | Tracked | Content |
 |---|---|---|
-| [`.mcp.json`](./.mcp.json) | Claude Code | `bash scripts/mcp/<server>.sh` for the four enabled servers |
-| [`opencode.json`](./opencode.json) | opencode | the same launchers under `mcp` (all five) |
-| `.antigravitycli/mcp_config.json` | AntigravityCLI | the same launchers, absolute paths + `cwd` (gitignored, per machine) |
-| `.claude/settings.local.json` | Claude Code | `enabledMcpjsonServers` + the ask/deny rules (gitignored, per machine) |
+| [`.mcp.json`](./.mcp.json) | yes | `bash scripts/mcp/<server>.sh` for the four servers |
+| [`.claude/settings.json`](./.claude/settings.json) | yes | `enabledMcpjsonServers` (no approval prompt per server once the folder is trusted) and the ask rules for the write tools |
+| `.claude/settings.local.json` | no | your own additions, if any |
 
 The commands are **relative to the repository root**: start the agent from the root.
 

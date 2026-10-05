@@ -2,10 +2,11 @@
 
 The single source of truth for **how any AI assistant must behave** in the `waffle-commons`
 monorepo (PHP 8.5, FrankenPHP resident-worker, independent submodules each released to Packagist).
-`/CLAUDE.md` is only a CLI router — operational standards live here.
+Claude Code is the supported assistant: `CLAUDE.md` imports this file into every session and adds the
+Claude Code specifics. Standards live here, nowhere else.
 
-> **Read order for every task:** this file → the matching `.opencode/skills/<skill>/SKILL.md`
-> (see the Routing Table). When in doubt, start with `tech-lead`.
+> **For every task:** this file (always in context) → the matching skill in `.claude/skills/` (§8).
+> When in doubt, start with `tech-lead`.
 
 ---
 
@@ -79,19 +80,16 @@ Services must be **stateless and resettable** across requests (resident-memory w
 
 ## 4. Architecture & PSR
 
-- **Monorepo of submodules** — each its own Git repo / Packagist release. The set grows each wave, so
-  enumerate the live list with `scripts/list-components.sh` (parsed from `.gitmodules`) rather than a
-  hardcoded count. Beta5 added `telemetry`, `telemetry-otel`, and the local `async` component:
+- **Monorepo of submodules**, each its own Git repo and Packagist release. Enumerate the live list
+  with `scripts/list-components.sh` (parsed from `.gitmodules`), never a hardcoded count.
   - **Framework:** `contracts`, `utils`, `waffle`, `runtime`, `pipeline`, `routing`, `http`,
     `http-client`, `security`, `auth`, `data`, `cache`, `container`, `config`, `console`, `log`,
-    `event-dispatcher`, `error-handler`, `telemetry`, `telemetry-otel`, `async`.
+    `event-dispatcher`, `error-handler`, `telemetry`, `telemetry-otel`, `async`. Beta7 adds `queue`,
+    `openapi`, `serializer`, `testing`: scaffolded from `component-template` (`component-scaffold`
+    skill), their code lands this release, tests and coverage switch on with their first class.
   - **Template / docs:** `skeleton`, `workspace`, `academy`, `documentation`, `component-template`.
-  - **Beta7 (scaffolded 2026-09-29, code lands this release):** `queue`, `openapi`, `serializer`,
-    `testing` — each configured from `component-template` (see the `component-scaffold` skill); tests
-    and coverage switch on with their first class. **Beta6** added no new packages —
-    the `ecoshield-gateway` reverse-proxy POC lives in its own repository outside this monorepo
-    (checked out at `contributions/ecoshield-gateway/`, gitignored here), is deliberately absent from
-    the release wave, and is the v1 adoption dogfood — see the `ecoshield` skill.
+  - The `ecoshield-gateway` POC is its own repository (`contributions/ecoshield-gateway/`, gitignored
+    here), outside the release wave: the v1 adoption dogfood (`ecoshield` skill).
 - **PSR enforcement:** PSR-15 middleware, PSR-14 events, PSR-3 logging, PSR-7/17 HTTP messages &
   factories, PSR-18 HTTP client.
 - **Contracts-first sequencing:** every new interface lands in `waffle-commons/contracts` **before**
@@ -120,8 +118,6 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 - **Remediation taxonomy** (per the `worker-safety` skill): direct `ResettableInterface` + `reset()`
   · ctor-`readonly` · inline (no field) · `#[WorkerSafe]`. Never paper over a real leak.
 
----
-
 ## 5b. Release train & source of truth
 
 `project_system/` (RFCs + Roadmaps) is the **direction** source of truth — consult it, don't invent.
@@ -135,16 +131,13 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 | `0.1.0-beta8` | Consolidation & API freeze (last feature release) | `Roadmap_Beta8.md` |
 | `1.0.0-RC1` → `1.0.0` | Freeze cert + EcoShield-Gateway soak → Gold | `Roadmap_RC1.md` / `Roadmap_v1_Gold.md` |
 
-- **Post-BBL pivot (2026-07):** stabilization/audit pulled forward into **beta6**; the former beta6
-  production-surface shifted to **beta7**; the API freeze is now **beta8**. Train re-dated around the
-  API Platform Conference (Lille, Sep 17–18 2026), then slipped one month on 2026-09-06: beta6
-  **Sep 2026** (still pre-conference) · beta7 **Oct** · beta8 **Nov** · RC1 **Dec** · Gold **Jan 2027**.
+- **Dates:** beta6 **Sep 2026** · beta7 **Oct** · beta8 **Nov** · RC1 **Dec** · Gold **Jan 2027** (the
+  post-BBL pivot of 2026-07 pulled the audit into beta6; the train slipped one month on 2026-09-06).
 - **Version stamps:** `0.1.0-betaN` — **no `v` prefix** (the tag gate rejects it). Fix the *current*
   stamp; never bulk-bump historical CHANGELOGs. See the `roadmap-steward` skill.
 - **Release dates are month-precision:** `YYYY-MM`, never `YYYY-MM-DD` — a CHANGELOG heading reads
   `## [0.1.0-beta6] — 2026-09`; in prose (roadmaps, release logs) it is the month and year only
-  ("September 2026"). Retro-dating shipped releases is not part of this: leave historical entries
-  as written and stamp the current release in the new format.
+  ("September 2026"). Never retro-date shipped releases: stamp the current one in this format.
 - **Release mechanics (umbrella wave):** one `pre-release/<version>` branch per component → umbrella
   tag pushed to the remote → dispatch **dry-run on the pushed tag** (`ref:<tag>` must already exist) →
   LIVE wave. Per-component steps live in `release-manager`; the orchestration lives in `release-wave`.
@@ -181,8 +174,12 @@ The human drives every git and GitHub write. An agent edits files; it does not p
   to be an ancestor of the component's default branch; a squash orphans it and the wave exits 3.
 - **Never "sync" with `git submodule update --remote`:** it detaches every submodule from its local
   `pre-release/*` branch. Use `wfl sync:status` (read-only).
-- **Tooling enforces it:** the GitHub MCP server runs read-only, the Claude Code permission rules ask
-  before every git/GitHub write and deny force-pushes; other runtimes must follow the same rule.
+- **Tooling enforces it:** the GitHub MCP server runs read-only; the team permission rules in
+  `.claude/settings.json` ask before every git/GitHub write and deny force-pushes, history rewrites,
+  host-side PHP and `git submodule update --remote`; the `waffle-cockpit` guard also refuses pushing
+  or creating a release tag.
+- **Third-party skills follow this section too** (§9): when one says to commit, branch, push, open a
+  PR or publish an issue, stop and ask.
 
 ## 7. Evidence & measurement
 
@@ -202,116 +199,39 @@ or a commercial offer.
 
 Procedures: the `benchmark-gate`, `soak-endurance` and `ecoshield` skills.
 
-## 🧠 Specialized AI Skills — Routing Table
+## 8. Skills, subagents and plugins (Claude Code)
 
-**SELF-DIRECTIVE:** if a request matches a skill below, **READ that `SKILL.md` BEFORE planning or
-acting**. These files carry component-specific operating procedures that override general defaults.
-When unsure, default to **`tech-lead`** (it orchestrates the others). All skill files live under
-`.opencode/skills/<name>/SKILL.md`.
+- **Skills** live in `.claude/skills/<name>/SKILL.md`. Claude Code lists each one by its `description`
+  and `when_to_use`. **When a request matches a skill, load it before planning or acting**: it holds
+  the operating procedure for that area and overrides general defaults. When unsure, start with
+  **`tech-lead`**: it knows the release phase and sequences `coding` → `test` → `code-review` →
+  acceptance. The full catalogue, by area and phase, is
+  [`docs/reference/claude-skills.md`](docs/reference/claude-skills.md).
+- **Subagents** live in `.claude/agents/<name>.md` and do the single-component work the skills
+  dispatch: gates, Mago, tests, worker safety, security, audits, benchmarks, soak analysis, BC review.
+- **Frontmatter rules** (`wfl ai:check` enforces them, locally and in CI):
+  - a skill: `name` = its directory; a short `description` (what it does, plus "not built yet" while
+    its code does not exist); the trigger phrases in `when_to_use`; `argument-hint` when it works on
+    one component;
+  - a subagent: `name` = its file name (Claude Code does not register an agent without it); a
+    `description` that starts with "Use …"; the skill it follows preloaded with `skills:`; tool limits
+    that match its contract (`disallowedTools: Write, Edit, NotebookEdit` when read-only, `Edit,
+    NotebookEdit` when it only writes a report); `model` only for mechanical runners;
+  - permissions belong in `.claude/settings.json`, never in a skill's `allowed-tools`.
+- **Plugins** come from the repository marketplace (`.claude-plugin/marketplace.json`) and load for
+  every clone once the folder is trusted: `waffle-cockpit` (a mod: the status band, `/dod` in a pane,
+  the Bash guard) and `mattpocock-skills` (§9).
 
-**Core workflow**
+## 9. Third-party skills (`mattpocock-skills`)
 
-| Skill | Trigger / Use when… |
-|-------|---------------------|
-| `tech-lead` | Entry point for non-trivial / multi-skill / ambiguous work; sequences coding→test→review. |
-| `coding` | Implement a feature or bug fix across the components. |
-| `refactoring` | "Refactor / clean up / restructure" — needs a green test baseline first. |
-| `test` | Add/improve PHPUnit 12.5 tests; target ≥95% coverage. |
-| `code-review` | "Review my changes" / pre-merge sanity (per-component diff). |
-| `maker-scaffold` | "Scaffold / make a controller, DTO, middleware, voter, command, HTTP client, event pair" via Waffle Maker (RFC-020). |
+A pinned, curated copy of github.com/mattpocock/skills lives in `.claude/plugins/mattpocock-skills/`.
+Its `VENDORED.md` names the commit, what is kept and why the rest is excluded; refresh it with
+`scripts/claude/vendor-mattpocock.sh <sha>` and review the diff. The skills run as
+`/mattpocock-skills:<name>`: `grill-me`, `grill-with-docs`, `tdd`, `diagnosing-bugs`, `handoff`,
+`to-spec`, `to-tickets`, `writing-for-agents`, `wizard`, …
 
-**Quality gates & worker-mode**
-
-| Skill | Trigger / Use when… |
-|-------|---------------------|
-| `mago-purge` | Fix Mago findings to ZERO output; eradicate baselines; harden types (native-first). |
-| `worker-safety` | `wfl igor` is KO; `#[WorkerSafe]` / direct `ResettableInterface`; reset-per-request leaks. |
-| `contracts-first` | New interface sequencing; `mago guard` perimeter (contracts + utils); vendor-contracts skew. |
-| `benchmark-gate` | Benchmark-gated items (GC churn, memory curve, AOT/pool/telemetry overhead) → `…-GATE-RESULT.md`. |
-
-**Security**
-
-| Skill | Trigger / Use when… |
-|-------|---------------------|
-| `security-audit` | Statelessness, fail-closed ABAC, SSRF (SEC-02), CORS, traversal, `#[PublicAccess]`, SEC-03 compare-audit. |
-| `auth-bridge-audit` | Universal Authentication Bridge (RFC-021, `auth`): JWT, OAuth2/OIDC, HMAC assertions, API keys. |
-| `webauthn-passkeys` | WebAuthn / passkeys (RFC-021 AUTH-01, `auth`): `WebAuthnLibAdapter` (sole lib importer), stateless authenticator, app-provided challenge store, configurable UV, fail-closed. |
-
-**Data & persistence**
-
-| Skill | Trigger / Use when… |
-|-------|---------------------|
-| `data-persistence` | Universal Data & Persistence Layer (RFC-022): SQR, CRUD mappers, atomic flat-file, Firestore paths, and the shipped DBAL pooling (generalized pool contract, PDO/Redis pools, request-scoped connection affinity, `TransactionIsolationMiddleware`). |
-
-**Docs, scaffolding & release**
-
-| Skill | Trigger / Use when… |
-|-------|---------------------|
-| `diataxis-doc` | "Write/document" → Diátaxis docs with exact PHP 8.5 signatures + version stamps. |
-| `component-scaffold` | "Create a new component / bootstrap a package" from `component-template`. |
-| `release-manager` | Per-component release steps within the umbrella wave (Packagist). |
-| `release-wave` | Orchestrate a full multi-component umbrella release (tag → dry-run → LIVE). |
-| `demo-app-wiring` | Wire a shipped feature into `skeleton` / `workspace` / `academy` (vendor skew, French, routes). |
-| `roadmap-steward` | Maintain `project_system/` RFCs & Roadmaps as the direction source of truth. |
-
-**Beta5 — shipped capability skills (live operating procedures, code exists)**
-
-| Skill | Trigger / Use when… | Source |
-|-------|---------------------|--------|
-| `aot-compilation` | AOT build: graph-identical compiled container + router-trie preheat; `WAFFLE_AOT=1` fast-path + reflection fallback. | beta5 AOT (RFC-019) |
-| `async-concurrency` | Fiber finish-request deferral (`async`) + concurrent HTTP-client fan-out (`ConcurrentClientInterface`). | beta5 ASYNC (RFC-015) |
-| `observability` | Contract-first `TracerInterface` + OTel bridge (`telemetry-otel`) + Prometheus `/waffle-metrics` (`telemetry`). | beta5 OBS (RFC-005) |
-| `reactive-broadcast` | `#[Broadcast]` write-hooks → request-scoped buffer → finish-request SSE flush; no I/O in the hook. | beta5 REACTIVE (RFC-018) |
-
-**Beta7 — production surface (in progress: procedures staged ahead of the code, "not built yet" until it lands)**
-
-| Skill | Trigger / Use when… | Roadmap |
-|-------|---------------------|---------|
-| `resilience-net` | Rate limiter (atomic, shared storage), client timeout/retry policies, circuit breaker. | beta7 NET (RFC-017 §3.1 for NET-01 · RFC-024 for NET-02/03) |
-| `queue-worker` | Background processing (`queue` component, Redis Streams, `queue:work`, SIGTERM drain). | beta7 QUEUE (RFC-015) |
-| `k8s-ops` | `/healthz` + `/readyz`, graceful drain, migrations on the existing `db:migrate`. | beta7 OPS (RFC-023 for OPS-01/02 · RFC-014 for OPS-03) |
-| `api-surface` | OpenAPI generation + DTO serializer / content negotiation. | beta7 API (RFC-016) |
-| `testing-bridge` | `WaffleTestCase` in-process kernel + test doubles. | beta7 TEST (RFC-018 §3.3) |
-
-**Beta8 freeze → RC1 certification**
-
-| Skill | Trigger / Use when… | Roadmap |
-|-------|---------------------|---------|
-| `api-freeze` | Spike verdicts, contracts BC review + `BC-POLICY.md`, deprecations, naming pass, the freeze exit gate, "is this allowed after the freeze?". | beta8 AXE 1–2 |
-| `soak-endurance` | 72 h soak, ≥4-week soak, memory drift, chaos injection, "is this soak valid?". | beta8 STAB-01 · RC1 RC-04 |
-| `rc-certification` | `1.0.0-RC1`: exit-gate re-run, deprecation removal, packaging pass, RC2 clause, Gold entry gate. | RC1 |
-
-**Dogfood — the v1 adoption criterion**
-
-| Skill | Trigger / Use when… | Roadmap |
-|-------|---------------------|---------|
-| `ecoshield` | The standalone `ecoshield-gateway` repo: alpha on NET, FinOps benchmark, RC soak, French docs, measurable claims. | beta7 GATE-02 · beta8 GATE-03 · RC1 RC-04/05 |
-
-## 🤖 Subagents (`.opencode/agents/<name>.md`, `mode: subagent`)
-
-Skills dispatch focused single-component workers. Available: `coding-worker`, `coding-integrator`,
-`docgen-worker`, **`gate-runner`** (run `composer mago && composer tests` + `composer igor`, report
-green/red), **`mago-fixer`** (purge to zero output), **`test-author`** (PHPUnit 12.5 ≥95%),
-**`worker-safety-auditor`** (`wfl igor` remediation + DBAL-pool reset/affinity audit), **`security-auditor`**
-(security checklist + SSE-injection + WebAuthn checks), **`contracts-sync`** (mirror fresh `contracts/src`
-into a consumer `vendor/`; see `wfl sync:contracts`).
-**Beta5 additions:** **`benchmark-runner`** (baseline → load → `…-GATE-RESULT.md`), **`flake-hunter`** (loop
-phpunit, isolate the flaky testcase from JUnit; knows the leading-zero-keypair class), **`demo-wiring-worker`**
-(wire one shipped feature into one app — workspace symlink / skeleton rsync), **`aot-verifier`**
-(`container:compile`/`route:compile` + graph-identity snapshot + `WAFFLE_AOT` fast-path/fallback),
-**`webauthn-auditor`** (passkey UV / challenge-binding / sign-counter clone-detection / statelessness audit).
-**Beta7 → RC1 additions:**
-- **`acceptance-verifier`** — a roadmap item's or release gate's acceptance criteria → evidence →
-  PASS / FAIL / UNVERIFIED.
-- **`soak-analyst`** — slope ± 95 % bound, settled-baseline, recycle and instrument checks on a
-  memory series.
-- **`chaos-runner`** — one fault injected into a bench/soak stack under load, reaction checked; never
-  `waffle-dev`.
-- **`bc-reviewer`** — one contracts namespace against the freeze checklist, plus a usage map.
-
-**Frontmatter (every runtime reads the same files):** `name` (= the file name), `description`,
-`mode: subagent`, `hidden: true`.
-- Claude Code registers an agent by its `name`; without it the agent does not load.
-- opencode names the agent from its file and accepts the extra key.
-- Never add `model:` or `tools:` — the runtimes use incompatible formats. State tool limits (read-only,
-  no git writes) in the body instead.
+- Their configuration is written by hand, not by `/setup-matt-pocock-skills`. The issue tracker is
+  local markdown in `.scratch/` ([`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md)); the
+  domain docs are a root `GLOSSARY.md` plus the RFCs ([`docs/agents/domain.md`](docs/agents/domain.md)).
+- **This file wins.** A third-party step that would commit, branch, push, open a PR, publish an issue
+  or create an ADR stops and asks (§6). `project_system/` stays the source of truth for direction.

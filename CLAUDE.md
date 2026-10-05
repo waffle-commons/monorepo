@@ -1,7 +1,9 @@
+@AGENTS.md
+
 # CLAUDE.md — waffle-commons (PHP 8.5 · FrankenPHP · monorepo of independent submodules)
 
-> ⚡ Thin CLI router. **All** standards, architecture, and agent behaviour live in
-> **[`/AGENTS.md`](./AGENTS.md)** and **`.opencode/skills/<skill>/SKILL.md`**. Do not add standards here.
+> ⚡ The import above puts `AGENTS.md` (every standard, the architecture, agent behaviour) in context
+> for every session. This file only adds the Claude Code specifics. Do not add standards here.
 
 ## Canonical commands (always in Docker — never run PHP on the host)
 
@@ -27,35 +29,36 @@ messages. Native-first fixes; never a baseline or suppression.
 
 > 🛠 **Internal CLI:** `wfl <cmd>` wraps the Docker calls — `wfl mago [comp]`, `wfl test [comp] [--filter=…]`,
 > `wfl igor`, `wfl compare-audit [comp…]` (SEC-03 gate), `wfl academy:test`, `wfl link/unlink`,
-> `wfl components`. **Beta5 automation:** `wfl dod [comp]` (full definition-of-done gate),
+> `wfl components`. **Set-up:** `wfl init` (fresh clone → working checkout, safe to re-run), `wfl doctor`
+> (what is missing, with the fix). **Gates:** `wfl dod [comp]` (full definition-of-done gate),
 > `wfl coverage [comp]` (clover %), `wfl flake-hunt <comp> [N]` (isolate a flaky test),
 > `wfl sync:contracts [comp]` / `wfl sync:demos [app]` (vendor-skew fix), `wfl pre-release [comp]`,
-> `wfl new-component <Name> <url>`, `wfl docker:reset`, `wfl mcp:check`. **Diagnostics / agent helpers:**
-> `wfl coverage:gaps <comp>` (files under 95% + uncovered count), `wfl xref <Symbol> [--tests]`
-> (fixed-string symbol search, vendor-excluded, sanity-checked), `wfl changed` (dirty submodules — commit
-> prep), `wfl sync:status [--fetch]` (read-only branch/ahead/behind/gitlink report), `wfl ci:check` (CI,
-> Dependabot and toolchain drift against `component-template`), `wfl rulesets:check`, `wfl boot-smoke <app>`
-> (kernel boots without HTTP), `wfl wf-report <file>` (digest a workflow/agent JSON output). Run `wfl help`
-> for the full surface.
+> `wfl new-component <Name> <url>`, `wfl docker:reset`, `wfl mcp:check`, `wfl ai:check` (lints this
+> Claude Code layer). **Diagnostics / agent helpers:** `wfl coverage:gaps <comp>` (files under 95% +
+> uncovered count), `wfl xref <Symbol> [--tests]` (fixed-string symbol search, vendor-excluded,
+> sanity-checked), `wfl changed` (dirty submodules — commit prep), `wfl sync:status [--fetch]`
+> (read-only branch/ahead/behind/gitlink report), `wfl ci:check` (CI, Dependabot and toolchain drift
+> against `component-template`), `wfl rulesets:check`, `wfl boot-smoke <app>` (kernel boots without
+> HTTP), `wfl wf-report <file>` (digest a workflow/agent JSON output). Run `wfl help` for the full surface.
 >
-> 🔌 **MCP:** every server starts through a pinned launcher in `scripts/mcp/`. Claude Code enables postgres ·
-> mongo · redis · github (`.mcp.json`); opencode and AntigravityCLI also get filesystem. GitHub and Mongo are
-> read-only. `wfl mcp:check` opens a real session with each one. See **[`/MCP.md`](./MCP.md)**.
+> 🔌 **MCP:** postgres · mongo · redis · github, each through a pinned launcher in `scripts/mcp/`
+> (`.mcp.json`, enabled by `.claude/settings.json`). GitHub and Mongo are read-only; database writes
+> ask first. `wfl mcp:check` opens a real session with each one. See **[`/MCP.md`](./MCP.md)**.
+>
+> 🧩 **Plugins:** the repository marketplace (`.claude-plugin/marketplace.json`) loads `waffle-cockpit`
+> (a mod: the status band above the prompt, `/dod <comp>` in a pane with no model turn, a Bash guard)
+> and `mattpocock-skills` (vendored, pinned; `/mattpocock-skills:<name>`) once the folder is trusted.
 >
 > 🔒 **Git & release safety:** agents edit files; the human commits, pushes, tags, merges and releases —
 > each only on an explicit request for that operation. See **`AGENTS.md` §6**.
 >
-> 🤖 **Subagents:** `.claude/agents` → `.opencode/agents` (the same files serve opencode and
-> AntigravityCLI). Each file needs a `name:` field or Claude Code does not register it — roster and
-> frontmatter rule in `AGENTS.md`.
+> 🤖 **Skills & subagents:** `.claude/skills/` and `.claude/agents/`, Claude Code frontmatter only
+> (`AGENTS.md` §8). An agent without a `name:` is never registered; `wfl ai:check` catches it.
 
-## 🧭 Redirection directive (NON-NEGOTIABLE)
+## 🧭 Before planning or editing
 
-Before planning or editing **anything**, READ:
-
-1. **[`/AGENTS.md`](./AGENTS.md)** — PHP 8.5 strict standards, FrankenPHP statelessness mandate,
-   the Mago Purge Protocol, and the **Skills Routing Table** (intent → skill).
-2. The matching **`.opencode/skills/<skill>/SKILL.md`** for the task. When unsure, start with `tech-lead`.
+1. **`AGENTS.md`** is already in context through the import above, and it is binding.
+2. **Load the matching skill** (Claude Code lists them with their triggers). When unsure, `tech-lead`.
 3. **`project_system/`** — the source of truth for project **direction**: `RFCs/` (RFC-001…024) and
    `Roadmaps/` (`Roadmap_Alpha5 → Roadmap_v1_Gold` and `Roadmap_Post_v1`, plus `Roadmap_v1_Master`). Consult it before
    planning roadmap work; see the `roadmap-steward` skill.

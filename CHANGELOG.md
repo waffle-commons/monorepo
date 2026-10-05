@@ -7,6 +7,27 @@ submodule (see `docs/reference/workflows/release-wave.md`).
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Developer tooling (umbrella only — no framework change)
+
+- **One-command setup:** `wfl init` takes a fresh clone to a working checkout (submodules, Docker,
+  `composer install` per component, git hooks, `wfl` on PATH, MCP warm-up). It is safe to re-run:
+  checked-out submodules are never touched, there is an HTTPS fallback without an SSH key, and a
+  private submodule you cannot read is skipped. New `wfl doctor` reports readiness, with the fix for
+  each gap.
+- **Claude Code operating layer:** skills and subagents moved into `.claude/` with Claude Code
+  frontmatter (trigger phrases in `when_to_use`, preloaded skills, tool limits that match each agent's
+  contract). `CLAUDE.md` now imports `AGENTS.md` so the standards are always in context. Team settings
+  (`.claude/settings.json`) carry the git-safety permission rules for every clone.
+- **Repository plugins:** the `waffle-cockpit` mod (status band, `/dod` in a pane, Bash guard) and a
+  pinned, curated copy of `mattpocock/skills`, both loaded from `.claude-plugin/marketplace.json`.
+- **Gates:** `wfl ai:check` lints the layer (also an umbrella CI job); a weekly `fresh-install`
+  workflow proves the documented setup from a clean clone.
+- **Removed:** opencode and AntigravityCLI support (`.opencode/`, `.antigravitycli/`, `.agents/`,
+  `opencode.json`, the filesystem MCP launcher), the opencode-era `km-*` commands, and the no-op
+  Project Graphify git hooks.
+
 ## [0.1.0-beta6] — 2026-09
 
 **Theme: stabilisation, audit remediation & measured performance (Roadmap_Beta6).**

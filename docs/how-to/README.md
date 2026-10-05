@@ -14,7 +14,7 @@ These guides assume you've already set up the workspace — if not, start with t
 | [**Update a submodule**](update-a-submodule.md) | A change merged in `<component>` — how do I pull it into my local checkout? |
 | [**Bump submodule pointers in the umbrella**](bump-submodule-pointers.md) | I've cut a release in `<component>` — how do I commit the new pointer here? |
 | [**Work on multiple components locally**](work-on-multiple-components-locally.md) | How do I make `security` consume my in-progress `contracts` changes without publishing them? |
-| [**Install Git hooks**](install-git-hooks.md) | How do I wire the Project Graphify pre-commit / post-checkout hooks into every submodule? |
+| [**Install Git hooks**](install-git-hooks.md) | How do I install the Waffle pre-commit (Mago) and pre-push (Mago + tests) gates in every submodule? |
 | [**Release a component**](release-a-component.md) | I'm ready to ship `waffle-commons/security@0.1.0-beta6`. What's the process? |
 
 ## When to pick which

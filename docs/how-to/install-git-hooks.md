@@ -1,8 +1,8 @@
 # How-To: Install Git hooks
 
 > **Diátaxis quadrant:** How-To.
-> **Release:** `0.1.0-beta6`.
-> **Answers:** How do I install the Project Graphify pre-commit / post-checkout / post-merge / post-rewrite hooks in every submodule?
+> **Release:** `0.1.0-beta7`.
+> **Answers:** How do I install the Waffle pre-commit and pre-push gates in the umbrella and every submodule?
 
 ## The one-liner
 
@@ -10,56 +10,47 @@
 ./scripts/install-git-hooks.sh
 ```
 
-The script walks every submodule (any directory whose `.git` exists at depth 2-3), creates the four hooks, and chmod-+x's them. The script itself is `scripts/install-git-hooks.sh`.
+`wfl init` runs it for you. The script installs the hooks in the umbrella and in every submodule's
+hooks directory (wherever `git rev-parse --git-dir` puts it), except `component-template`, which ships
+to downstream projects hook-free.
 
 ## What the hooks do
 
-All four hooks contain a single guarded block:
+| Hook | Payload | What it runs |
+| :--- | :--- | :--- |
+| `pre-commit` | `scripts/hooks/pre-commit-mago.sh` | An incremental Mago gate on the **staged** PHP files only, grouped by component, inside `waffle-dev` (~1–3 s on a small commit). |
+| `pre-push` | `scripts/hooks/pre-push-sanity.sh` | For every component with PHP changes in the pushed range: `composer mago`, then `composer tests` where the component defines it. A no-op when nothing is ahead. |
 
-```bash
-# BEGIN PROJECT GRAPHIFY PRE-COMMIT HOOK
-if [ -x "../../scripts/update-project-graphify.sh" ]; then
-  (cd ../../ && ./scripts/update-project-graphify.sh)
-fi
-# END PROJECT GRAPHIFY PRE-COMMIT HOOK
-```
-
-Project Graphify keeps a graph of inter-component relations up-to-date (`graphify-out/` at the umbrella root). The hooks ensure the graph stays in sync without anyone having to remember to regenerate it.
+Each hook file holds one marked block (`# BEGIN WAFFLE PRE-COMMIT HOOK` … `# END WAFFLE PRE-COMMIT HOOK`),
+so your own hook code can sit beside it.
 
 ## When you need to run this
 
-- **First time setup**, after cloning the umbrella.
-- **After adding a new component**, to wire its `.git/hooks/`.
-- **After a force-checkout that wiped a submodule's hooks** (e.g., a `git clean -fdx` inside a submodule).
+- **First-time setup**: `wfl init` does it.
+- **After adding a new component**, to wire its hooks.
+- **After something wiped a submodule's hooks**, or a hook stopped running.
 
-The script is idempotent — running it twice does the right thing. It detects existing Graphify blocks via the `BEGIN PROJECT GRAPHIFY` markers and doesn't duplicate them.
+The script is idempotent and doubles as a repair: every run removes and rewrites its own blocks and
+restores the executable bit (Git silently skips a non-executable hook). It also removes the retired
+Project Graphify blocks that older installers added, and deletes a hook file left with nothing else
+in it; a hook with your own content is kept.
 
-## Skipping the hooks for one commit
-
-If a hook is misbehaving and you need to ship a commit immediately:
+## Skipping the gate for one commit or push
 
 ```bash
-git commit --no-verify -m "..."
+SKIP_MAGO=1 git commit -m "..."
+SKIP_MAGO=1 git push
 ```
 
-> **Avoid.** Pre-commit hooks exist to catch problems before they reach the remote. Bypassing them is a temporary tactic; fix the root cause.
+> **Avoid.** The hooks catch problems before they reach the remote, and CI runs the full gate anyway.
+> Bypassing them is a temporary tactic; fix the root cause.
 
 ## Uninstalling
 
-The hooks are plain bash files. To remove them:
-
-```bash
-for d in */; do
-    rm -f "$d.git/hooks/pre-commit" \
-          "$d.git/hooks/post-checkout" \
-          "$d.git/hooks/post-merge" \
-          "$d.git/hooks/post-rewrite"
-done
-```
-
-This removes the *entire* hook files, not just the Graphify blocks. If you have other pre-commit hooks you care about, edit the files manually and delete only the `# BEGIN PROJECT GRAPHIFY` → `# END PROJECT GRAPHIFY` block.
+Delete the marked blocks (`# BEGIN WAFFLE …` → `# END WAFFLE …`) from `pre-commit` and `pre-push` in the
+hooks directories, or delete those files if they hold nothing else.
 
 ## Related
 
-- [Repository layout](../reference/repository-layout.md) — where `scripts/install-git-hooks.sh` lives.
-- [Set up your monorepo workspace](../tutorials/setup-your-monorepo-workspace.md) — installing hooks is step 7.
+- [Repository layout](../reference/repository-layout.md) — where `scripts/install-git-hooks.sh` and its payloads live.
+- [Set up your monorepo workspace](../tutorials/setup-your-monorepo-workspace.md) — `wfl init` installs the hooks.

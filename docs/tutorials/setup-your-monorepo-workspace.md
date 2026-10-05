@@ -1,142 +1,111 @@
 # Tutorial — Set up your monorepo workspace
 
 > **Diátaxis quadrant:** Tutorial (learning-oriented).
-> **Release:** `0.1.0-beta6`.
-> **You'll end with:** a fully cloned monorepo, a running `waffle-dev` Docker container, and one component's tests passing.
-> **Time:** ~15 minutes if Docker is already installed.
+> **Release:** `0.1.0-beta7`.
+> **You'll end with:** a cloned monorepo, a running `waffle-dev` Docker container, every component's
+> dependencies installed, the git hooks in place, and one component proven green.
+> **Time:** ~15 minutes, most of it the first Docker image build.
 
-This tutorial walks you through getting from zero to a working contributor environment. It is *not* about writing a feature — that's the [next tutorial](make-your-first-cross-component-change.md).
+This tutorial gets you from zero to a working contributor environment with one command. It is *not*
+about writing a feature — that's the [next tutorial](make-your-first-cross-component-change.md).
 
 ## Prerequisites
 
 | Tool | Version | Why |
 | :--- | :--- | :--- |
-| **Git** | ≥ 2.30 | Submodule mechanics (`--recurse-submodules`). |
-| **Docker** with **Docker Compose** | Recent | All development happens inside the `waffle-dev` container — never natively on the host. See [Why Docker-first](../explanation/docker-first-development.md). |
-| **A shell** | Bash, Zsh, Fish — anything POSIX-ish | For the `loop.sh` / `coverage.sh` helpers. |
+| **Git** | ≥ 2.30 | Submodule mechanics. |
+| **Docker** with **Docker Compose** v2 | Recent | All development happens inside the `waffle-dev` container — never natively on the host. See [Why Docker-first](../explanation/docker-first-development.md). |
+| **A shell** | Bash or Zsh | `bin/wfl` and the scripts behind it. |
 
-You do **not** need a local PHP install. The container ships PHP 8.5 + Xdebug + Composer.
+Optional: a GitHub SSH key (without one, `wfl init` clones over HTTPS), and for the AI tooling `gh`
+(the GitHub MCP server), Node ≥ 20.19 (the Postgres MCP server), `python3` and Claude Code ≥ 2.1.287.
+You do **not** need a local PHP install: the container ships PHP 8.5 + Xdebug + Composer.
 
-## 1. Clone the umbrella with submodules
+`bin/wfl doctor --prereqs` checks all of this in a few seconds and prints the fix for anything missing.
 
-The monorepo is 26 Git submodules in a trench coat. Clone with `--recurse-submodules` so every component is checked out at the commit the umbrella pins:
+## 1. Clone, then run `wfl init`
 
 ```bash
-git clone --recurse-submodules git@github.com:waffle-commons/monorepo.git waffle-commons
+git clone git@github.com:waffle-commons/monorepo.git waffle-commons
 cd waffle-commons
+bin/wfl init
 ```
 
-If you forgot the flag (e.g. someone copy-pasted a plain `git clone`), the component directories will exist but be empty. Recover with:
+Clone **without** `--recurse-submodules`: `wfl init` initialises the submodules itself, and handles
+the cases a recursive clone fails on. Its seven steps:
+
+1. **Host prerequisites** — the same checks as `wfl doctor --prereqs`.
+2. **Submodules** — only the ones not yet initialised, so re-running it never touches a checked-out
+   submodule. Without a working GitHub SSH key it clones over HTTPS (or pass `--https`). The `academy`
+   submodule is private: if you cannot read it, it is skipped with a note and everything else works.
+3. **The Docker dev stack** — `docker compose up --build -d` from `workspace/`, then it waits for
+   `waffle-dev` to run. The first build takes a few minutes.
+4. **Composer dependencies** — `composer install` inside the container for every component whose
+   `vendor/` is missing or stale, four at a time.
+5. **Git hooks** — the pre-commit Mago and pre-push sanity gates ([Install Git hooks](../how-to/install-git-hooks.md)).
+6. **`wfl` on your PATH** — a link in `~/.local/bin` (add that directory to `PATH` if it isn't).
+7. **MCP warm-up** — `wfl mcp:check` pre-fetches the MCP servers so Claude Code connects at once.
+
+It ends with a summary of anything to look at. `wfl init --help` lists the flags (`--skip-docker`,
+`--skip-composer`, `--skip-ai`, `--no-link`). You can run it again at any time: it only does what is
+still missing.
+
+## 2. Check the result
 
 ```bash
-git submodule update --init --recursive
+wfl doctor
 ```
 
-Verify:
+Expected: a list of `✓` lines ending in `✓ ready`. A `!` line works but names something to improve,
+with its fix; a `✗` line is a blocker.
+
+## 3. Prove one component green
 
 ```bash
-ls -1 contracts security pipeline http-client | head
-# contracts:
-# README.md
-# composer.json
-# ...
+wfl dod contracts
 ```
 
-If those files don't exist, the submodules are still uninitialised — re-run the recursive update.
-
-## 2. Boot the `waffle-dev` Docker container
-
-The `workspace` submodule owns the dev-environment `docker-compose.yml`:
-
-```bash
-cd workspace
-docker compose up -d
-```
-
-This starts a single long-lived service named `waffle-dev` with FrankenPHP, PHP 8.5, Xdebug, and Composer pre-installed. The container mounts the entire monorepo at `/waffle-commons` so file changes on the host are visible inside immediately.
-
-Confirm it's up:
-
-```bash
-docker ps --filter "name=waffle-dev" --format "{{.Names}}  {{.Status}}"
-# waffle-dev  Up 8 seconds (healthy)
-```
-
-> If the health check is "starting" for more than ~30 seconds, run `docker compose logs waffle-dev` to see what's stuck. The most common cause is the host's port 443 already being in use.
-
-## 3. Install dependencies in one component
-
-Pick any component — let's use `contracts` because it has no inter-component deps.
-
-```bash
-docker exec -it -w /waffle-commons/contracts waffle-dev composer install
-```
-
-`-w /waffle-commons/contracts` sets the working directory **inside** the container. This is the canonical invocation pattern used everywhere in these docs.
-
-## 4. Run the quality bar
+`wfl dod` runs the whole definition of done inside the container: `composer mago` (zero output),
+`composer tests` (a clean `OK (…)`), line coverage ≥ 95 % and `wfl igor` (0 KO). It ends with
+`✓ DoD PASS — contracts`. The same steps by hand, in the canonical form used everywhere in these docs:
 
 ```bash
 docker exec -it -w /waffle-commons/contracts waffle-dev composer mago
 docker exec -it -w /waffle-commons/contracts waffle-dev composer tests
 ```
 
-Expected:
+If either fails on a fresh clone, **that is a bug** — open an issue against `waffle-commons/monorepo`
+with the output.
 
-```
-INFO No issues found.
-INFO No issues found.
-INFO No issues found.
-PHPUnit 12.5.x by Sebastian Bergmann and contributors.
-...
-OK (3 tests, 5 assertions)
-```
-
-If either command fails on a fresh clone, **that is a bug** — open an issue against `waffle-commons/monorepo` with the output.
-
-## 5. Fan a command out across every component
-
-The `loop.sh` script wraps `cd $COMP && <command>` over every component. Try a read-only ping first:
+## 4. Fan a command out across every component
 
 ```bash
-./loop.sh ls composer.json
+wfl check:all              # composer mago in every component, in parallel
+wfl check:all --with-tests # … plus PHPUnit
+./coverage.sh              # coverage per component against the 95% threshold
 ```
 
-That should print 21 ✅ lines (one per component). Now the real one:
+See [Run checks across components](../how-to/run-checks-across-components.md) for `loop.sh` and its flags.
+
+## 5. (Optional) Open Claude Code
 
 ```bash
-./loop.sh composer mago
+claude
 ```
 
-This takes 1–3 minutes the first time (composer installs hit the network for every component). The summary at the bottom should say `🎉 Final state: SUCCESS`.
-
-> **If a component fails**, run `./loop.sh --verbose composer mago` to see per-component output. See [Run checks across components](../how-to/run-checks-across-components.md) for flags.
-
-## 6. Verify coverage
-
-```bash
-./coverage.sh
-```
-
-This reads each component's `var/data/phpunit-coverage/index.html` and compares against the 95% threshold. Components without a coverage report show as `❓ N/A` — that just means you haven't run their tests yet. Re-run after `./loop.sh composer tests` if you want a complete picture.
-
-## 7. (Optional) Install Git hooks
-
-If you'll be authoring commits, install the Project Graphify hooks so they trigger automatically:
-
-```bash
-./scripts/install-git-hooks.sh
-```
-
-Hooks land in **each submodule's** `.git/hooks/` directory (`pre-commit`, `pre-push`, `post-checkout`, `post-merge`, `post-rewrite`). See [Install Git hooks](../how-to/install-git-hooks.md).
+Start it at the repository root and accept the trust prompt. That loads the team settings
+(`.claude/settings.json`: the git-safety permission rules, the MCP servers) and the repository
+plugins: `waffle-cockpit` draws a status band above the prompt and adds `/dod <component>`, and
+`mattpocock-skills` adds `/mattpocock-skills:<name>`. If the band does not show in the very first
+session, run `/reload-plugins` once.
 
 ## What you've accomplished
 
-- 26 submodules cloned and initialised;
-- `waffle-dev` container running;
-- one component (`contracts`) installed, lint-clean, and test-green;
-- familiarity with the canonical `docker exec -it -w /waffle-commons/<comp> waffle-dev <cmd>` invocation;
-- the cross-component scripts (`loop.sh`, `coverage.sh`) working.
+- the monorepo cloned, with every submodule you can read initialised;
+- `waffle-dev` running, every component's dependencies installed;
+- the pre-commit and pre-push gates installed;
+- one component (`contracts`) proven green by its definition of done;
+- `wfl doctor` to re-check the environment at any time.
 
 ## Where next
 

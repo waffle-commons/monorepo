@@ -1,6 +1,6 @@
 # Reference — Repository layout
 
-> **Release:** `0.1.0-beta6`.
+> **Release:** `0.1.0-beta7`.
 > **Scope:** the umbrella's directory tree.
 
 ## Top-level directories
@@ -9,14 +9,14 @@
 | :--- | :--- | :--- | :--- |
 | `.github/` | dir | yes | Umbrella GitHub config (issue/PR templates, `workflows/umbrella-ci.yml`, `workflows/release-wave.yml`). |
 | `.github-private/` | submodule | yes | Private org config (mirror, not always present). |
-| `.opencode/` | dir | yes | OpenCode IDE config + `skills/` AI prompt library. |
+| `.claude/` | dir | partly tracked | Claude Code layer: `skills/` (34), `agents/` (18), `plugins/` (`waffle-cockpit`, vendored `mattpocock-skills`) and the team `settings.json`. `settings.local.json` and `*.bak` are gitignored. See the [Claude Code skills reference](claude-skills.md). |
+| `.claude-plugin/` | dir | yes | `marketplace.json`: the repository marketplace that loads the two plugins for every clone. |
 | `build/` | dir | gitignored | Output of `zip-project.sh` (audit archives, dated). |
 | `async/`, `auth/`, `cache/`, `config/`, `console/`, `container/`, `contracts/`, `data/`, `error-handler/`, `event-dispatcher/`, `http/`, `http-client/`, `log/`, `pipeline/`, `routing/`, `runtime/`, `security/`, `telemetry/`, `telemetry-otel/`, `utils/`, `waffle/` | submodules | yes | The 21 framework components. Each is its own Git repo released on Packagist. |
 | `queue/`, `openapi/`, `serializer/`, `testing/` | submodules | yes | The four beta7 components (scaffolded at the beta7 kickoff; code lands during the release). |
 | `component-template/` | submodule | yes | Scaffold for new components (`configure-component.sh`); its CI workflow is the canonical copy every component carries. |
 | `docs/` | dir | yes | Monorepo contributor documentation (this Diátaxis tree). |
 | `documentation/` | submodule | yes | Framework user documentation (separate Diátaxis tree). |
-| `graphify-out/` | dir | gitignored | Project Graphify generated graph artifacts. |
 | `project_system/` | dir | partly tracked | **Official project governance & roadmap.** Tracked & shared: `RFCs/`, `Roadmaps/`, `Logs/Releases/`, `Logs/Retrospectives/`. Gitignored (maintainers' private): `Audits/`, `Notes/`, `TODOs/`, `*.pem`. See the [project-system reference](project-system.md). |
 | `scripts/` | dir | yes | The scripts behind `wfl` (gates, reports, drift checks), the git hook installer (`install-git-hooks.sh`) with its payloads in `scripts/hooks/`, and the MCP launchers in `scripts/mcp/`. |
 | `skeleton/` | submodule | yes | `composer create-project` template (FrankenPHP + Docker + sample). |
@@ -33,15 +33,16 @@
 | `CODEOWNERS` | GitHub review routing. See [codeowners reference](codeowners.md). |
 | `LICENSE` | MIT. |
 | `component-ruleset.json` | Canonical GitHub branch-protection ruleset shipped with this repo. See [component-ruleset reference](component-ruleset.md). |
-| `opencode.json` | OpenCode IDE / project configuration. |
 | `loop.sh` | Fan a command across every component. See [Run checks across components](../how-to/run-checks-across-components.md). |
 | `coverage.sh` | Read coverage HTML reports, enforce ≥95%. See [Check coverage across components](../how-to/check-coverage-across-components.md). |
 | `zip-project.sh` | Package the umbrella as a date-stamped zip in `build/`. |
 | `bin/wfl` | Host-side developer CLI wrapping docker / mago / phpunit. |
-| `scripts/install-git-hooks.sh` | Install pre-commit Mago + pre-push sanity hooks (and Project Graphify hooks) in every submodule. See [Install Git hooks](../how-to/install-git-hooks.md). |
+| `scripts/install-git-hooks.sh` | Install the pre-commit Mago and pre-push sanity hooks in the umbrella and every submodule (and remove the retired Graphify blocks). See [Install Git hooks](../how-to/install-git-hooks.md). |
 | `scripts/hooks/pre-commit-mago.sh` | Incremental Mago gate fired by `git commit`; targets only staged PHP files. |
 | `scripts/hooks/pre-push-sanity.sh` | Full `composer mago` + `composer tests` gate fired by `git push` when the ref is ahead of remote. |
-| `scripts/mcp/*.sh` | Pinned launchers for the MCP servers (postgres, mongo, redis, github, filesystem), shared by Claude Code, opencode and AntigravityCLI. See [`MCP.md`](../../MCP.md). |
+| `scripts/mcp/*.sh` | Pinned launchers for the MCP servers (postgres, mongo, redis, github). See [`MCP.md`](../../MCP.md). |
+| `scripts/init.sh`, `scripts/doctor.sh` | `wfl init` (fresh clone → working checkout) and `wfl doctor` (readiness report). |
+| `scripts/ai-check.py`, `scripts/claude/` | `wfl ai:check` (lints the Claude Code layer), the SessionStart context hook and the `mattpocock-skills` vendoring script. |
 | `.igor-version` | The single igor-php auditor version, read by `igor.sh`, `wfl dod` and `wfl ci:check`. |
 | `keystore.jks` | Java keystore used by signing tooling (rare; see your team's release docs). |
 | `TODO.md` | Working notes. Not authoritative. |
