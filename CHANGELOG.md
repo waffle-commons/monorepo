@@ -20,7 +20,7 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
   frontmatter (trigger phrases in `when_to_use`, preloaded skills, tool limits that match each agent's
   contract). `CLAUDE.md` now imports `AGENTS.md` so the standards are always in context. Team settings
   (`.claude/settings.json`) carry the git-safety permission rules for every clone.
-- **Repository plugins:** the `waffle-cockpit` mod (status band, `/dod` in a pane, Bash guard) and a
+- **Repository plugins:** the `waffle-cockpit` mod (three status lines under the prompt, `/dod` in a pane, Bash guard) and a
   pinned, curated copy of `mattpocock/skills`, both loaded from `.claude-plugin/marketplace.json`.
 - **Gates:** `wfl ai:check` lints the layer (also an umbrella CI job); a weekly `fresh-install`
   workflow proves the documented setup from a clean clone.

@@ -185,7 +185,7 @@ standards, into every session. `.claude/skills/` holds 34 skills (operating proc
 `tech-lead`, `coding`, `test`, `code-review`, `mago-purge`, `worker-safety`, `release-wave`, …) and
 `.claude/agents/` 18 focused subagents. The team settings (`.claude/settings.json`) ask before every git
 or GitHub write and keep PHP off the host. Two plugins load from the repository marketplace once the
-folder is trusted: `waffle-cockpit` (a status band, `/dod` in a pane, a Bash guard) and a pinned copy of
+folder is trusted: `waffle-cockpit` (three status lines under the prompt, `/dod` in a pane, a Bash guard) and a pinned copy of
 Matt Pocock's engineering skills. `wfl ai:check` lints the whole layer. See
 [`docs/reference/claude-skills.md`](docs/reference/claude-skills.md).
 

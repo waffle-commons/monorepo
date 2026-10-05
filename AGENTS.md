@@ -219,7 +219,7 @@ Procedures: the `benchmark-gate`, `soak-endurance` and `ecoshield` skills.
     NotebookEdit` when it only writes a report); `model` only for mechanical runners;
   - permissions belong in `.claude/settings.json`, never in a skill's `allowed-tools`.
 - **Plugins** come from the repository marketplace (`.claude-plugin/marketplace.json`) and load for
-  every clone once the folder is trusted: `waffle-cockpit` (a mod: the status band, `/dod` in a pane,
+  every clone once the folder is trusted: `waffle-cockpit` (a mod: the lines under the prompt, `/dod` in a pane,
   the Bash guard) and `mattpocock-skills` (§9).
 
 ## 9. Third-party skills (`mattpocock-skills`)

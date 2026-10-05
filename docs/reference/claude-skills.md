@@ -127,7 +127,7 @@ can still write, so the limits are guard rails, not a sandbox: each body keeps i
 
 | Plugin | What it adds |
 | :--- | :--- |
-| **waffle-cockpit** | A mod: the status band above the prompt (phase, branch, `waffle-dev`, dirty repos, igor pin), `/dod <comp…>` / `/dod --changed` in a pane with no model turn, `/cockpit`, and a Bash guard (host-side PHP, `submodule update --remote`, release-tag pushes). See [`.claude/plugins/waffle-cockpit/README.md`](../../.claude/plugins/waffle-cockpit/README.md). |
+| **waffle-cockpit** | A mod: three status lines under the prompt (model, effort, context, cache, cost, limits, repo, PR; inside the umbrella also phase, `waffle-dev`, igor pin), `/dod <comp…>` / `/dod --changed` in a pane with no model turn, `/cockpit`, and a Bash guard (host-side PHP, `submodule update --remote`, release-tag pushes). See [`.claude/plugins/waffle-cockpit/README.md`](../../.claude/plugins/waffle-cockpit/README.md). |
 | **mattpocock-skills** | 20 of Matt Pocock's engineering skills, vendored at a pinned commit: `/mattpocock-skills:grill-me`, `tdd`, `diagnosing-bugs`, `handoff`, `to-spec`, `to-tickets`, `writing-for-agents`, … Their configuration is [`docs/agents/`](../agents/); what is excluded and why is in its `VENDORED.md`; `AGENTS.md` §9 has the precedence rule. |
 
 ## File shapes

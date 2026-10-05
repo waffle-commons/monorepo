@@ -46,7 +46,8 @@ messages. Native-first fixes; never a baseline or suppression.
 > ask first. `wfl mcp:check` opens a real session with each one. See **[`/MCP.md`](./MCP.md)**.
 >
 > 🧩 **Plugins:** the repository marketplace (`.claude-plugin/marketplace.json`) loads `waffle-cockpit`
-> (a mod: the status band above the prompt, `/dod <comp>` in a pane with no model turn, a Bash guard)
+> (a mod: three lines under the prompt — model, effort, context, cache, cost, limits, repo, PR, Waffle
+> phase — plus `/dod <comp>` in a pane with no model turn and a Bash guard)
 > and `mattpocock-skills` (vendored, pinned; `/mattpocock-skills:<name>`) once the folder is trusted.
 >
 > 🔒 **Git & release safety:** agents edit files; the human commits, pushes, tags, merges and releases —

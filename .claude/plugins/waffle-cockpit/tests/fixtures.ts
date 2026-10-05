@@ -12,13 +12,24 @@ export function commandOf(command: string, args = ''): CommandRunInput {
   return { command, args, origin: { kind: 'composer' }, presentation: { isFullscreen: true, columns: 160 } }
 }
 
-/** The band above the prompt on a 160-column terminal. */
-export const BAND: RenderInput<'AbovePrompt', 'terminal'> = {
+/** The hint line under the prompt on a 160-column terminal: where the cockpit draws. */
+export const HINT: RenderInput<'PromptHint', 'terminal'> = {
   surface: 'terminal',
-  component: 'AbovePrompt',
-  requestId: 'above-prompt',
+  component: 'PromptHint',
+  requestId: 'prompt-hint',
   viewport: { columns: 160, rows: 40 },
-  props: { hasSurvey: false, isWorking: false, maxRows: 6, bodyColumns: 150, scroll: { offset: 0, bodyRows: 6 }, view: {} },
+  props: { isDraft: false, isWorking: false, hint: '? for shortcuts' },
+}
+
+/** What `$.session.usage()` answers: 58% of 200k, $4.12, 1h52 in, two limit windows. */
+export const USAGE = {
+  startedAt: -6_720_000,
+  context: { tokens: 116_000, window: 200_000, percent: 58 },
+  rateLimits: [
+    { kind: 'five_hour', percentUsed: 31, resetsAt: '2026-10-05T14:20:00Z' },
+    { kind: 'seven_day', percentUsed: 52 },
+  ],
+  cost: { usd: 4.12 },
 }
 
 /** The DoD pane, docked. */
@@ -56,6 +67,18 @@ export const CHANGED = [
 
 export type World = { runs: string[][]; toasts: string[]; opened: string[]; clock: MockClock }
 
+/** What git, gh, docker and the changed-components report answer, by command. */
+function stdoutOf(argv: readonly string[], answers: { branch?: string; container?: string; changed?: string }): string {
+  const line = argv.join(' ')
+  if (line.includes('--show-toplevel')) return `${ROOT}\n`
+  if (line.includes('--abbrev-ref')) return answers.branch ?? 'pre-release/0.1.0-beta7\n'
+  if (line.includes('status --porcelain')) return ' M AGENTS.md\n M README.md\n?? notes.md\n'
+  if (line.includes('diff --shortstat')) return ' 2 files changed, 812 insertions(+), 95 deletions(-)\n'
+  if (argv[0] === 'gh') return '{"number":12,"reviewDecision":"APPROVED","isDraft":false}\n'
+  if (argv[0] === 'docker') return answers.container ?? 'running\n'
+  return answers.changed ?? CHANGED
+}
+
 /**
  * Answers what the cockpit asks of the machine inside the umbrella: its
  * start, its commands, the files that mark the root, git, docker and the
@@ -67,16 +90,13 @@ export function inUmbrella(on: On, answers: { branch?: string; container?: strin
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('command.register', ($, e) => ({ value: { command: e.name } }))
   on('session.cwd', () => ({ value: ROOT }))
+  on('session.model', () => ({ value: 'claude-opus-5-5' }))
+  on('session.usage', () => ({ value: USAGE }))
   on('fs.exists', ($, e) => ({ value: e.path === `${ROOT}/bin/wfl` || e.path === `${ROOT}/.gitmodules` }))
   on('fs.read', () => ({ value: '0.9.7\n' }))
   on('process.run', ($, e) => {
     world.runs.push([...e.argv])
-    const head = e.argv[0]
-    const stdout =
-      head === 'git' ? (answers.branch ?? 'pre-release/0.1.0-beta7\n')
-      : head === 'docker' ? (answers.container ?? 'running\n')
-      : (answers.changed ?? CHANGED)
-    return { value: ok(stdout) }
+    return { value: ok(stdoutOf(e.argv, answers)) }
   })
   on('ui.toast', ($, e) => {
     world.toasts.push(e.text)

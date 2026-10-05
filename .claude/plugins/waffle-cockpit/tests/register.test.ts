@@ -1,7 +1,7 @@
 import type { On } from 'claude-code'
 import { describe, expect, test } from 'claude-code/testing'
 
-import { BAND, commandOf, inUmbrella, PANE, ROOT, SESSION, textOf, until } from './fixtures'
+import { commandOf, HINT, inUmbrella, PANE, ROOT, SESSION, textOf, until } from './fixtures'
 import type { World } from './fixtures'
 
 const DOD_PASS = [
@@ -54,20 +54,30 @@ describe('the guard', () => {
   })
 })
 
-describe('the band', () => {
-  test('/cockpit refreshes it with phase, branch, container and dirty count', async ($, on) => {
+describe('the lines under the prompt', () => {
+  test('/cockpit refreshes them: model, repo, Waffle, context, cache, cost, limits, PR, hint', async ($, on) => {
     inUmbrella(on)
     await $.session.start(SESSION)
 
     const { text } = await $.command.run(commandOf('cockpit'))
-    const drawn = textOf(await $.ui.render(BAND))
+    const drawn = textOf(await $.ui.render(HINT))
 
-    expect(text).toContain('beta7 build')
+    expect(text).toContain('ctx 58%')
+    expect(drawn).toContain('Opus 5.5')
+    expect(drawn).toContain('work ⎇ pre-release/0.1.0-beta7')
+    expect(drawn).toContain('●3')
     expect(drawn).toContain('beta7 build')
-    expect(drawn).toContain('pre-release/0.1.0-beta7')
     expect(drawn).toContain('waffle-dev ●')
-    expect(drawn).toContain('3 dirty')
     expect(drawn).toContain('igor 0.9.7')
+    expect(drawn).toContain('▓▓▓▓▓▓░░░░ 58%')
+    expect(drawn).toContain('116k/200k')
+    expect(drawn).toContain('$4.12')
+    expect(drawn).toContain('1h52')
+    expect(drawn).toContain('+812')
+    expect(drawn).toContain('5h ')
+    expect(drawn).toContain('7d ')
+    expect(drawn).toContain('PR #12 ✓ approved')
+    expect(drawn).toContain('? for shortcuts')
   })
 
   test('a stopped container is drawn as stopped', async ($, on) => {
@@ -76,17 +86,17 @@ describe('the band', () => {
 
     await $.command.run(commandOf('cockpit'))
 
-    expect(textOf(await $.ui.render(BAND))).toContain('waffle-dev ○')
+    expect(textOf(await $.ui.render(HINT))).toContain('waffle-dev ○ exited')
   })
 
-  test('/cockpit hide takes it down', async ($, on) => {
+  test('/cockpit hide gives the line back to the engine', async ($, on) => {
     inUmbrella(on)
     await $.session.start(SESSION)
     await $.command.run(commandOf('cockpit'))
 
     await $.command.run(commandOf('cockpit', 'hide'))
 
-    expect(textOf(await $.ui.render(BAND))).not.toContain('beta7 build')
+    expect(textOf(await $.ui.render(HINT))).toBe('engine')
   })
 })
 
