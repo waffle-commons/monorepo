@@ -23,9 +23,9 @@ Read `AGENTS.md` §5b and the status line of the current roadmap first.
 Work that belongs to an earlier phase is never squeezed in. In beta7 the stretch tier (`[DXP-01]`,
 `[GATE-02]`) is cut first. After the beta8 tag, a feature is post-v1 (`Roadmap_Post_v1.md`).
 
-**Beta7 capacity guard:** if `queue`, `openapi`, `serializer` and `testing` are not scaffolded **and
-green on their own gates by mid-October**, the release splits: NET + OPS + QUEUE tag as beta7, and API
-+ TEST fold into the beta8 window. Raise the risk early; the decision is the maintainer's.
+**Beta7 capacity guard:** unless `[API-01]`, `[API-02]` and `[TEST-01]` have **code landed and green on
+their own gates by mid-October**, the release splits: NET + OPS + QUEUE tag as beta7, and API + TEST
+fold into the beta8 window. Raise the risk early; the decision is the maintainer's.
 
 ## Orchestration protocol
 1. **Triage:** decide whether the task needs `coding`, `refactoring` or `test`, plus the capability

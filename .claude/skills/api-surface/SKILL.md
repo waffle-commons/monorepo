@@ -9,8 +9,9 @@ when_to_use: >-
 
 > **Status (2026-09-30):** `openapi` (`Waffle\Commons\OpenApi`) and `serializer`
 > (`Waffle\Commons\Serializer`) are scaffolded and pass their DoD in scaffold mode; neither has `src/`
-> yet. **Tier: High, not Committed.** Under the beta7 capacity guard, API and TEST are what fold into
-> the beta8 window if the new repositories are not green by mid-October (`[[roadmap-steward]]`).
+> yet. **Tier: High, not Committed.** Under the beta7 capacity guard, API and TEST fold into the beta8
+> window unless `[API-01]`, `[API-02]` and `[TEST-01]` have code landed and green on their own gates by
+> mid-October (`[[roadmap-steward]]`).
 
 ## What I do
 I design the API-surface tooling that turns typed routes and DTOs into a spec, and that owns the HTTP

@@ -144,8 +144,8 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 - **What each phase allows** (binding guards from `Roadmap_v1_Master.md`):
   - **beta7 (build):** the `Roadmap_Beta7.md` items.
     - The stretch tier (`[DXP-01]`, `[GATE-02]`) is cut first.
-    - If `queue`/`openapi`/`serializer`/`testing` are not green on their own gates by mid-October, the
-      release splits: NET + OPS + QUEUE as beta7, API + TEST into the beta8 window.
+    - Unless `[API-01]`, `[API-02]` and `[TEST-01]` have code landed and green on their own gates by
+      mid-October, the release splits: NET + OPS + QUEUE as beta7, API + TEST into the beta8 window.
     - The November freeze is what is protected, not beta7's scope.
   - **beta8 (freeze):** the tag *is* the feature freeze. The release holds the spike verdicts, the
     contracts BC review + `contracts/BC-POLICY.md`, deprecations, the naming pass, the 72 h soak, the

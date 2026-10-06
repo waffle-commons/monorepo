@@ -62,10 +62,10 @@ DoD in every item: `composer mago` zero output, `composer tests` ≥95%, `wfl ig
 
 ## Schedule guards (binding — `Roadmap_v1_Master.md`)
 - **beta7 capacity guard:** the heaviest release of the train in its shortest window. The stretch tier
-  (`[DXP-01]`, `[GATE-02]`) is cut on first contact with the schedule. If the four new repositories
-  are not scaffolded and green on their own gates by **mid-October**, the release splits: NET + OPS +
-  QUEUE tag as beta7 in October, API + TEST fold into the beta8 window. The November freeze is what is
-  protected, not beta7's scope.
+  (`[DXP-01]`, `[GATE-02]`) is cut on first contact with the schedule. Unless `[API-01]`, `[API-02]`
+  and `[TEST-01]` have code landed and green on their own gates by **mid-October**, the release splits:
+  NET + OPS + QUEUE tag as beta7 in October, API + TEST fold into the beta8 window. The November freeze
+  is what is protected, not beta7's scope.
 - **RC1 schedule guard:** the ≥4-week soak, not the tag, is the binding constraint. A January 2027 Gold
   needs the `1.0.0-RC1` tag by **~5 December 2026**. An RC2 restarts the clock, pushing Gold to
   February–March 2027.

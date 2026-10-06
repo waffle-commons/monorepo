@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: Release Train to v1.0 (Master)"
 date_created: 2026-06-07
-date_updated: 2026-09-08
+date_updated: 2026-10-06
 type: project
 status: 🏗️ wip
 tags:
@@ -35,7 +35,7 @@ aliases: []
 | `1.0.0` (Gold) | **January 2027** | Launch | `Roadmap_v1_Gold.md` |
 
 > **Schedule guards (added 2026-09-08) — read these before re-committing to any date above.** Two milestones carry a written guard in their own roadmap, and both bind this table:
-> - **beta7 · capacity** (`Roadmap_Beta7.md`) — the heaviest release of the train (four new repositories + eleven items) in its shortest window. The stretch tier is cut on first contact with the schedule, and an unscaffolded-by-mid-October state splits the release rather than sliding it into November. **The November freeze is protected; beta7's scope is not.**
+> - **beta7 · capacity** (`Roadmap_Beta7.md`) — the heaviest release of the train (four new repositories + eleven items) in its shortest window. The stretch tier is cut on first contact with the schedule, and unless `[API-01]`, `[API-02]` and `[TEST-01]` have code landed and green on their own gates by mid-October, the release splits rather than sliding into November (amended 2026-10-06: the empty scaffolds already cleared the first wording, "unscaffolded by mid-October"). **The November freeze is protected; beta7's scope is not.**
 > - **RC1 · schedule** (`Roadmap_RC1.md`) — the ≥4-week soak, not the tag, is the binding constraint: a January 2027 Gold needs the `1.0.0-RC1` tag by **~December 5, 2026**. The soak straddles the year-end holidays, and an RC2 restarts the clock (Gold → February–March 2027). **The soak is never shortened to recover a date.**
 >
 > Corollary for this table: a slip at beta7 or beta8 moves every later row by the same amount — the rows above are re-dated together, never absorbed by compressing the freeze or the soak.
