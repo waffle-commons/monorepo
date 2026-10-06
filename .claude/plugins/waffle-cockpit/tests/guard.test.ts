@@ -12,6 +12,10 @@ const DENIED = [
   'env -i composer validate',
   'bash -c "cd security && composer install"',
   "sh -c 'php -r 1'",
+  "bash -lc 'composer install'",
+  "sh -ec 'php -v'",
+  "bash -o pipefail -c 'composer tests'",
+  "bash -eo pipefail -c 'vendor/bin/phpunit'",
   'git submodule update --init --remote',
   'git -C security submodule update --remote',
   'git push origin 0.1.0-beta7',
@@ -25,10 +29,15 @@ const DENIED = [
   'git status && git push origin 1.0.0',
   'docker exec -w /waffle-commons waffle-dev git push origin 0.1.0-beta7',
   'docker exec -it waffle-dev git submodule update --remote',
+  "docker exec -w /waffle-commons waffle-dev sh -c 'git push origin 0.1.0-beta7'",
+  "docker exec waffle-dev bash -lc 'git submodule update --remote'",
 ]
 
 const ALLOWED = [
   'docker exec -w /waffle-commons/security waffle-dev composer mago',
+  "docker exec -w /waffle-commons/contracts waffle-dev sh -c 'vendor/bin/mago --version; vendor/bin/phpunit --version'",
+  "docker exec waffle-dev sh -c 'php -v | head -1; php -m'",
+  "docker exec waffle-dev bash -lc 'cd security && composer mago'",
   'wfl mago security',
   'bin/wfl dod contracts',
   'wfl run contracts composer install',

@@ -20,6 +20,9 @@ const WRAPPERS = new Set(['env', 'command', 'exec', 'time', 'nohup', 'nice', 'bu
 /** Shells whose `-c` argument is itself a command line. */
 const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash'])
 
+/** Shell options that take a separate value. */
+const SHELL_OPTION_WITH_VALUE = new Set(['-o', '+o', '-O', '+O', '--rcfile', '--init-file'])
+
 /** A version tag as the release wave cuts it: `0.1.0-beta7`, `1.0.0-RC1`, `1.0.0`. */
 const VERSION_TAG = /^v?\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/
 
@@ -138,6 +141,35 @@ function gitVerdictOf(args: string[]): string | undefined {
   return undefined
 }
 
+/**
+ * The script a shell runs: the first word after its options when one of them
+ * is `-c`, alone or in a cluster (`-lc`, `-ec`, `-eo pipefail -c`). Undefined
+ * when the shell runs no `-c` script.
+ */
+function shellScriptOf(args: string[]): string | undefined {
+  let runsScript = false
+  let i = 0
+  while (i < args.length) {
+    const a = args[i] ?? ''
+    if (a === '--') {
+      i++
+      break
+    }
+    if (SHELL_OPTION_WITH_VALUE.has(a)) {
+      i += 2
+    } else if (/^[-+][A-Za-z]+$/.test(a)) {
+      if (a.startsWith('-') && a.includes('c')) runsScript = true
+      i += /[oO]$/.test(a) ? 2 : 1 // `-eo pipefail`: the cluster's last option takes the next word
+    } else if (a.startsWith('--')) {
+      i++
+    } else {
+      break
+    }
+  }
+
+  return runsScript ? args[i] : undefined
+}
+
 /** The command a `docker exec [options] <container> <command…>` runs, or undefined. */
 function dockerExecCommandOf(args: string[]): string[] | undefined {
   if (args[0] !== 'exec') return undefined
@@ -171,10 +203,10 @@ function verdictOfWords(words: string[], depth: number, isInContainer = false): 
     return 'creating a GitHub release creates its tag on the remote, which fires the LIVE release wave (AGENTS.md §6). Releases are cut by the human.'
   }
 
+  // A `sh -c` script runs where its shell runs: inside the container when a `docker exec` started it.
   if (SHELLS.has(name) && depth < 3) {
-    const c = args.indexOf('-c')
-    const script = c === -1 ? undefined : args[c + 1]
-    if (script !== undefined) return verdictOf(script, depth + 1)
+    const script = shellScriptOf(args)
+    if (script !== undefined) return verdictOf(script, depth + 1, isInContainer)
   }
 
   return undefined
@@ -185,10 +217,11 @@ function verdictOfWords(words: string[], depth: number, isInContainer = false): 
  *
  * @param line the command as the Bash tool received it
  * @param depth how many `sh -c` levels deep this line sits
+ * @param isInContainer whether a `docker exec` above this line runs it inside the container
  */
-export function verdictOf(line: string, depth = 0): string | undefined {
+export function verdictOf(line: string, depth = 0, isInContainer = false): string | undefined {
   for (const words of simpleCommandsOf(line)) {
-    const verdict = verdictOfWords(words, depth)
+    const verdict = verdictOfWords(words, depth, isInContainer)
     if (verdict !== undefined) return verdict
   }
 
