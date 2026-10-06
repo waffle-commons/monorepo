@@ -8,8 +8,11 @@
 ## Canonical commands (always in Docker — never run PHP on the host)
 
 ```bash
-docker exec -it -w /waffle-commons/{component} waffle-dev {command}
+docker exec -w /waffle-commons/{component} waffle-dev {command}
 ```
+
+No `-it`: the agent's shell has no terminal, and Docker refuses `-t` without one. Add `-it` only when
+typing the command in a terminal; `wfl run|mago|test` choose for you.
 
 | Intent | `{command}` |
 |--------|-------------|

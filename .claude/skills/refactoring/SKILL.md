@@ -12,7 +12,7 @@ argument-hint: "[component]"
 Execute safe refactors across Waffle components to improve structure, enforce PHP 8.5 capabilities, and rigorously eliminate technical debt according to the **Mago Purge Protocol**.
 
 ## Before touching anything
-1. Establish a green baseline in Docker: `docker exec -it -w /waffle-commons/{component} waffle-dev composer tests` **and** `composer mago` (zero output) **and** `composer igor` (0 KO). Capture it before changing anything — you must end at least as green.
+1. Establish a green baseline in Docker: `docker exec -w /waffle-commons/{component} waffle-dev composer tests` **and** `composer mago` (zero output) **and** `composer igor` (0 KO). Capture it before changing anything — you must end at least as green.
 2. If tests are missing, load the `test` skill first.
 3. **Check the release phase.** After the beta8 tag the public API is frozen: a refactor may change
    internals only — no public symbol renamed, moved or re-signed (`api-freeze`).
@@ -32,8 +32,8 @@ Execute safe refactors across Waffle components to improve structure, enforce PH
 ## Verification steps
 After every refactor, inside the component's Docker scope:
 ```bash
-docker exec -it -w /waffle-commons/{component} waffle-dev composer mago   # fmt+lint+analyze+guard — zero output
-docker exec -it -w /waffle-commons/{component} waffle-dev composer tests  # PHPUnit 12.5, ≥95%
-docker exec -it -w /waffle-commons/{component} waffle-dev composer igor   # worker-safety, 0 KO
+docker exec -w /waffle-commons/{component} waffle-dev composer mago   # fmt+lint+analyze+guard — zero output
+docker exec -w /waffle-commons/{component} waffle-dev composer tests  # PHPUnit 12.5, ≥95%
+docker exec -w /waffle-commons/{component} waffle-dev composer igor   # worker-safety, 0 KO
 ```
 All three must pass flawlessly. See `[[worker-safety]]` if `igor` reports a KO.

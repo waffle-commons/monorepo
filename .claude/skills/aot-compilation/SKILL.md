@@ -78,8 +78,8 @@ AOT artifact", AOT-01/02/03/04.
 
 ## Regenerate after any code change
 ```bash
-docker exec -it -w /waffle-commons/{app} waffle-dev bin/waffle container:compile   # → var/cache/CompiledContainer.php
-docker exec -it -w /waffle-commons/{app} waffle-dev bin/waffle route:compile        # → var/cache/routes.trie.php
+docker exec -w /waffle-commons/{app} waffle-dev bin/waffle container:compile   # → var/cache/CompiledContainer.php
+docker exec -w /waffle-commons/{app} waffle-dev bin/waffle route:compile        # → var/cache/routes.trie.php
 ```
 Enable the fast path with `WAFFLE_AOT=1` in the worker environment; unset it (default) for dev.
 

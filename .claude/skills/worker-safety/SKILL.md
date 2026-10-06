@@ -97,7 +97,7 @@ Opening the PR is the maintainer's action.
 
 ## Execution (in Docker)
 ```bash
-docker exec -it -w /waffle-commons/{component} waffle-dev composer igor   # per component: 0 KO required
+docker exec -w /waffle-commons/{component} waffle-dev composer igor   # per component: 0 KO required
 wfl igor                                                                  # whole monorepo sweep
 ```
 Done when the component (and the repo) reports **0 KO**. If a fix needs `#[WorkerSafe]`, also re-run

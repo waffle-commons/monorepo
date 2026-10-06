@@ -75,10 +75,10 @@ ceremony", "user-verification requirement", "AUTH-01", auditing or extending the
 
 ## Execution (in Docker)
 ```bash
-docker exec -it -w /waffle-commons/auth     waffle-dev composer mago    # incl. the narrowed guard perimeter
-docker exec -it -w /waffle-commons/auth     waffle-dev composer tests
-docker exec -it -w /waffle-commons/auth     waffle-dev composer igor
-docker exec -it -w /waffle-commons/contracts waffle-dev composer mago
+docker exec -w /waffle-commons/auth     waffle-dev composer mago    # incl. the narrowed guard perimeter
+docker exec -w /waffle-commons/auth     waffle-dev composer tests
+docker exec -w /waffle-commons/auth     waffle-dev composer igor
+docker exec -w /waffle-commons/contracts waffle-dev composer mago
 ```
 Verify: tampered challenge/origin/UV-flag/signature/counter/userHandle ⇒ verification failure (genuine
 cryptographic rejection, not mocks); unknown/expired ceremony or credential ⇒ fail-closed throw;

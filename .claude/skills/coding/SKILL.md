@@ -44,7 +44,7 @@ Treat a task as **complex** (parallelise) when:
 4. **Validation** — Use PHP 8.5 Property Hooks (`set(string $value) { ... }`) instead of legacy getters/setters.
 5. **Types** — Always start with `declare(strict_types=1);`. No `mixed` types. Typed constants everywhere.
 6. **Error Handling** — Never silence errors. Throw specific exceptions (e.g., `ValidationException`) to be intercepted by `error-handler`. No native `$_SESSION` or `sys_get_temp_dir()`.
-7. **After writing** — load the `test` skill, then load `code-review`. Verify with `docker exec -it -w /waffle-commons/{component} waffle-dev composer mago` (must emit **zero** errors/warnings/info/help) and `composer igor` (0 KO).
+7. **After writing** — load the `test` skill, then load `code-review`. Verify with `docker exec -w /waffle-commons/{component} waffle-dev composer mago` (must emit **zero** errors/warnings/info/help) and `composer igor` (0 KO).
 
 ## Workflow — complex task (parallel workers)
 

@@ -29,8 +29,8 @@ edit `src`.
 
 ## Execution (in Docker)
 ```bash
-docker exec -it -w /waffle-commons/{app} waffle-dev bin/waffle container:compile   # → var/cache/CompiledContainer.php
-docker exec -it -w /waffle-commons/{app} waffle-dev bin/waffle route:compile        # → var/cache/routes.trie.php
+docker exec -w /waffle-commons/{app} waffle-dev bin/waffle container:compile   # → var/cache/CompiledContainer.php
+docker exec -w /waffle-commons/{app} waffle-dev bin/waffle route:compile        # → var/cache/routes.trie.php
 docker exec -i -w /waffle-commons/console waffle-dev vendor/bin/phpunit --filter ContainerCompilerTest
 docker exec -i -w /waffle-commons/waffle  waffle-dev vendor/bin/phpunit --filter KernelAotFastPathTest
 ```

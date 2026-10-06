@@ -62,10 +62,10 @@ REACTIVE-01.
 
 ## Execution (in Docker)
 ```bash
-docker exec -it -w /waffle-commons/contracts waffle-dev composer mago
-docker exec -it -w /waffle-commons/waffle   waffle-dev composer mago
-docker exec -it -w /waffle-commons/waffle   waffle-dev composer tests
-docker exec -it -w /waffle-commons/waffle   waffle-dev composer igor   # buffer = request-scoped → 0 KO
+docker exec -w /waffle-commons/contracts waffle-dev composer mago
+docker exec -w /waffle-commons/waffle   waffle-dev composer mago
+docker exec -w /waffle-commons/waffle   waffle-dev composer tests
+docker exec -w /waffle-commons/waffle   waffle-dev composer igor   # buffer = request-scoped → 0 KO
 ```
 Definition of done unchanged: `composer mago` zero output, `composer tests` ≥95%, `wfl igor` 0 KO
 (`wfl dod` runs the full per-component gate).

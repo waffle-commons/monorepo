@@ -42,10 +42,10 @@ required for FrankenPHP worker mode. Each component is its own Git repo, so audi
 ## Execution (always in Docker)
 ```bash
 # Static gates (analysis & guard are security-relevant: types, dead allow-paths, perimeter)
-docker exec -it -w /waffle-commons/{component} waffle-dev composer analyzer
-docker exec -it -w /waffle-commons/{component} waffle-dev composer guard
+docker exec -w /waffle-commons/{component} waffle-dev composer analyzer
+docker exec -w /waffle-commons/{component} waffle-dev composer guard
 # Hunt forbidden stateful/superglobal patterns in source
-docker exec -it -w /waffle-commons/{component} waffle-dev grep -rnE '\$_SESSION|\$_GET|\$_POST|\$_SERVER|session_start|sys_get_temp_dir' src
+docker exec -w /waffle-commons/{component} waffle-dev grep -rnE '\$_SESSION|\$_GET|\$_POST|\$_SERVER|session_start|sys_get_temp_dir' src
 # SEC-03 timing-safe comparison gate (naive === / !== on secret/token/hmac sites)
 wfl compare-audit {component}
 ```

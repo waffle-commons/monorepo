@@ -46,8 +46,8 @@ green on their own gates by mid-October**, the release splits: NET + OPS + QUEUE
 ## Definition of done
 Run **`wfl dod [component]`** to execute the full gate (mago + tests + coverage + igor) in one shot. A
 task is done when:
-- [ ] `docker exec -it -w /waffle-commons/{component} waffle-dev composer tests` passes for all modified components (PHPUnit 12.5, ≥95% coverage).
-- [ ] `docker exec -it -w /waffle-commons/{component} waffle-dev composer mago` emits **zero output** — no errors, warnings, info, or help messages.
+- [ ] `docker exec -w /waffle-commons/{component} waffle-dev composer tests` passes for all modified components (PHPUnit 12.5, ≥95% coverage).
+- [ ] `docker exec -w /waffle-commons/{component} waffle-dev composer mago` emits **zero output** — no errors, warnings, info, or help messages.
 - [ ] `wfl igor` reports **0 KO** across the affected components (worker-safety gate).
 - [ ] The Mago Purge Protocol is respected (no baseline files exist or were modified).
 - [ ] `code-review` verdict is `Approved`.

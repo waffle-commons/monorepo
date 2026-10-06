@@ -92,7 +92,7 @@ item tagged *benchmark-gated*.
 
 ## Execution (in Docker)
 ```bash
-docker exec -it -w /waffle-commons/{component} waffle-dev composer benchmark   # phpbench (default_report)
+docker exec -w /waffle-commons/{component} waffle-dev composer benchmark   # phpbench (default_report)
 wfl bench                                                                      # switch container to 🚀 bench profile (JIT on, xdebug off)
 wfl igor                                                                       # memory-drift replay for state leaks
 cd bench && scripts/run-bench.sh <engine> <scenario> [workload]                # the tri-engine k6 rig (see bench/README.md)

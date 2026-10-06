@@ -24,7 +24,7 @@ listener in the kernel factory", "the workspace doesn't pick up my contracts cha
   refresh skeleton's vendor before its gate is meaningful:
   ```bash
   rsync -a --delete {component}/src/ skeleton/vendor/waffle-commons/{component}/src/
-  docker exec -it -w /waffle-commons/skeleton waffle-dev composer dump-autoload
+  docker exec -w /waffle-commons/skeleton waffle-dev composer dump-autoload
   ```
   (Same skew that `[[contracts-first]]` documents; dispatch the `contracts-sync` agent for contracts.)
 - **academy** — nested submodules (`obsidian`/`labs`/`sandbox`) using the workspace path-repo pattern;
@@ -64,10 +64,10 @@ contracts stay **English** even there.
 # refresh skeleton's stale vendor copies + re-wire the demo apps after a feature lands
 wfl sync:demos
 # after wiring, gate each touched app
-docker exec -it -w /waffle-commons/skeleton  waffle-dev composer mago && \
-docker exec -it -w /waffle-commons/skeleton  waffle-dev composer tests
-docker exec -it -w /waffle-commons/workspace waffle-dev composer mago && \
-docker exec -it -w /waffle-commons/workspace waffle-dev composer tests
+docker exec -w /waffle-commons/skeleton  waffle-dev composer mago && \
+docker exec -w /waffle-commons/skeleton  waffle-dev composer tests
+docker exec -w /waffle-commons/workspace waffle-dev composer mago && \
+docker exec -w /waffle-commons/workspace waffle-dev composer tests
 wfl academy:test
 ```
 > **Flakiness note:** `workspace` `mago analyze` can hit Docker/macOS file-share EMFILE/ENOENT

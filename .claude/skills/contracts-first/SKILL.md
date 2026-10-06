@@ -71,7 +71,7 @@ gating a consumer, mirror fresh contracts in:
 ```bash
 # from the umbrella root — see the contracts-sync agent
 rsync -a --delete contracts/src/ {consumer}/vendor/waffle-commons/contracts/src/
-docker exec -it -w /waffle-commons/{consumer} waffle-dev composer dump-autoload
+docker exec -w /waffle-commons/{consumer} waffle-dev composer dump-autoload
 ```
 - **workspace** vendor is a **symlink** (always fresh) — no rsync needed.
 - **skeleton** and framework components vendor a **stale copy** — rsync + dump-autoload first.
@@ -81,8 +81,8 @@ mirrors fresh `contracts/src` into every stale-copy consumer and dumps autoloade
 
 ## Execution
 ```bash
-docker exec -it -w /waffle-commons/contracts waffle-dev composer mago && \
-docker exec -it -w /waffle-commons/contracts waffle-dev composer tests
+docker exec -w /waffle-commons/contracts waffle-dev composer mago && \
+docker exec -w /waffle-commons/contracts waffle-dev composer tests
 # mirror into each consumer (or use contracts-sync), then gate the consumer
-docker exec -it -w /waffle-commons/{consumer} waffle-dev composer guard   # perimeter holds
+docker exec -w /waffle-commons/{consumer} waffle-dev composer guard   # perimeter holds
 ```

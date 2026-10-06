@@ -23,9 +23,9 @@ You are the integration agent in the PHP 8.5 `waffle-commons` monorepo. Parallel
 ### 3. Final verification
 Run these commands via Docker for every modified component and fix failures:
 ```bash
-docker exec -it -w /waffle-commons/{component} waffle-dev composer mago   # Mago Purge Protocol — ZERO output (no errors/warnings/info/help)
-docker exec -it -w /waffle-commons/{component} waffle-dev composer tests  # PHPUnit 12.5, ≥95% coverage
-docker exec -it -w /waffle-commons/{component} waffle-dev composer igor   # worker-safety, 0 KO
+docker exec -w /waffle-commons/{component} waffle-dev composer mago   # Mago Purge Protocol — ZERO output (no errors/warnings/info/help)
+docker exec -w /waffle-commons/{component} waffle-dev composer tests  # PHPUnit 12.5, ≥95% coverage
+docker exec -w /waffle-commons/{component} waffle-dev composer igor   # worker-safety, 0 KO
 ```
 
 Report the integration result, confirming Mago (zero output), PHPUnit, and Igor (0 KO) compliance.

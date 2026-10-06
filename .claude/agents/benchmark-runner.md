@@ -52,7 +52,7 @@ the item.
 ## Execution (in Docker)
 ```bash
 wfl bench                                                                       # 🚀 bench profile (JIT on, xdebug off)
-docker exec -it -w /waffle-commons/{component} waffle-dev composer benchmark    # phpbench (default_report)
+docker exec -w /waffle-commons/{component} waffle-dev composer benchmark    # phpbench (default_report)
 wfl igor                                                                        # memory-drift / state-leak replay
 cd bench && scripts/run-bench.sh <engine> <scenario> [workload]                 # tri-engine k6 rig (bench/README.md)
 ```

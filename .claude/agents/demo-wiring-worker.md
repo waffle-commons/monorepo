@@ -33,7 +33,7 @@ and gates green.
 - **skeleton** — `vendor/waffle-commons/*` are **stale copies**; refresh before its gate is meaningful:
   ```bash
   rsync -a --delete {component}/src/ skeleton/vendor/waffle-commons/{component}/src/
-  docker exec -it -w /waffle-commons/skeleton waffle-dev composer dump-autoload
+  docker exec -w /waffle-commons/skeleton waffle-dev composer dump-autoload
   ```
   (For contracts changes, dispatch the `contracts-sync` agent / `wfl sync:contracts`.)
 
@@ -44,9 +44,9 @@ user-facing string. Code, namespaces, and contracts stay **English** even there.
 ## Execution (in Docker)
 ```bash
 # gate the touched app + a kernel boot smoke test
-docker exec -it -w /waffle-commons/{app} waffle-dev composer mago && \
-docker exec -it -w /waffle-commons/{app} waffle-dev composer tests
-docker exec -it -w /waffle-commons/{app} waffle-dev bin/waffle list   # kernel boots, command registry loads
+docker exec -w /waffle-commons/{app} waffle-dev composer mago && \
+docker exec -w /waffle-commons/{app} waffle-dev composer tests
+docker exec -w /waffle-commons/{app} waffle-dev bin/waffle list   # kernel boots, command registry loads
 ```
 > **Flakiness note:** `workspace` `mago analyze` can hit the Docker/macOS file-share EMFILE/ENOENT
 > (`Too many open files`) — restart `waffle-dev` and re-run; it is not a code regression.

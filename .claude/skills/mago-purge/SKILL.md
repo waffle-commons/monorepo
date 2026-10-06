@@ -50,13 +50,13 @@ PHP 8.5 constructs.
 find {component} -name 'mago-*-baseline.toml' -delete
 
 # 2. Run the gates (fastest → strictest)
-docker exec -it -w /waffle-commons/{component} waffle-dev composer analyzer
-docker exec -it -w /waffle-commons/{component} waffle-dev composer linter
-docker exec -it -w /waffle-commons/{component} waffle-dev composer guard
+docker exec -w /waffle-commons/{component} waffle-dev composer analyzer
+docker exec -w /waffle-commons/{component} waffle-dev composer linter
+docker exec -w /waffle-commons/{component} waffle-dev composer guard
 
 # 3. After fixing, prove the whole gate + tests are green
-docker exec -it -w /waffle-commons/{component} waffle-dev composer mago
-docker exec -it -w /waffle-commons/{component} waffle-dev composer tests
+docker exec -w /waffle-commons/{component} waffle-dev composer mago
+docker exec -w /waffle-commons/{component} waffle-dev composer tests
 ```
 Done only when `mago` (fmt + lint + analyze + guard) and `tests` (≥95% coverage) pass with **zero
 baselines** and zero suppressions.

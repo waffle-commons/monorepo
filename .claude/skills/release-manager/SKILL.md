@@ -25,9 +25,9 @@ For **each** component in the wave:
 
 2. **Prove it is green (definition of done):**
    ```bash
-   docker exec -it -w /waffle-commons/{component} waffle-dev composer mago    # ZERO output
-   docker exec -it -w /waffle-commons/{component} waffle-dev composer tests   # PHPUnit 12.5, ≥95%
-   docker exec -it -w /waffle-commons/{component} waffle-dev composer igor    # 0 KO
+   docker exec -w /waffle-commons/{component} waffle-dev composer mago    # ZERO output
+   docker exec -w /waffle-commons/{component} waffle-dev composer tests   # PHPUnit 12.5, ≥95%
+   docker exec -w /waffle-commons/{component} waffle-dev composer igor    # 0 KO
    ```
 
 3. **Sync release metadata** on the `pre-release/<version>` branch: composer constraints across

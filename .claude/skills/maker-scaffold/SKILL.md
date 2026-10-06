@@ -45,6 +45,6 @@ name against the `domain:action` convention.
 
 ## Verify (RFC-020 §6, in Docker)
 ```bash
-docker exec -it -w /waffle-commons/console waffle-dev composer mago
-docker exec -it -w /waffle-commons/console waffle-dev composer tests   # in-memory virtual FS, ≥95%
+docker exec -w /waffle-commons/console waffle-dev composer mago
+docker exec -w /waffle-commons/console waffle-dev composer tests   # in-memory virtual FS, ≥95%
 ```

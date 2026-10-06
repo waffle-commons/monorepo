@@ -72,6 +72,13 @@ _ensure_running() {
   [ "$s" = "running" ] || die "container '$CONTAINER' not running (state: $s). Try: wfl up"
 }
 
+# `docker exec` flags: a TTY (-t) only when stdin is a terminal. Docker refuses
+# -t without one ("stdin is not a terminal"): an agent's shell, CI, a pipe.
+# -i stays, so input can still be piped into `wfl run`.
+_exec_tty_flags() {
+  if [ -t 0 ]; then printf '%s\n' '-it'; else printf '%s\n' '-i'; fi
+}
+
 # ---------------------------------------------------------------------------
 # Submodule / component resolution
 # ---------------------------------------------------------------------------
@@ -256,13 +263,13 @@ cmd_run() {
   fi
 
   # Exécuter les arguments restants dynamiquement dans le conteneur.
-  exec docker exec -it -w "${target_dir}" "$CONTAINER" "$@"
+  exec docker exec $(_exec_tty_flags) -w "${target_dir}" "$CONTAINER" "$@"
 }
 
 cmd_mago() {
   local comp; comp="$(_resolve_component "${1:-}")"
   _ensure_running
-  exec docker exec -it -w "/waffle-commons/$comp" "$CONTAINER" composer mago
+  exec docker exec $(_exec_tty_flags) -w "/waffle-commons/$comp" "$CONTAINER" composer mago
 }
 
 cmd_test() {
@@ -281,9 +288,9 @@ cmd_test() {
   local comp; comp="$(_resolve_component "$comp_arg")"
   _ensure_running
   if [ -n "$filter" ]; then
-    exec docker exec -it -w "/waffle-commons/$comp" "$CONTAINER" composer tests -- --filter "$filter"
+    exec docker exec $(_exec_tty_flags) -w "/waffle-commons/$comp" "$CONTAINER" composer tests -- --filter "$filter"
   fi
-  exec docker exec -it -w "/waffle-commons/$comp" "$CONTAINER" composer tests
+  exec docker exec $(_exec_tty_flags) -w "/waffle-commons/$comp" "$CONTAINER" composer tests
 }
 
 cmd_igor() {
@@ -407,7 +414,7 @@ cmd_academy_verify() {
   # Preuve « corrigé au vert » : solve → mago → guard → phpunit → unsolve.
   _ensure_running
   info "vérification du corrigé (solve → mago → phpunit → unsolve) ..."
-  exec docker exec -it -w "/waffle-commons/academy/labs" "$CONTAINER" composer verify
+  exec docker exec $(_exec_tty_flags) -w "/waffle-commons/academy/labs" "$CONTAINER" composer verify
 }
 
 cmd_academy_serve() {
