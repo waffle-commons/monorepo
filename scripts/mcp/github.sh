@@ -10,6 +10,12 @@
 # with the human, through `gh` and its own prompts (see AGENTS.md, "Git &
 # release safety"). The `actions` toolset adds read access to CI runs and logs.
 #
+# The image is pinned by digest, like mongo and redis: a tag can be re-pushed.
+# Docker resolves only the digest; the tag is a label for readers, so keep
+# both in step. To update: copy the index digest from
+# `docker buildx imagetools inspect ghcr.io/github/github-mcp-server:<version>`,
+# then run `wfl mcp:check`.
+#
 # stdout is the MCP channel — diagnostics go to stderr only.
 # =============================================================================
 set -euo pipefail
@@ -26,5 +32,5 @@ export GITHUB_PERSONAL_ACCESS_TOKEN="$token"
 unset token
 
 exec docker run --rm -i -e GITHUB_PERSONAL_ACCESS_TOKEN \
-  ghcr.io/github/github-mcp-server:v1.12.2 \
+  ghcr.io/github/github-mcp-server:v1.12.2@sha256:508a0857ec762b1ab1cece29193345b501fab1dd9d1228a7b617062954cecac6 \
   stdio --read-only --toolsets=default,actions

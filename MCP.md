@@ -12,9 +12,9 @@ no personal path is committed, and `wfl mcp:check` can prove each one works.
 | Server | Runs via | Pinned version | Access |
 |---|---|---|---|
 | `postgres` | `npx` | `@henkey/postgres-mcp-server@1.0.7` | read + write (writes ask) |
-| `mongo` | Docker | `mongodb/mongodb-mcp-server:3.0.4` | **read-only** |
+| `mongo` | Docker | `mongodb/mongodb-mcp-server:3.0.4@sha256:f8484a34…` | **read-only** |
 | `redis` | Docker | `mcp/redis@sha256:e886a7e9…` | read + write (writes ask) |
-| `github` | Docker | `ghcr.io/github/github-mcp-server:v1.12.2` | **read-only** (`default,actions` toolsets) |
+| `github` | Docker | `ghcr.io/github/github-mcp-server:v1.12.2@sha256:508a0857…` | **read-only** (`default,actions` toolsets) |
 
 - **`postgres`** targets the workspace `waffle-postgres` (`localhost:5432`). The original
   `@modelcontextprotocol/server-postgres` is archived; `@henkey/postgres-mcp-server` is the maintained
@@ -27,6 +27,10 @@ no personal path is committed, and `wfl mcp:check` can prove each one works.
 - **`github`** is **read-only by design**: merges, pushes, releases and repository settings stay with the
   human, through `gh` and its own prompts (see `AGENTS.md` §6, "Git & release safety"). The `actions`
   toolset adds read access to workflow runs and logs.
+
+The three Docker images are pinned by digest, because a tag can be re-pushed: two different builds were
+published as `mongodb-mcp-server` `3.0.4`. Docker resolves only the digest; the version tag beside it
+(`mongo`, `github`) is a label for readers.
 
 The Postgres and Redis *write* tools are listed under `permissions.ask` in the team settings
 (`.claude/settings.json`), so each one prompts before it runs, on every clone.
@@ -88,5 +92,7 @@ In Claude Code, `/mcp` lists the servers; reconnect one there after changing its
 ## ⬆️ Updating a server
 
 Edit the pin in its launcher (`scripts/mcp/<server>.sh`), run `wfl mcp:check`, and reconnect. For
-`mcp/redis`, pull `latest` and copy the new digest from
+`mongo` and `github`, change the version tag and copy the new index digest from
+`docker buildx imagetools inspect <image>:<version>`: a tag left behind misleads readers without failing
+anything. For `mcp/redis`, pull `latest` and copy the new digest from
 `docker image inspect mcp/redis:latest --format '{{index .RepoDigests 0}}'`.
