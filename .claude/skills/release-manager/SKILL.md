@@ -18,9 +18,10 @@ explicitly told to.
 
 For **each** component in the wave:
 
-1. **Navigate to the component:**
+1. **Address the component by absolute path:** `{umbrella}/{component}` on the host (`{umbrella}` is the
+   absolute path of the umbrella checkout), `/waffle-commons/{component}` in the container:
    ```bash
-   cd {component_dir}
+   git -C {umbrella}/{component} status --short --branch
    ```
 
 2. **Prove it is green (definition of done):**
@@ -40,8 +41,8 @@ For **each** component in the wave:
    from the pinned gitlink — never pre-push them. A manual component tag exists only for an explicitly
    requested out-of-band release, and the maintainer runs it:
    ```bash
-   git tag 0.1.0-betaN        # NOT v0.1.0-betaN — out-of-band only, maintainer-run
-   git push origin 0.1.0-betaN
+   git -C {umbrella}/{component} tag 0.1.0-betaN        # NOT v0.1.0-betaN — out-of-band only, maintainer-run
+   git -C {umbrella}/{component} push origin 0.1.0-betaN
    ```
 
 5. **Packagist sync:** once the tag is on the remote, Packagist auto-syncs. Confirm the version

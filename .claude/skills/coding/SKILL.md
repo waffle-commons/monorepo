@@ -22,9 +22,9 @@ change code; RC1 adds nothing (`[[tech-lead]]` §0).
 The `waffle-commons` codebase is a monorepo managing independent Git submodules. Each component is an autonomous Git repository released independently on Packagist.
 Before taking any action or reviewing code, you must first identify the specific component you are modifying. 
 
-**CRITICAL RULE:** To check what you have modified, you cannot run `git diff` at the root. You must enter the specific component's directory:
+**CRITICAL RULE:** At the umbrella root, `git diff` shows only the gitlinks. Read the component's own diff by absolute path (`{umbrella}` is the absolute path of the umbrella checkout):
 ```bash
-cd {component_dir} && git diff
+git -C {umbrella}/{component} diff
 ```
 Only review or integrate files that were created or meaningfully changed within the context of that specific component's Git repository.
 

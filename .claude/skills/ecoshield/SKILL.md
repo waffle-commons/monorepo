@@ -88,13 +88,14 @@ From the 0.1.1 release notes and `BENCHMARK_RESULTS.md`:
 
 ## Measuring it
 The published harness uses a **native generator**: k6 on the host (never in a container on macOS),
-CPU-bounded containers, a fixed arrival rate.
+CPU-bounded containers, a fixed arrival rate. The scripts find the gateway root themselves, so call
+everything by absolute path (`{gateway}` is `{umbrella}/contributions/ecoshield-gateway`, `{umbrella}` the
+absolute path of the umbrella checkout):
 ```bash
-cd contributions/ecoshield-gateway
-bench/legacy-symfony/bootstrap.sh     # the real Symfony 5.4 monolith (generated, not versioned)
-docker compose -f docker-compose.yml -f docker-compose.perf.yml -f docker-compose.symfony.yml up -d --build
-bench/scripts/perf-run.sh full        # soak + ladder + memscale + perimeter (~55 min)
-DURATION=3h caffeinate -i bench/scripts/perf-run.sh full   # publication-grade soak (~3 h 50)
+{gateway}/bench/legacy-symfony/bootstrap.sh     # the real Symfony 5.4 monolith (generated, not versioned)
+docker compose -f {gateway}/docker-compose.yml -f {gateway}/docker-compose.perf.yml -f {gateway}/docker-compose.symfony.yml up -d --build
+{gateway}/bench/scripts/perf-run.sh full        # soak + ladder + memscale + perimeter (~55 min)
+DURATION=3h caffeinate -i {gateway}/bench/scripts/perf-run.sh full   # publication-grade soak (~3 h 50)
 ```
 Traps specific to this harness, all recorded in `BENCHMARK_RESULTS.md` §8:
 - Perimeter probes need a unique query, or the shield answers them from cache.

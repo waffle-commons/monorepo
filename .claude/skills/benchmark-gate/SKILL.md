@@ -95,8 +95,9 @@ item tagged *benchmark-gated*.
 docker exec -w /waffle-commons/{component} waffle-dev composer benchmark   # phpbench (default_report)
 wfl bench                                                                      # switch container to 🚀 bench profile (JIT on, xdebug off)
 wfl igor                                                                       # memory-drift replay for state leaks
-cd bench && scripts/run-bench.sh <engine> <scenario> [workload]                # the tri-engine k6 rig (see bench/README.md)
+{umbrella}/bench/scripts/run-bench.sh <engine> <scenario> [workload]           # the tri-engine k6 rig (see bench/README.md)
 ```
+`{umbrella}` is the absolute path of the umbrella checkout; `run-bench.sh` locates `bench/` itself.
 Record the verdict in `{component}/benchmarks/<ITEM>-GATE-RESULT.md` (the ecosystem rig publishes in
 `bench/BENCH-GATE-RESULT.md`; the gateway in its own `BENCHMARK_RESULTS.md`). Never enable JIT/bench
 profile numbers while xdebug is on. Dispatch the `benchmark-runner` agent for a gated item and

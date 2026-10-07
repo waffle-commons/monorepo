@@ -54,8 +54,9 @@ the item.
 wfl bench                                                                       # 🚀 bench profile (JIT on, xdebug off)
 docker exec -w /waffle-commons/{component} waffle-dev composer benchmark    # phpbench (default_report)
 wfl igor                                                                        # memory-drift / state-leak replay
-cd bench && scripts/run-bench.sh <engine> <scenario> [workload]                 # tri-engine k6 rig (bench/README.md)
+{umbrella}/bench/scripts/run-bench.sh <engine> <scenario> [workload]            # tri-engine k6 rig (bench/README.md)
 ```
+`{umbrella}` is the absolute path of the umbrella checkout; `run-bench.sh` locates `bench/` itself.
 
 ## Output
 Write `{component}/benchmarks/<ITEM>-GATE-RESULT.md` (or the rig's `bench/BENCH-GATE-RESULT.md`)
