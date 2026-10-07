@@ -22,18 +22,22 @@ JSON boundary. Both are reflection-free at runtime, in line with the AOT philoso
 "OpenAPI / Swagger", "generate the API spec", "serialize or hydrate a DTO", "content negotiation",
 beta7 API-01/02.
 
-## Perimeter first (`[CARRY-04]` — decide before the first class)
-`openapi:generate` must read route and DTO metadata **without importing a sibling's concrete classes**.
+## Perimeter (`[CARRY-04]`, decided 2026-10-07)
+`openapi:generate` reads route and DTO metadata **without importing a sibling's concrete classes**. The
+record is in `Roadmap_Beta7.md`.
 
-- **What contracts offers today:** `Routing\RouterInterface` (`getRoutes(): array`),
-  `Routing\MatchedRoute` (a `final readonly` value object of scalars and arrays), and the `#[Route]`
-  attribute in `Routing\Attribute\Route`.
-- **What is missing:** a route-metadata seam that exposes each route's controller class and method, so
-  the generator can reflect on the signature at build time. Put it in contracts first, or record the
-  exception explicitly. Build-time reflection is fine; runtime stays reflection-free.
-- **Where the command lives is also open:** in `console` (the shipped perimeter: commands depend on
-  contracts, concretes are wired in `bin/waffle`, as `queue:work` will be), or in the `openapi` package
-  itself.
+- **Routes come from the existing contract.** `RouterInterface::getRoutes()` returns `list<MatchedRoute>`,
+  and each `MatchedRoute` carries the controller `className` and `method`, the `path`, the HTTP `methods`,
+  the `name` and the `arguments` (parameter name → type). `route:list`, `route:compile` and
+  `security:audit` already consume it. `security:audit` reflects on the controller method at build time,
+  the pattern the generator follows. Build-time reflection is fine; runtime stays reflection-free.
+- **The command lives in `openapi`.** Its class implements `Console\CommandInterface` and is registered in
+  `bin/waffle` next to the console commands, with the booted router. `console` gets no generator
+  contract.
+- **The DTO shape comes from one reader in `utils`:** a build-time reader (constructor parameters in,
+  readable properties out, hooks, asymmetric visibility, nested DTOs), shared with the serializer's
+  normalizer compiler so the spec matches what the serializer accepts and emits. `openapi` and
+  `serializer` both require `utils` and permit it in their `mago.toml` guard.
 
 ## Mandates
 ### `[API-01]` OpenAPI
@@ -66,5 +70,5 @@ hooks and asymmetric visibility. It is **not** a general-purpose serializer.
   as a `require-dev` dependency; the perimeter is unaffected.
 - The serializer round-trips every DTO shape in the matrix — hooks, asymmetric visibility, nested DTOs,
   arrays — and rejects the invalid cases.
-- DoD: `wfl dod openapi` and `wfl dod serializer`, plus contracts and console if touched. Verify with
+- DoD: `wfl dod openapi` and `wfl dod serializer`, plus contracts and utils if touched. Verify with
   `acceptance-verifier` (scope `API`).

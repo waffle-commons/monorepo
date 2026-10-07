@@ -69,7 +69,8 @@ permits it explicitly in its own `mago.toml` guard.
 **Beta7 newcomers (2026-09-30):** `queue`, `openapi`, `serializer` and `testing` are configured and pass
 DoD in scaffold mode. Their first class switches tests and coverage on. Each joins `RELEASE_INCLUDE`
 only once it ships code, and each gets its first stable-channel publication at RC1 (`[RC-06]`).
-Perimeter decisions to settle before the first class: `[CARRY-04]` in `contracts-first`.
+Their perimeter decisions (`[CARRY-04]`) were made on 2026-10-07: see `contracts-first` and
+`Roadmap_Beta7.md`.
 
 ## 6. Verify and report
 - `wfl ci:check` → no drift (canonical CI byte-identical, Dependabot, toolchain, description, filter).

@@ -19,15 +19,22 @@ web server. See `[[test]]`, `[[contracts-first]]`, `[[queue-worker]]`, `[[ecoshi
 "WaffleTestCase", "boot the kernel in a test", "simulate a request", "in-memory queue / mailer / HTTP
 test double", "freeze the clock", beta7 TEST-01.
 
-## Perimeter first (`[CARRY-04]` — decide before the first class)
-- **Kernel factory seam.** `WaffleTestCase` must boot an application's kernel without importing a
-  sibling's concrete classes. contracts has `Core\KernelInterface` and `Core\TerminableInterface` but **no
-  kernel factory seam** — each app builds its kernel in its own `AppKernelFactory`. Add the seam (for
-  example an app-provided factory interface) to contracts first, or record the exception.
-- **Clock.** contracts has no clock (no PSR-20 `ClockInterface`), and the time double needs one. Adopt
-  PSR-20 or add a contract, contracts-first.
-- **PHPUnit at runtime.** `testing` extends PHPUnit's `TestCase`, so its `mago.toml` guard must permit
-  `PHPUnit\**` alongside contracts and utils.
+## Perimeter (`[CARRY-04]`, decided 2026-10-07)
+The record is in `Roadmap_Beta7.md`.
+- **Kernel: the container is on the contract.** `KernelInterface` declares
+  `public ContainerInterface $container { get; }`. There is no kernel-factory contract: `WaffleTestCase`
+  gets the kernel from an abstract `createKernel()` that the app implements in one line (for example by
+  calling its `AppKernelFactory::create()` with `Constant::ENV_TEST`). It swaps the doubles in with
+  `$kernel->container->set()` between `boot()` and `configure()`, before the container locks. A double
+  reaches what the container resolves (controllers and their dependencies), not a collaborator that the
+  app factory builds up front.
+- **Requests:** the bridge builds them with the PSR-17 `ServerRequestFactoryInterface` from the container,
+  never with `http`'s concrete classes. The app factory registers it; the template apps do not yet.
+- **Clock: PSR-20.** contracts requires `psr/clock`. The frozen, advanceable clock lives here; the system
+  clock lives in `utils` (not built yet).
+- **PHPUnit at runtime.** `testing` requires `phpunit/phpunit` ^12.5. Its `mago.toml` guard permits
+  `PHPUnit\**` in one sub-namespace only (the `WaffleTestCase` layer), so the kernel client and the
+  doubles stay free of PHPUnit.
 
 ## Mandates
 - **`[TEST-01]` `WaffleTestCase`:** boots in-process, dispatches simulated PSR-7 requests through the

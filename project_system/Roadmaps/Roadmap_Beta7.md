@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-10-06
+date_updated: 2026-10-07
 type: project
 status: in-progress
 tags:
@@ -67,10 +67,37 @@ aliases: []
   lives in the dev-mode `ComplianceScanner` and the igor gate, with `#[WorkerSafe]` as the only escape
   hatch. Decide — as an RFC-001 amendment, not code — whether a first-class "intentional state" marker
   is needed and how it differs from `#[WorkerSafe]`.
-- **`[CARRY-04]` Perimeter design for `testing` and `openapi`** (decide before their first class):
-  `WaffleTestCase` must boot a kernel and `openapi:generate` must read route and DTO metadata without
-  importing a sibling's concrete classes. Put the seams in `waffle-commons/contracts` first (kernel
-  factory / route-metadata interfaces), or record the exception explicitly.
+- **`[CARRY-04]` Perimeter design for `testing` and `openapi` — decided 2026-10-07:** `WaffleTestCase` must
+  boot a kernel and `openapi:generate` must read route and DTO metadata without importing a sibling's
+  concrete classes. The kickoff expected three new seams. A single contracts change covers it (the clock
+  requirement and one property), with no recorded exception:
+  - **Routes: no new seam.** `RouterInterface::getRoutes()` already returns `MatchedRoute` objects that carry
+    the controller class and method, the path, the HTTP methods, the name and the argument types.
+    `route:list`, `route:compile` and `security:audit` already consume it, and `security:audit` reflects on
+    the controller method at build time: the pattern `openapi:generate` follows.
+  - **Clock: PSR-20.** `psr/clock` joins the nine PSR packages contracts already requires. A system clock
+    lives in `utils`, a frozen, advanceable clock in `testing`. New beta7 code (`[NET-01]`, `[NET-03]`,
+    `[QUEUE-02]`) takes the clock by injection from its first class. The components that read the time
+    directly today (auth, security, cache, telemetry, log) can move over later. Whether the limiter or the
+    breaker also needs a monotonic reading is settled in RFC-024 §5.
+  - **Kernel and doubles: the container on the kernel contract.** `KernelInterface` declares
+    `public ContainerInterface $container { get; }`, the property `AbstractKernel` already exposes. There is
+    no kernel-factory contract: `WaffleTestCase` gets the kernel from an abstract `createKernel()` that the
+    app implements, and swaps its doubles in between `boot()` and `configure()`, before the container
+    locks. Accepted limit: a double reaches what the container resolves (controllers and their
+    dependencies), not a collaborator that an app factory builds up front. The app factories also register
+    `ServerRequestFactoryInterface`, so a test builds its requests without importing `http`.
+  - **`openapi:generate` lives in `openapi`**, as a `Console\CommandInterface` implementation registered in
+    `bin/waffle` like the console commands. `console` needs no generator contract.
+  - **DTO shape: one build-time reader in `utils`** (constructor parameters in, readable properties out,
+    hooks, asymmetric visibility, nested DTOs). The serializer's normalizer compiler and the OpenAPI schema
+    builder share it, so the spec matches what the serializer accepts and emits.
+  - **PHPUnit:** `testing` requires `phpunit/phpunit` ^12.5, and its guard permits `PHPUnit\**` in one
+    sub-namespace only, so the kernel client and the doubles stay free of PHPUnit.
+  - **Rejected:** a kernel-factory contract with test overrides (a test-only parameter in a contract that
+    beta8 freezes); a generator contract so that `console` can host the command; `openapi` reflecting DTOs
+    on its own (the spec would drift from the serializer); a Waffle-specific clock interface (non-standard,
+    so PSR-20 libraries would need an adapter).
 - **`[CARRY-05]` igor 0.9.x write-through false positives:** 0.9.x flags writes *through* an injected
   service (`$this->cache->set(…)`) as "mutation on an injected dependency". Each case in this release is
   adjudicated in code (fixed or `#[WorkerSafe]` with its reason); propose the detector fix upstream in

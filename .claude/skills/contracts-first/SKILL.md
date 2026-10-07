@@ -45,10 +45,16 @@ Planned in the roadmap:
 - `Health\` — `HealthCheckInterface` (`[[k8s-ops]]`; proposed shape in RFC-023 §3.1).
 - The resilience policy, breaker and shared state-storage contracts (`[[resilience-net]]`; RFC-024).
 
-Surfaced at kickoff, still to decide (`[CARRY-04]`):
-- a route-metadata seam that exposes controller class and method, for `openapi` (`[[api-surface]]`);
-- a kernel-factory seam and a clock (no PSR-20 clock exists in contracts), for `testing`
-  (`[[testing-bridge]]`);
+`[CARRY-04]`, decided 2026-10-07 (the record is in `Roadmap_Beta7.md`):
+- **Routes for `openapi`:** no new seam. `RouterInterface::getRoutes()` already returns `MatchedRoute`
+  with the controller class, method and argument types (`[[api-surface]]`).
+- **Clock:** PSR-20. `psr/clock` joins the contracts requirements. The system clock lives in `utils`,
+  the frozen clock in `testing` (`[[testing-bridge]]`). New beta7 code takes it by injection.
+- **Kernel for `testing`:** `KernelInterface` declares `public ContainerInterface $container { get; }`.
+  There is no kernel-factory contract.
+- **DTO shape:** a build-time reader in `utils`, shared by `serializer` and `openapi`. No contract.
+
+Surfaced at kickoff, still to decide:
 - a trusted-proxy client-IP resolver, for IP-keyed limiting;
 - the circuit-breaker transition event type, so listeners elsewhere never import `http-client`'s
   concrete classes.
