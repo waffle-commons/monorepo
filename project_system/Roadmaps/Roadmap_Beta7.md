@@ -179,6 +179,8 @@ _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams
         
     - Compose with the beta4 `[SEC-02]` SSRF guardrail (resolve → validate → pin runs on every retry attempt).
         
+    - *Status 2026-10-17:* landed — contracts `TimeoutPolicy`/`RetryPolicy`, `Client::withTimeouts()`, `RetryingClient`; the concurrent path is not yet covered (RFC-024 §3.3).
+        
 
 ### `[NET-03]` Circuit Breaker
 

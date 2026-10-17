@@ -79,6 +79,12 @@ legacy upstream.
   breaker before a handle is allocated, exactly as it runs the SSRF guard today.
 - `AuthenticatedClient` (RFC-021) keeps decorating the client, and credentials are applied again on every
   attempt.
+- *Implemented 2026-10-17:* composition is by decorators around any PSR-18 client —
+  `RetryingClient(CircuitBreakerClient(Client))` — so every attempt goes through the breaker and re-runs the
+  SSRF guard, and an open circuit is never retried. Timeouts are `Client::withTimeouts(TimeoutPolicy)`.
+  **Not yet covered:** the concurrent path (`sendRequests()`, `promise()`) has no retry or breaker; the
+  retry budget bounds the waits and the start of each attempt, so the worst case is the budget plus one
+  attempt's total timeout.
 
 ## 4. Contributor Guidelines
 
@@ -104,6 +110,12 @@ legacy upstream.
    already uses; `cache` reaches Redis through predis, outside that pool, so housing the state there
    would add a second Redis client stack. PSR-16 `get`/`set` cannot be atomic, so the state never goes
    through the cache contracts. This supersedes RFC-017 §3.1's "must rely on `waffle-commons/cache`".
+
+   *Refined 2026-10-17 with the contracts change:* the family holds two interfaces rather than one —
+   `RateLimit\LimiterStateStorageInterface` (token buckets) and `CircuitBreaker\CircuitStateStorageInterface`
+   (`acquire`, `record`) — sharing `RateLimit\Exception\StateStorageExceptionInterface`, each implemented in
+   `data` over the Redis pool (`RedisLimiterStateStorage`, `RedisCircuitStateStorage`). Each consumer depends
+   only on the operations it uses.
 2. **Breaker behaviour when its own storage is unavailable** (treat as closed, or fail fast).
 
    **Decision (2026-10-17): treat as closed.** Calls go through, with a warning log and a metric; the
