@@ -1,7 +1,7 @@
 /**
  * Reads `wfl dod <component>` output (scripts/dod.sh) into a checklist.
  *
- * dod.sh writes plain lines when piped: `→ N/5 …` as a gate starts, `✓ …` on
+ * dod.sh writes plain lines when piped: `→ N/6 …` as a gate starts, `✓ …` on
  * stdout or `! …` on stderr with its result, six-space-indented details under
  * a failure, and `✓ DoD PASS — c` or `✗ DoD FAIL — c` last. A gate is told by
  * its keyword rather than by position, so interleaved stdout and stderr parse
@@ -9,7 +9,7 @@
  */
 import type { DodRun, DodStep, DodStepName } from '../types'
 
-const STEPS: readonly DodStepName[] = ['mago', 'tests', 'coverage', 'igor', 'compare-audit']
+const STEPS: readonly DodStepName[] = ['mago', 'tests', 'coverage', 'igor', 'audit', 'compare-audit']
 
 /** How many detail lines a failing gate keeps. */
 export const EXCERPT_LINES = 40
@@ -19,6 +19,7 @@ const ANSI = /\u001b\[[0-9;]*m/g
 /** The gate a start line (`→ 2/5 composer tests…`) or a result line names. */
 function stepOf(text: string): DodStepName | undefined {
   if (/compare-audit/i.test(text)) return 'compare-audit'
+  if (/composer audit|advisor/i.test(text)) return 'audit'
   if (/\bmago\b/i.test(text)) return 'mago'
   if (/\btests?\b/i.test(text)) return 'tests'
   if (/\bcoverage\b/i.test(text)) return 'coverage'

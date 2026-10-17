@@ -95,7 +95,7 @@ claude
 
 Start it at the repository root and accept the trust prompt. That loads the team settings
 (`.claude/settings.json`: the git-safety permission rules, the MCP servers) and the repository
-plugins: `waffle-cockpit` draws three status lines under the prompt and adds `/dod <component>`, and
+plugins: `waffle-cockpit` draws status lines under the prompt (background jobs included) and adds `/dod <component>`, and
 `mattpocock-skills` adds `/mattpocock-skills:<name>`. If the lines do not show in the very first
 session, run `/reload-plugins` once.
 

@@ -5,9 +5,10 @@
  *
  *   1. model · effort │ repo ⎇ branch ●dirty │ phase · waffle-dev · igor
  *   2. context bar, tokens │ prompt cache │ cost · duration · diff
- *   3. 5h / 7d limits │ PR │ the engine's own hint (shortcuts, esc to interrupt)
+ *   3. background work: shells, monitors, subagents, the next wakeup (only while there is some)
+ *   4. 5h / 7d limits │ PR │ the engine's own hint (shortcuts, esc to interrupt)
  */
-import type { CockpitStatus, RepoInfo, SessionInfo } from '../types'
+import type { CockpitStatus, Job, RepoInfo, SessionInfo } from '../types'
 
 export type Tone = 'plain' | 'dim' | 'bold' | 'green' | 'yellow' | 'red' | 'cyan' | 'magenta' | 'blue'
 
@@ -23,6 +24,12 @@ export type ViewInput = {
   now: number
   /** The engine's own hint line (`? for shortcuts`, `esc to interrupt`); empty for none. */
   hint: string
+  /** The session's background work, running and lately ended; none when absent. */
+  jobs?: readonly Job[]
+  /** Context bar thresholds (yellow, red), in percent; 60 and 80 when absent. */
+  contextLevels?: readonly [number, number]
+  /** Hours after which an unbacked local-only history turns the segment yellow (red at three times); 24 when absent. */
+  backupWarnHours?: number
 }
 
 const SEPARATOR: Segment = { text: ' │ ', tone: 'dim' }
@@ -58,6 +65,11 @@ export function duration(ms: number): string {
   return minutes >= 60 ? `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}` : `${minutes}m`
 }
 
+/** Like duration, in seconds under a minute: what a short background job wants. */
+export function elapsed(ms: number): string {
+  return ms < 60_000 ? `${Math.max(0, Math.floor(ms / 1000))}s` : duration(ms)
+}
+
 /** An ISO 8601 instant as local `HH:MM`; empty when it does not parse. */
 export function clockOf(iso: string): string {
   const date = new Date(iso)
@@ -84,22 +96,34 @@ function repoGroup(repo: RepoInfo | null): Line {
   ]
 }
 
-function waffleGroup(waffle: CockpitStatus | null): Line {
+/** Commits on no remote and the last backup's age: `⇡91 · backup 6h`; nothing while every commit is pushed. */
+export function localGroup(localOnly: number | null, backupAgeS: number | null, warnHours = 24): Line {
+  if (localOnly === null || localOnly === 0) return []
+  const head: Segment = { text: `⇡${localOnly}`, tone: 'yellow' }
+  if (backupAgeS === null) return [head, DOT, { text: 'no backup', tone: 'red' }]
+  const hours = backupAgeS / 3600
+  const tone: Tone = hours >= warnHours * 3 ? 'red' : hours >= warnHours ? 'yellow' : 'dim'
+  return [head, DOT, { text: `backup ${duration(backupAgeS * 1000)} ago`, tone }]
+}
+
+function waffleGroup(waffle: CockpitStatus | null, warnHours: number): Line {
   if (waffle === null) return []
   const isUp = waffle.container === 'running'
   const group: Line = []
   if (waffle.phase !== '') group.push({ text: waffle.phase, tone: 'blue' }, DOT)
   group.push({ text: 'waffle-dev ', tone: 'plain' }, isUp ? { text: '●', tone: 'green' } : { text: `○ ${waffle.container}`, tone: 'red' })
   if (waffle.igor !== '') group.push(DOT, { text: `igor ${waffle.igor}`, tone: 'dim' })
+  const local = localGroup(waffle.localOnly ?? null, waffle.backupAgeS ?? null, warnHours)
+  if (local.length > 0) group.push(DOT, ...local)
   return group
 }
 
-function contextGroup(session: SessionInfo | null): Line {
+function contextGroup(session: SessionInfo | null, levels: readonly [number, number]): Line {
   const percent = session?.contextPercent
   if (percent === null || percent === undefined) return [{ text: 'ctx —', tone: 'dim' }]
   const group: Line = [
     { text: 'ctx ', tone: 'plain' },
-    { text: `${bar(percent)} ${Math.round(percent)}%`, tone: level(percent) },
+    { text: `${bar(percent)} ${Math.round(percent)}%`, tone: level(percent, levels[0], levels[1]) },
   ]
   const window = session?.contextWindow
   if (window) {
@@ -156,12 +180,48 @@ function prGroup(repo: RepoInfo | null): Line {
   return mark === undefined ? [{ text: `PR #${repo.pr.number}`, tone: 'plain' }] : [{ text: `PR #${repo.pr.number}`, tone: 'plain' }, mark]
 }
 
+/** The glyph each kind of background work is drawn with. */
+export const JOB_ICONS: Record<Job['kind'], string> = { shell: '$', monitor: '◉', agent: '◆', wakeup: '⏰' }
+
+/** How many jobs the line names before it says `+N`. */
+const JOBS_SHOWN = 4
+
+/** One job: icon, label, how long it has run (or when it fires), and its events or end mark. */
+export function jobGroup(job: Job, now: number): Line {
+  if (job.kind === 'wakeup') {
+    return [{ text: `${JOB_ICONS.wakeup} ${job.label} `, tone: 'plain' }, { text: `in ${elapsed((job.dueAt ?? now) - now)}`, tone: 'dim' }]
+  }
+  if (job.endedAt !== null) {
+    const mark: Segment = job.state === 'completed' ? { text: '✓ ', tone: 'green' } : { text: `✗ ${job.state} `, tone: 'red' }
+    return [mark, { text: `${JOB_ICONS[job.kind]} ${job.label}`, tone: 'dim' }]
+  }
+  const group: Line = [
+    { text: `${JOB_ICONS[job.kind]} `, tone: 'cyan' },
+    { text: `${job.label} `, tone: 'plain' },
+    { text: elapsed(now - job.startedAt), tone: 'dim' },
+  ]
+  if (job.events > 0) group.push({ text: ` · ${job.events} ev`, tone: 'yellow' })
+  return group
+}
+
+/** The background line: a running count, then the jobs, running ones first; empty when there is no job. */
+export function jobsLine(jobs: readonly Job[], now: number): Line {
+  if (jobs.length === 0) return []
+  const running = jobs.filter(job => job.endedAt === null)
+  const order = [...running, ...jobs.filter(job => job.endedAt !== null)]
+  const groups = order.slice(0, JOBS_SHOWN).map(job => jobGroup(job, now))
+  if (order.length > JOBS_SHOWN) groups.push([{ text: `+${order.length - JOBS_SHOWN} more (/cockpit jobs)`, tone: 'dim' }])
+  const head: Line = [{ text: `⧗ ${running.length}`, tone: running.length > 0 ? 'yellow' : 'dim' }]
+  return joined([head, ...groups], SEPARATOR)
+}
+
 /** The cockpit's lines; a line with nothing to say is left out. */
 export function linesOf(input: ViewInput): Line[] {
   const { session, repo, waffle, now, hint } = input
   const lines: Line[] = [
-    joined([modelGroup(session), repoGroup(repo), waffleGroup(waffle)], SEPARATOR),
-    joined([contextGroup(session), cacheGroup(session, now), spendGroup(session, repo, now)], SEPARATOR),
+    joined([modelGroup(session), repoGroup(repo), waffleGroup(waffle, input.backupWarnHours ?? 24)], SEPARATOR),
+    joined([contextGroup(session, input.contextLevels ?? [60, 80]), cacheGroup(session, now), spendGroup(session, repo, now)], SEPARATOR),
+    jobsLine(input.jobs ?? [], now),
     joined([...limitGroups(session), prGroup(repo), hint.trim() === '' ? [] : [{ text: hint.trim(), tone: 'dim' }]], SEPARATOR),
   ]
   return lines.filter(line => line.length > 0)

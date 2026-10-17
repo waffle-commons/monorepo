@@ -24,7 +24,7 @@ describe('the guard', () => {
     inUmbrella(on)
     await $.session.start(SESSION)
 
-    const ran = await $.tool.call({ tool: 'Bash', command: 'cd security && composer install' })
+    const ran = await $.tool.call({ tool: 'Bash', command: 'composer install --working-dir=security' })
 
     expect(ran.deny).toContain('waffle-dev')
   })

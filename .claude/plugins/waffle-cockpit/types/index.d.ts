@@ -10,6 +10,28 @@ export type CockpitStatus = {
   dirty: number | null
   /** The igor-php version pinned in `.igor-version`; empty when unreadable. */
   igor: string
+  /** Commits on no remote, umbrella and every repository under it; null when unknown. */
+  localOnly: number | null
+  /** Seconds since the last `wfl backup`; null when none is recorded. */
+  backupAgeS: number | null
+}
+
+/** Which components changed since their last green DoD: `$.clock.now()` of the last edit and of the last pass. */
+export type Evidence = {
+  edited: Record<string, number>
+  gated: Record<string, number>
+}
+
+/** A component's last `wfl dod` verdict, kept across sessions. */
+export type DodRecord = {
+  component: string
+  verdict: 'pass' | 'fail'
+  /** Milliseconds since the epoch. */
+  at: number
+  /** Line coverage as printed, e.g. `98.71`; empty when not measured. */
+  coverage: string
+  /** The gates that failed (`mago`, `tests`, …); empty on a pass. */
+  failed: string[]
 }
 
 /** One rate-limit window as the session reports it. */
@@ -55,7 +77,7 @@ export type RepoInfo = {
   pr: { number: number; review: string } | null
 }
 
-export type DodStepName = 'mago' | 'tests' | 'coverage' | 'igor' | 'compare-audit'
+export type DodStepName = 'mago' | 'tests' | 'coverage' | 'igor' | 'audit' | 'compare-audit'
 
 export type DodStepState = 'pending' | 'running' | 'pass' | 'fail' | 'skipped'
 
@@ -84,6 +106,31 @@ export type DodView = {
   isActive: boolean
 }
 
+/** What kind of background work: a backgrounded Bash command, a Monitor watch, a subagent, a /loop wakeup. */
+export type JobKind = 'shell' | 'monitor' | 'agent' | 'wakeup'
+
+export type JobState = 'running' | 'completed' | 'failed' | 'killed'
+
+/** One piece of background work of this session, as the cockpit saw it start and end. */
+export type Job = {
+  /** The task id the engine gave it (`backgroundTaskId`, the Monitor `taskId`, the agent id); `wakeup` for the loop. */
+  id: string
+  kind: JobKind
+  /** The call's own description, else its command or prompt, on one line. */
+  label: string
+  /** The full command, the agent type, or the watch target; empty when none. */
+  detail: string
+  state: JobState
+  /** `$.clock.now()` when the cockpit saw it start. */
+  startedAt: number
+  /** `$.clock.now()` when it ended; null while it runs. */
+  endedAt: number | null
+  /** A wakeup's fire time, in `$.clock.now()` milliseconds; null for the rest. */
+  dueAt: number | null
+  /** Notifications a monitor delivered so far (one per stdout line). */
+  events: number
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'waffle-cockpit': {
@@ -91,6 +138,9 @@ declare module 'claude-code' {
       session: SessionInfo | null
       repo: RepoInfo | null
       dod: DodView | null
+      jobs: Job[]
+      evidence: Evidence
+      history: Record<string, DodRecord>
       isHidden: boolean
     }
   }

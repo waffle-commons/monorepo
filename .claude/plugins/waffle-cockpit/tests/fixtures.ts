@@ -67,9 +67,16 @@ export const CHANGED = [
 
 export type World = { runs: string[][]; toasts: string[]; opened: string[]; clock: MockClock }
 
+/** What the machine answers, where a test needs something else than the defaults. */
+export type Answers = { branch?: string; container?: string; changed?: string; mago?: string; dod?: string }
+
 /** What git, gh, docker and the changed-components report answer, by command. */
-function stdoutOf(argv: readonly string[], answers: { branch?: string; container?: string; changed?: string }): string {
+function stdoutOf(argv: readonly string[], answers: Answers): string {
   const line = argv.join(' ')
+  if (line.includes('list-components.sh')) return 'contracts\nsecurity\nhttp\n'
+  if (line.includes('local-only.sh')) return 'local-only 91\nbackup-age-s 7200\n'
+  if (argv.includes('vendor/bin/mago')) return answers.mago ?? ' INFO No issues found.\n'
+  if (argv[0]?.endsWith('/bin/wfl') && argv[1] === 'dod') return answers.dod ?? ''
   if (line.includes('--show-toplevel')) return `${ROOT}\n`
   if (line.includes('--abbrev-ref')) return answers.branch ?? 'pre-release/0.1.0-beta7\n'
   if (line.includes('status --porcelain')) return ' M AGENTS.md\n M README.md\n?? notes.md\n'
@@ -84,8 +91,9 @@ function stdoutOf(argv: readonly string[], answers: { branch?: string; container
  * start, its commands, the files that mark the root, git, docker and the
  * changed-components report. Toasts and opened panes are recorded.
  */
-export function inUmbrella(on: On, answers: { branch?: string; container?: string; changed?: string } = {}): World {
+export function inUmbrella(on: On, answers: Answers = {}): World {
   const world: World = { runs: [], toasts: [], opened: [], clock: mock.clock(on, { now: 0 }) }
+  mock.store(on)
 
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('command.register', ($, e) => ({ value: { command: e.name } }))

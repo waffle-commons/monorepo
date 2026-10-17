@@ -12,7 +12,9 @@ const PASS = [
   '✓ coverage 97.2% (≥ 95%)',
   '→ 4/5 composer igor (0 KO, auditor 0.9.7)…',
   '✓ igor 0 KO',
-  '→ 5/5 compare-audit skipped (pass --compare-audit to include)',
+  '→ 5/6 composer audit (security advisories)…',
+  '✓ composer audit: no advisories on the locked dependencies',
+  '→ 6/6 compare-audit skipped (pass --compare-audit to include)',
   '───────────────────────────────────────',
   '✓ DoD PASS — contracts',
 ]
@@ -40,7 +42,7 @@ describe('applyLine', () => {
   test('a green run passes every gate it ran', () => {
     const run = runOf(PASS, 'contracts')
     expect(run.verdict).toBe('pass')
-    expect(run.steps.map(step => step.state)).toEqual(['pass', 'pass', 'pass', 'pass', 'skipped'])
+    expect(run.steps.map(step => step.state)).toEqual(['pass', 'pass', 'pass', 'pass', 'pass', 'skipped'])
     expect(summaryOf([run])).toBe('wfl dod contracts: PASS (coverage 97.2% (≥ 95%))')
   })
 

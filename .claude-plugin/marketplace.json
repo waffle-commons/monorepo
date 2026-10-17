@@ -6,7 +6,7 @@
     {
       "name": "waffle-cockpit",
       "source": "./.claude/plugins/waffle-cockpit",
-      "description": "Three status lines under the prompt, /dod in a pane with no model turn, and a Bash guard for host-side PHP, submodule --remote syncs and release-tag pushes."
+      "description": "Status lines under the prompt (incl. background shells, monitors and subagents), /dod in a pane with no model turn, and a Bash guard for host-side PHP, submodule --remote syncs and release-tag pushes."
     },
     {
       "name": "mattpocock-skills",

@@ -1,15 +1,34 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { CockpitStatus, DodRun, DodView, RepoInfo, SessionInfo } from '../types'
+import type { CockpitStatus, DodRecord, DodRun, DodView, Job, RepoInfo, SessionInfo } from '../types'
 import { applyLine, emptyRun, excerptOf, LineSplitter, summaryOf } from './dod'
-import { verdictOf } from './guard'
+import {
+  EMPTY_EVIDENCE,
+  isGated,
+  lintContextOf,
+  localOf,
+  placeOf,
+  recordOf,
+  runsOfOutput,
+  staleOf,
+  stopReasonOf,
+  withEdit,
+  withGreen,
+  withRecords,
+} from './evidence'
+import { isSecretPath, verdictOf } from './guard'
+import { ended, evented, jobOf, liveOf, notificationsOf, oneLine, pruned, started, stateOf, withAgents } from './jobs'
+import { optionsOf } from './options'
+import type { CockpitOptions } from './options'
 import { dirtyComponentsOf, dirtyCountOf, phaseOf } from './status'
-import { linesOf } from './view'
+import { mixedVerdictOf, secretVerdictOf } from './strict'
+import { duration, elapsed, JOB_ICONS, linesOf } from './view'
 import type { Tone } from './view'
 
 const PLUGIN = 'waffle-cockpit'
 const PANE = 'waffle-dod'
+const JOBS_PANE = 'waffle-jobs'
 const CONTAINER = 'waffle-dev'
 
 /** One timer drives the lines: the session every tick, the repository every other, the umbrella every tenth. */
@@ -24,10 +43,28 @@ const REFRESHES_STATUS = /^\s*(git|gh|wfl|bin\/wfl|\.\/bin\/wfl|docker)\b/
 /** A component name as `wfl dod` takes it. */
 const COMPONENT = /^[a-z0-9][a-z0-9-]*$/
 
+/** Bash commands whose output may hold `wfl dod` verdicts. */
+const RUNS_DOD = /(^|[\s/;&|(])(wfl|dod\.sh)\b[^;&|]*\bdod\b|scripts\/dod\.sh/
+
+/** How often the local-only count and the backup age are read. */
+const LOCAL_GAP_MS = 5 * 60_000
+
+/** Where the store keeps the DoD history across sessions. */
+const HISTORY_KEY = 'dodHistory'
+
+/** The model-callable tools, as `$.tool.register` names them. */
+const TOOL_DOD = `mcp__${PLUGIN}__dod`
+const TOOL_XREF = `mcp__${PLUGIN}__xref`
+const TOOL_GAPS = `mcp__${PLUGIN}__coverage_gaps`
+const TOOL_HISTORY = `mcp__${PLUGIN}__dod_history`
+
 const status = atom({ plugin: 'waffle-cockpit', key: 'status' } as const, null)
 const session = atom({ plugin: 'waffle-cockpit', key: 'session' } as const, null)
 const repo = atom({ plugin: 'waffle-cockpit', key: 'repo' } as const, null)
 const dod = atom({ plugin: 'waffle-cockpit', key: 'dod' } as const, null)
+const jobs = atom({ plugin: 'waffle-cockpit', key: 'jobs' } as const, [])
+const evidence = atom({ plugin: 'waffle-cockpit', key: 'evidence' } as const, EMPTY_EVIDENCE)
+const history = atom({ plugin: 'waffle-cockpit', key: 'history' } as const, {})
 const isHidden = atom({ plugin: 'waffle-cockpit', key: 'isHidden' } as const, false)
 
 const EMPTY_SESSION: SessionInfo = {
@@ -58,6 +95,13 @@ const local: {
   pr: RepoInfo['pr']
   prCheckedAt: number
   prBranch: string
+  options: CockpitOptions
+  components: Promise<ReadonlySet<string>> | undefined
+  localOnly: number | null
+  backupAgeS: number | null
+  localCheckedAt: number
+  /** Per component, the edit time a stop reminder already named, so it is not repeated for the same edits. */
+  reminded: Record<string, number>
 } = {
   rootPromise: undefined,
   refreshing: undefined,
@@ -68,6 +112,12 @@ const local: {
   pr: null,
   prCheckedAt: -PR_GAP_MS,
   prBranch: '',
+  options: optionsOf(undefined),
+  components: undefined,
+  localOnly: null,
+  backupAgeS: null,
+  localCheckedAt: -LOCAL_GAP_MS,
+  reminded: {},
 }
 
 /** Work started without awaiting (a refresh, a /dod run) reports nothing when it fails. */
@@ -94,6 +144,104 @@ async function findRoot($: EngineInterface, start: string): Promise<string | und
 function rootOf($: EngineInterface, start?: string): Promise<string | undefined> {
   local.rootPromise ??= (async () => findRoot($, start ?? (await $.session.cwd())))().catch(() => undefined)
   return local.rootPromise
+}
+
+/** The umbrella's components, from scripts/list-components.sh (read once). */
+function componentsOf($: EngineInterface, root: string): Promise<ReadonlySet<string>> {
+  local.components ??= textOf($, [`${root}/scripts/list-components.sh`], root, 10_000).then(
+    out => new Set((out ?? '').split('\n').map(line => line.trim()).filter(line => line !== '')),
+  )
+  return local.components
+}
+
+/**
+ * Runs a host command to its end through `$.process.spawn` (no time cap, as
+ * `wfl dod` and `coverage:gaps` can outlast `process.run`'s ten minutes) and
+ * hands back its exit code and both streams joined.
+ */
+async function collect($: EngineInterface, argv: string[], cwd: string): Promise<{ code: number | null; output: string }> {
+  const child = $.process.spawn({ argv, cwd })
+  let output = ''
+  for await (const chunk of child) output += chunk.text
+  const ended = await child.result
+  return { code: ended.code, output }
+}
+
+/** A field of a plugin tool's input, which the engine passes beside `tool`. */
+function fieldOf(e: object, key: string): unknown {
+  return Reflect.get(e, key)
+}
+
+/** Remembers finished `wfl dod` runs: the history (kept across sessions) and, for a pass, the evidence. */
+async function recordRuns($: EngineInterface, runs: readonly DodRun[]): Promise<void> {
+  if (runs.length === 0) return
+  const at = await $.clock.now()
+  const records = runs.map(run => recordOf(run, at))
+  await update($, history, was => withRecords(was, records))
+  await update($, evidence, was => records.filter(record => record.verdict === 'pass').reduce((acc, record) => withGreen(acc, record.component, at), was))
+  await $.store.set(HISTORY_KEY, await read($, history))
+}
+
+/** Loads the DoD history the store kept from earlier sessions. */
+async function loadHistory($: EngineInterface): Promise<void> {
+  const kept = await $.store.get(HISTORY_KEY)
+  if (typeof kept !== 'object' || kept === null) return
+  const records: DodRecord[] = Object.values(kept).filter(
+    (value): value is DodRecord =>
+      typeof value === 'object' && value !== null && typeof Reflect.get(value, 'component') === 'string' && typeof Reflect.get(value, 'at') === 'number',
+  )
+  await update($, history, was => withRecords(records.reduce<Record<string, DodRecord>>((acc, r) => ({ ...acc, [r.component]: r }), {}), Object.values(was)))
+}
+
+/** Mago on one edited PHP file, inside the container: what the model should read, or undefined when clean. */
+async function instantLint($: EngineInterface, root: string, component: string, inner: string): Promise<string | undefined> {
+  const mode = local.options.instantLint
+  if (mode === 'off' || (await read($, status))?.container !== 'running') return undefined
+  const base = ['docker', 'exec', '-w', `/waffle-commons/${component}`, CONTAINER, 'vendor/bin/mago']
+  const outputs: string[] = []
+  for (const sub of mode === 'lint' ? ['lint'] : ['lint', 'analyze']) {
+    try {
+      const run = await $.process.run([...base, sub, inner], { cwd: root, timeoutMs: 30_000 })
+      outputs.push(`${run.stdout}\n${run.stderr}`)
+    } catch {
+      return undefined
+    }
+  }
+  return lintContextOf(component, inner, outputs)
+}
+
+/** What an Edit or Write is about to change: the text before and after, as far as the call shows it. */
+async function changeOf($: EngineInterface, e: { tool: string; file_path: string; old_string?: string; new_string?: string; content?: string }): Promise<{ before: string; after: string }> {
+  if (e.tool === 'Edit') return { before: e.old_string ?? '', after: e.new_string ?? '' }
+  const before = await $.fs.read(e.file_path).catch(() => '')
+  return { before, after: e.content ?? '' }
+}
+
+/** Why an Edit or Write is refused (a secret anywhere; new `mixed` in waffle-commons PHP), or undefined. */
+async function editVerdictOf($: EngineInterface, e: { tool: string; file_path: string; old_string?: string; new_string?: string; content?: string }): Promise<string | undefined> {
+  const { options } = local
+  const { before, after } = await changeOf($, e)
+  if (options.secretScan) {
+    const secret = secretVerdictOf(before, after, e.file_path)
+    if (secret !== undefined) return secret
+  }
+  const root = await rootOf($)
+  if (options.guard === 'strict' && root !== undefined && e.file_path.endsWith('.php') && e.file_path.startsWith(`${root}/`)) {
+    const inner = e.file_path.slice(root.length + 1)
+    if (!/(^|\/)(vendor|contributions)\//.test(inner)) return mixedVerdictOf(before, after)
+  }
+  return undefined
+}
+
+/** After an Edit or Write landed: the evidence it stales, and Mago's instant word on a PHP file. */
+async function afterEdit($: EngineInterface, path: string): Promise<string | undefined> {
+  const root = await rootOf($)
+  if (root === undefined) return undefined
+  const place = placeOf(root, path, await componentsOf($, root))
+  if (place === undefined || !isGated(place.inner)) return undefined
+  const at = await $.clock.now()
+  await update($, evidence, was => withEdit(was, place.component, at))
+  return place.inner.endsWith('.php') ? instantLint($, root, place.component, place.inner) : undefined
 }
 
 async function textOf($: EngineInterface, argv: string[], cwd: string, timeoutMs: number): Promise<string | undefined> {
@@ -176,10 +324,41 @@ async function refreshNow($: EngineInterface): Promise<void> {
   await Promise.all([refresh($, true), refreshSession($), refreshRepo($)])
 }
 
+/**
+ * Applies a change to the background jobs, dropping those ended a while ago.
+ * Callers do not await it: bookkeeping never holds up or fails a tool call.
+ */
+async function changeJobs($: EngineInterface, change: (was: Job[], now: number) => Job[]): Promise<void> {
+  const now = await $.clock.now()
+  await update($, jobs, was => pruned(change(was, now), now, local.options.jobLingerSeconds * 1000))
+}
+
+/** Ends or counts the jobs a delivered task notification names; a failed one raises a toast. */
+async function noticeJobs($: EngineInterface, text: string): Promise<void> {
+  const notices = notificationsOf(text)
+  if (notices.length === 0) return
+  const before = await read($, jobs)
+  await changeJobs($, (was, now) =>
+    notices.reduce((acc, notice) => (notice.status === '' ? evented(acc, notice.id) : ended(acc, notice.id, stateOf(notice.status), now)), was),
+  )
+  for (const notice of notices) {
+    const job = before.find(one => one.id === notice.id && one.endedAt === null)
+    if (job !== undefined && notice.status !== '' && stateOf(notice.status) === 'failed') $.ui.toast(`${job.kind} failed: ${job.label}`)
+  }
+}
+
+/** Folds the session's agents into the jobs: subagents and teammates, foreground or background. */
+async function refreshAgents($: EngineInterface): Promise<void> {
+  const agents = await $.agent.list()
+  const now = await $.clock.now()
+  await update($, jobs, was => pruned(withAgents(was, agents, now), now, local.options.jobLingerSeconds * 1000))
+}
+
 /** One timer tick: the session every time, the repository every other, the umbrella every tenth. */
 async function tick($: EngineInterface): Promise<void> {
   local.ticks += 1
   await refreshSession($)
+  await refreshAgents($).catch(ignoreFailure)
   if (local.ticks % 2 === 0) await refreshRepo($)
   if (local.ticks % 10 === 0) await refresh($)
 }
@@ -196,12 +375,20 @@ async function readStatus($: EngineInterface, force: boolean): Promise<void> {
     textOf($, [`${root}/scripts/changed-components.sh`], root, 30_000),
     $.fs.read(`${root}/.igor-version`).catch(() => ''),
   ])
+  if (now - local.localCheckedAt >= LOCAL_GAP_MS) {
+    local.localCheckedAt = now
+    const seen = localOf((await textOf($, [`${root}/scripts/local-only.sh`], root, 30_000)) ?? '')
+    local.localOnly = seen.localOnly
+    local.backupAgeS = seen.backupAgeS
+  }
   const next: CockpitStatus = {
     branch: branch?.trim() ?? '?',
     phase: phaseOf(branch ?? ''),
     container: container?.trim() || 'absent',
     dirty: changed === undefined ? null : (dirtyCountOf(changed) ?? null),
     igor: igor.trim(),
+    localOnly: local.localOnly,
+    backupAgeS: local.backupAgeS,
   }
   await update($, status, () => next)
   if (local.lastContainer === 'running' && next.container !== 'running') {
@@ -238,6 +425,7 @@ async function runDod($: EngineInterface, root: string, components: string[]): P
           next = ended.code === 0 ? { ...next, verdict: 'pass' } : { ...next, verdict: 'fail', error: next.error || `wfl dod exited ${ended.code ?? ended.signal ?? '?'}` }
         }
         await setRun(next)
+        await recordRuns($, [next]).catch(ignoreFailure)
       } catch (error) {
         await setRun({ ...run, verdict: 'fail', error: `could not run wfl dod: ${error instanceof Error ? error.message : String(error)}` })
       }
@@ -251,23 +439,59 @@ async function runDod($: EngineInterface, root: string, components: string[]): P
   }
 }
 
+/** The tools the model can call inside the umbrella: structured verdicts instead of terminal text to parse. */
+async function registerTools($: EngineInterface): Promise<void> {
+  await $.tool.register({
+    name: 'dod',
+    description:
+      'Run the waffle-commons definition-of-done gate (wfl dod: Mago zero output, clean PHPUnit OK, coverage, igor 0 KO) for one or more components and get a structured verdict per gate, with the failing excerpt. Use it instead of parsing `wfl dod` output. Pass ["--changed"] for every component with uncommitted changes.',
+    inputSchema: {
+      type: 'object',
+      properties: { components: { type: 'array', items: { type: 'string' }, minItems: 1, description: 'Component names (contracts, security, …), or ["--changed"].' } },
+      required: ['components'],
+    },
+  })
+  await $.tool.register({
+    name: 'xref',
+    description: 'Find every reference to a PHP symbol across the components\' src (vendor excluded), as structured {file, line, text} rows. Set tests to true to include tests/.',
+    inputSchema: {
+      type: 'object',
+      properties: { symbol: { type: 'string', description: 'A class, interface, function or constant name, short or fully qualified.' }, tests: { type: 'boolean' } },
+      required: ['symbol'],
+    },
+  })
+  await $.tool.register({
+    name: 'coverage_gaps',
+    description: 'List the files of one component under 95% line coverage with their uncovered line counts (wfl coverage:gaps). Slow: it runs the suite with coverage.',
+    inputSchema: { type: 'object', properties: { component: { type: 'string' } }, required: ['component'] },
+  })
+  await $.tool.register({
+    name: 'dod_history',
+    description: 'The last wfl dod verdict per component (pass/fail, age, coverage, failed gates), kept across sessions, and which components were edited since their last green run.',
+    inputSchema: { type: 'object', properties: {} },
+  })
+}
+
 /**
- * Registers the cockpit: three lines under the prompt in every project (model,
- * context, cache, cost, limits, repository, PR), plus inside the waffle-commons
+ * Registers the cockpit: lines under the prompt in every project (model,
+ * context, cache, cost, limits, repository, PR, background jobs), plus inside the waffle-commons
  * umbrella the Waffle segments, /dod and the Bash guard. Outside the umbrella
  * the guard lets everything through.
  *
  * @param on the engine's registrar
  */
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  local.options = optionsOf(options)
+
   on('session.start', async ($, e, next) => {
     const started = await next(e)
+    void loadHistory($).catch(ignoreFailure)
     const model = await $.session.model().catch(() => '')
     await update($, session, (was): SessionInfo => ({ ...(was ?? EMPTY_SESSION), model }))
     await $.command.register({
       name: 'cockpit',
-      description: 'Refresh the cockpit lines under the prompt, or show / hide them',
-      argumentHint: '[show|hide]',
+      description: 'Refresh the cockpit lines under the prompt, show / hide them, or list the background jobs',
+      argumentHint: '[show|hide|jobs]',
     })
     void refreshSession($).catch(ignoreFailure)
     void refreshRepo($).catch(ignoreFailure)
@@ -277,9 +501,10 @@ export const register: Register = on => {
     if (root !== undefined) {
       await $.command.register({
         name: 'dod',
-        description: 'Run wfl dod in a pane, with no model turn (components, or --changed)',
-        argumentHint: '<component…> | --changed',
+        description: 'Run wfl dod in a pane, with no model turn (components, or --changed; --history for the last verdicts)',
+        argumentHint: '<component…> | --changed | --history',
       })
+      await registerTools($).catch(ignoreFailure)
       void refresh($, true).catch(ignoreFailure)
     }
 
@@ -307,6 +532,8 @@ export const register: Register = on => {
       })
       void refreshSession($).catch(ignoreFailure)
       void refreshRepo($).catch(ignoreFailure)
+    } else {
+      void refreshAgents($).catch(ignoreFailure)
     }
     return done
   })
@@ -314,11 +541,24 @@ export const register: Register = on => {
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const root = await rootOf($)
     if (root !== undefined) {
-      const verdict = verdictOf(e.command)
+      const verdict = verdictOf(e.command, 0, false, local.options.guard === 'strict')
       if (verdict !== undefined) return { deny: `${PLUGIN}: ${verdict}` }
+    } else if (local.options.secretScan) {
+      // Outside the umbrella only the secret-file rule applies.
+      const verdict = verdictOf(e.command, 0, true, false)
+      if (verdict !== undefined && /holds secrets/.test(verdict)) return { deny: `${PLUGIN}: ${verdict}` }
     }
 
     const ran = await next(e)
+    if (root !== undefined && RUNS_DOD.test(e.command) && ran.deny === undefined) {
+      const output = ran.text ?? (ran.isError === true ? '' : `${ran.result?.stdout ?? ''}\n${ran.result?.stderr ?? ''}`)
+      void recordRuns($, runsOfOutput(output)).catch(ignoreFailure)
+    }
+    // run_in_background, or Ctrl+B on a running command: either way the result names the task.
+    const taskId = ran.deny === undefined && ran.isError !== true ? ran.result?.backgroundTaskId : undefined
+    if (taskId !== undefined) {
+      void changeJobs($, (was, now) => started(was, jobOf('shell', taskId, e.description ?? e.command, e.command, now))).catch(ignoreFailure)
+    }
     if (REFRESHES_STATUS.test(e.command)) {
       void refreshRepo($).catch(ignoreFailure)
       if (root !== undefined) void refresh($).catch(ignoreFailure)
@@ -326,11 +566,157 @@ export const register: Register = on => {
     return ran
   })
 
+  on('tool.call', { tool: 'Edit' }, async ($, e, next) => {
+    const verdict = await editVerdictOf($, e).catch(ignoreFailure)
+    if (verdict !== undefined) return { deny: `${PLUGIN}: ${verdict}` }
+    const ran = await next(e)
+    if (ran.deny !== undefined || ran.isError === true) return ran
+    const context = await afterEdit($, e.file_path).catch(ignoreFailure)
+    return context === undefined ? ran : { ...ran, context: [...(ran.context ?? []), context] }
+  })
+
+  on('tool.call', { tool: 'Write' }, async ($, e, next) => {
+    const verdict = await editVerdictOf($, e).catch(ignoreFailure)
+    if (verdict !== undefined) return { deny: `${PLUGIN}: ${verdict}` }
+    const ran = await next(e)
+    if (ran.deny !== undefined || ran.isError === true) return ran
+    const context = await afterEdit($, e.file_path).catch(ignoreFailure)
+    return context === undefined ? ran : { ...ran, context: [...(ran.context ?? []), context] }
+  })
+
+  on('tool.call', { tool: 'Read' }, async ($, e, next) => {
+    if (local.options.secretScan && isSecretPath(e.file_path)) {
+      return { deny: `${PLUGIN}: ${e.file_path} holds secrets and is not read into the conversation. Ask the person for the one value needed, or read the committed .env.example.` }
+    }
+    return next(e)
+  })
+
+  // Done means evidence: a turn that edited a component does not end on silence about its gate.
+  on('classic.Stop', async ($, e, next) => {
+    if (!local.options.evidenceAtStop || e.stop_hook_active || (await rootOf($)) === undefined) return next(e)
+    const ev = await read($, evidence)
+    const fresh = staleOf(ev).filter(component => (local.reminded[component] ?? -1) < (ev.edited[component] ?? 0))
+    if (fresh.length === 0) return next(e)
+    for (const component of fresh) local.reminded[component] = ev.edited[component] ?? 0
+    return { block: stopReasonOf(fresh) }
+  })
+
+  on('tool.call', { tool: TOOL_DOD }, async ($, e) => {
+    const root = await rootOf($)
+    if (root === undefined) return { result: 'Not inside the waffle-commons umbrella.' }
+    const asked = fieldOf(e, 'components')
+    let components = Array.isArray(asked) ? asked.filter((one): one is string => typeof one === 'string') : []
+    if (components.length === 1 && components[0] === '--changed') {
+      components = dirtyComponentsOf((await textOf($, [`${root}/scripts/changed-components.sh`], root, 30_000)) ?? '')
+    }
+    const invalid = components.filter(component => !COMPONENT.test(component))
+    if (components.length === 0 || invalid.length > 0) return { result: `Give one or more component names (or ["--changed"]). Not valid: ${invalid.join(', ') || '(none given)'}` }
+    const runs: DodRun[] = []
+    for (const component of components) {
+      try {
+        const out = await collect($, [`${root}/bin/wfl`, 'dod', component], root)
+        const parsed = runsOfOutput(out.output)[0]
+        runs.push(parsed ?? { ...emptyRun(component), verdict: out.code === 0 ? 'pass' : 'fail', error: out.code === 0 ? '' : `wfl dod exited ${out.code ?? '?'}` })
+      } catch (error) {
+        runs.push({ ...emptyRun(component), verdict: 'fail', error: `could not run wfl dod: ${error instanceof Error ? error.message : String(error)}` })
+      }
+    }
+    await recordRuns($, runs).catch(ignoreFailure)
+    const report = runs.map(run => ({
+      component: run.component,
+      verdict: run.verdict,
+      error: run.error || undefined,
+      gates: run.steps.filter(step => step.state !== 'pending').map(step => ({ gate: step.name, state: step.state, message: step.message, excerpt: step.excerpt.length > 0 ? step.excerpt : undefined })),
+    }))
+    return { result: JSON.stringify({ summary: summaryOf(runs), runs: report }, null, 2) }
+  })
+
+  on('tool.call', { tool: TOOL_XREF }, async ($, e) => {
+    const root = await rootOf($)
+    const symbol = fieldOf(e, 'symbol')
+    if (root === undefined || typeof symbol !== 'string' || !/^[A-Za-z_\\][A-Za-z0-9_\\:]*$/.test(symbol)) return { result: 'Give a PHP symbol: a class, interface, function or constant name.' }
+    const argv = [`${root}/scripts/xref.sh`, symbol, ...(fieldOf(e, 'tests') === true ? ['--tests'] : [])]
+    const out = await textOf($, argv, root, 60_000)
+    const refs = (out ?? '')
+      .split('\n')
+      .map(line => /^\.\/([^:]+):(\d+):(.*)$/.exec(line))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .map(match => ({ file: match[1], line: Number(match[2]), text: (match[3] ?? '').trim() }))
+    return { result: JSON.stringify({ symbol, count: refs.length, refs: refs.slice(0, 300), isTruncated: refs.length > 300 }, null, 2) }
+  })
+
+  on('tool.call', { tool: TOOL_GAPS }, async ($, e) => {
+    const root = await rootOf($)
+    const component = fieldOf(e, 'component')
+    if (root === undefined || typeof component !== 'string' || !COMPONENT.test(component)) return { result: 'Give one component name.' }
+    const out = await collect($, [`${root}/bin/wfl`, 'coverage:gaps', component], root).catch(() => ({ code: null, output: '' }))
+    return { result: out.output.trim() || `wfl coverage:gaps ${component} printed nothing or failed (is waffle-dev running?)` }
+  })
+
+  on('tool.call', { tool: TOOL_HISTORY }, async $ => {
+    const now = await $.clock.now()
+    const rows = Object.values(await read($, history))
+      .sort((a, b) => a.component.localeCompare(b.component))
+      .map(record => ({ ...record, age: duration(now - record.at) }))
+    const ev = await read($, evidence)
+    return { result: JSON.stringify({ records: rows, editedSinceGreen: staleOf(ev) }, null, 2) }
+  })
+
+  on('tool.call', { tool: 'Monitor' }, async ($, e, next) => {
+    const ran = await next(e)
+    const taskId = ran.deny === undefined && ran.isError !== true ? ran.result?.taskId : undefined
+    if (taskId !== undefined) {
+      void changeJobs($, (was, now) => started(was, jobOf('monitor', taskId, e.description, e.command ?? e.ws?.url ?? '', now))).catch(ignoreFailure)
+    }
+    return ran
+  })
+
+  on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
+    void refreshAgents($).catch(ignoreFailure)
+    const ran = await next(e)
+    void refreshAgents($).catch(ignoreFailure)
+    return ran
+  })
+
+  on('tool.call', { tool: 'TaskStop' }, async ($, e, next) => {
+    const ran = await next(e)
+    const id = e.task_id ?? e.shell_id
+    if (id !== undefined && ran.deny === undefined && ran.isError !== true) {
+      void changeJobs($, (was, now) => ended(was, id, 'killed', now)).catch(ignoreFailure)
+    }
+    return ran
+  })
+
+  on('tool.call', { tool: 'ScheduleWakeup' }, async ($, e, next) => {
+    const ran = await next(e)
+    if (ran.deny === undefined && ran.isError !== true) {
+      const { stopped, clampedDelaySeconds = 0 } = ran.result ?? {}
+      void changeJobs($, (was, now) => {
+        const others = was.filter(job => job.kind !== 'wakeup')
+        if (stopped === true) return others
+        return [...others, { ...jobOf('wakeup', 'wakeup', e.reason || 'wakeup', e.prompt ?? '', now), dueAt: now + clampedDelaySeconds * 1000 }]
+      }).catch(ignoreFailure)
+    }
+    return ran
+  })
+
+  // A background task's end reaches the session as a notification prompt: that is where a job ends.
+  on('prompt.submit', ($, e, next) => {
+    if (e.origin.kind === 'task-notification') void noticeJobs($, e.text).catch(ignoreFailure)
+    return next(e)
+  })
+
   on('command.run', { command: 'cockpit' }, async ($, e) => {
     const word = e.args.trim()
     if (word === 'hide') {
       await update($, isHidden, () => true)
       return { text: 'Cockpit lines hidden (/cockpit show brings them back).' }
+    }
+    if (word === 'jobs') {
+      await refreshAgents($).catch(ignoreFailure)
+      await $.ui.open({ id: JOBS_PANE, title: 'Background' })
+      const live = liveOf(await read($, jobs)).length
+      return { text: `${live} background job(s) running: see the Background pane.` }
     }
     await update($, isHidden, () => false)
     await refreshNow($)
@@ -341,6 +727,7 @@ export const register: Register = on => {
       now?.contextPercent === null || now?.contextPercent === undefined ? 'ctx —' : `ctx ${Math.round(now.contextPercent)}%`,
       where === null ? '' : `${where.repo} ⎇ ${where.branch}`,
       waffle === null ? '' : `${waffle.phase || waffle.branch} · ${CONTAINER} ${waffle.container} · igor ${waffle.igor || '?'}`,
+      `bg ${liveOf(await read($, jobs)).length}`,
     ]
     return { text: parts.filter(part => part !== '').join(' │ ') }
   })
@@ -351,6 +738,11 @@ export const register: Register = on => {
     if (local.isDodRunning) return { text: 'A /dod run is already in progress (see the DoD pane).' }
 
     const words = e.args.trim().split(/\s+/).filter(word => word !== '')
+    if (words.length === 1 && words[0] === '--history') {
+      await update($, dod, () => null)
+      await $.ui.open({ id: PANE, title: 'DoD' })
+      return { text: 'The last verdict per component is in the DoD pane.' }
+    }
     let components: string[]
     if (words.length === 1 && words[0] === '--changed') {
       components = dirtyComponentsOf((await textOf($, [`${root}/scripts/changed-components.sh`], root, 30_000)) ?? '')
@@ -373,12 +765,16 @@ export const register: Register = on => {
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     if (await read($, isHidden)) return next(e)
     const { Box, Text } = $.ui.resolve(e)
+    const now = await $.clock.now()
     const lines = linesOf({
       session: await read($, session),
       repo: await read($, repo),
       waffle: await read($, status),
-      now: await $.clock.now(),
+      now,
       hint: e.props.hint,
+      jobs: pruned(await read($, jobs), now, local.options.jobLingerSeconds * 1000),
+      contextLevels: [local.options.contextWarn, local.options.contextAlert],
+      backupWarnHours: local.options.backupWarnHours,
     })
 
     return (
@@ -396,12 +792,50 @@ export const register: Register = on => {
     )
   })
 
+  on('ui.render', { component: 'Pane', requestId: JOBS_PANE }, async ($, e) => {
+    const { Box, Text } = $.ui.resolve(e)
+    const now = await $.clock.now()
+    const all = pruned(await read($, jobs), now)
+    if (all.length === 0) return <Text dimColor>No background job: shells, monitors, subagents and wakeups show here while they run.</Text>
+
+    const order = [...liveOf(all), ...all.filter(job => job.endedAt !== null)]
+    const stateText = (job: Job) =>
+      job.kind === 'wakeup' ? `fires in ${elapsed((job.dueAt ?? now) - now)}` : job.endedAt === null ? `running ${elapsed(now - job.startedAt)}` : `${job.state} ${elapsed(now - job.endedAt)} ago`
+
+    return (
+      <Box flexDirection="column">
+        {order.map(job => (
+          <Box key={`${job.kind}-${job.id}`} flexDirection="column">
+            <Text bold={job.endedAt === null} color={job.state === 'failed' || job.state === 'killed' ? 'red' : job.state === 'completed' ? 'green' : undefined} wrap="truncate">
+              {`${JOB_ICONS[job.kind]} ${job.kind}  ${job.label}  ·  ${stateText(job)}${job.events > 0 ? `  ·  ${job.events} event(s)` : ''}`}
+            </Text>
+            {job.detail !== '' && job.detail !== job.label && <Text dimColor wrap="truncate">{`    ${oneLine(job.detail, 400)}`}</Text>}
+            <Text dimColor>{`    id ${job.id}`}</Text>
+          </Box>
+        ))}
+      </Box>
+    )
+  })
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const { Box, Text, Button } = $.ui.resolve(e)
     const view = await read($, dod)
 
     if (view === null) {
-      return <Text dimColor>No /dod run yet. Try /dod contracts, or /dod --changed.</Text>
+      const now = await $.clock.now()
+      const records = Object.values(await read($, history)).sort((a, b) => a.component.localeCompare(b.component))
+      const stale = new Set(staleOf(await read($, evidence)))
+      if (records.length === 0) return <Text dimColor>No /dod run yet. Try /dod contracts, or /dod --changed.</Text>
+      return (
+        <Box flexDirection="column">
+          <Text bold>Last DoD per component</Text>
+          {records.map(record => (
+            <Text key={`h-${record.component}`} color={record.verdict === 'pass' ? 'green' : 'red'} wrap="truncate">
+              {`${record.verdict === 'pass' ? '✓' : '✗'} ${record.component.padEnd(18)} ${duration(now - record.at).padStart(6)} ago${record.coverage === '' ? '' : `  coverage ${record.coverage}%`}${record.failed.length === 0 ? '' : `  failed: ${record.failed.join(', ')}`}${stale.has(record.component) ? '  · edited since' : ''}`}
+            </Text>
+          ))}
+        </Box>
+      )
     }
 
     const icon = (state: string) =>
