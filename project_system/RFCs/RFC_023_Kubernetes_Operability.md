@@ -9,7 +9,7 @@ aliases: []
 
 # RFC-023: Kubernetes Operability (Health, Readiness & Graceful Shutdown)
 
-**Status:** In progress for `0.1.0-beta7` — health and readiness probes (`[OPS-01]`) and graceful shutdown & draining (`[OPS-02]`). The schema-migration workflow (`[OPS-03]`) stays in RFC-014. **Components:** `waffle-commons/contracts` (`Health\HealthCheckInterface`), `waffle-commons/runtime` (shutdown sequence), the probe owners (`waffle-commons/data`, `waffle-commons/cache`, `waffle-commons/queue`), and the component that hosts the probe middleware (open — §5) **Author:** Core Architect **Tags:** kubernetes, health, readiness, graceful-shutdown, frankenphp, worker-mode
+**Status:** In progress for `0.1.0-beta7` — health and readiness probes (`[OPS-01]`) and graceful shutdown & draining (`[OPS-02]`). The schema-migration workflow (`[OPS-03]`) stays in RFC-014. **Components:** `waffle-commons/contracts` (`Health\HealthCheckInterface`), `waffle-commons/runtime` (shutdown sequence), the probe owners (`waffle-commons/data`, `waffle-commons/cache`, `waffle-commons/queue`), and `waffle-commons/pipeline`, which hosts the probe middleware (§5.2, decided 2026-10-17) **Author:** Core Architect **Tags:** kubernetes, health, readiness, graceful-shutdown, frankenphp, worker-mode
 
 **Reference RFCs:** RFC-001 (Core & Runtime), RFC-003 (HTTP & Middleware Pipeline), RFC-005 (Logging & Observability), RFC-014 (Data & Persistence — `[OPS-03]`), RFC-015 (Asynchronous Execution — queue consumers)
 
@@ -70,8 +70,8 @@ private view only.
   is served only to loopback addresses or a bearer token, like `/waffle-metrics`: dependency topology is
   reconnaissance data.
 - **The `Host` check must not reject probes.** Kubelet probes carry the pod IP as `Host`, which
-  `TrustedHostMiddleware` answers with 400. Recommended: mount the probe middleware before it, as
-  `MetricsMiddleware` already is in the skeleton; the alternative is to allow-list the probe hosts.
+  `TrustedHostMiddleware` answers with 400. Decided (2026-10-17, §5.2): the probe middleware is
+  mounted before it, as `MetricsMiddleware` already is in the skeleton.
 - **Cost:** orchestrators call these every few seconds. Handlers are constant-time and allocation-light.
   Each check has its own timeout, shorter than the probe's `timeoutSeconds`, so a hung dependency yields
   not-ready instead of a hung probe. Pool-backed checks **lease** a connection (heal-on-lease already
@@ -95,8 +95,10 @@ private view only.
   closed. Today nothing runs after the loop.
 - **Readiness during termination.** The roadmap requires `/readyz` to report not-ready as soon as
   termination starts, so the orchestrator stops routing before the drain. PHP does not see the signal,
-  so the mechanism is an open question (§5.1).
-- **Kubernetes sizing:** `terminationGracePeriodSeconds` must exceed the `preStop` delay plus Caddy's
+  so Caddy flips it (decided 2026-10-17, §5.1): during the global `shutdown_delay`, the server keeps
+  serving while `{http.shutting_down}` is true, and the Caddyfile answers `/readyz` with 503 before PHP
+  is reached; `grace_period` then drains the in-flight requests.
+- **Kubernetes sizing:** `terminationGracePeriodSeconds` must exceed Caddy's `shutdown_delay` plus its
   `grace_period`, or the kubelet kills the pod mid-drain.
 - **CLI consumers** (`bin/waffle queue:work`) are ordinary CLI processes and do receive SIGTERM. They
   drain through `pcntl` — installed in the development and production images since 2026-09-30:
@@ -112,16 +114,39 @@ private view only.
 - **Probes never throw;** every failure becomes a `HealthResult`.
 - **No topology in public responses.**
 
-## 5. Open Questions (decide before the code lands)
+## 5. Open Questions (decided 2026-10-17)
 
 1. **Readiness flip on termination.** Options: (a) a `preStop` hook flips a drain flag on a shared volume
    that `/readyz` reads — APCu cannot carry it, because a CLI process has its own APCu; (b) rely on
    Kubernetes removing terminating pods from Service endpoints, plus a `preStop` sleep while that
    propagates; (c) Caddy's `grace_period` alone.
+
+   **Decision (2026-10-17): a fourth option, Caddy's `shutdown_delay`.** After the signal, the global
+   `shutdown_delay` keeps the server serving while the `{http.shutting_down}` placeholder is true; the
+   Caddyfile answers `/readyz` with 503 during that window, before PHP is reached, and `grace_period`
+   then drains the in-flight requests. Measured on FrankenPHP 1.12.7 on 2026-10-09. Sizing:
+   `terminationGracePeriodSeconds` > `shutdown_delay` + `grace_period`. **Why:** it flips readiness the
+   instant the signal arrives, with no state shared across processes: (a) needs a writable shared
+   volume, (b) leaves readiness green until the endpoint removal propagates, and (c) stops accepting
+   connections without ever reporting not-ready.
 2. **Home of the probe middleware** — `waffle-commons/pipeline` hosts the infrastructure middlewares
    (`TrustedHostMiddleware`, `SecureHeadersMiddleware`) — and its position relative to the `Host` check.
+
+   **Decision (2026-10-17):** `waffle-commons/pipeline`, mounted before `TrustedHostMiddleware`, as
+   `MetricsMiddleware` is in the skeleton. **Why:** kubelet probes carry the pod IP as `Host`; mounting
+   first keeps the probes clear of the host check without allow-listing pod IPs.
 3. **Final names** of the contract and the configuration keys (frozen at beta8).
+
+   **Decision (2026-10-17):** keep §3.1's names — `Contracts\Health\HealthCheckInterface` (`name()`,
+   `isCritical()`, `check()`) and the `Contracts\Health\HealthResult` DTO. The application declares its
+   required checks under `waffle.health.required` (a list of check names); the detailed report follows
+   the access rule of `/waffle-metrics` (loopback or bearer token). Frozen at beta8 `[FRZ-01]`.
 4. **Whether `HealthResult` carries a latency** that `/waffle-metrics` could export, or stays binary.
+
+   **Decision (2026-10-17): binary.** `HealthResult` carries the status and the private detail only. The
+   probe middleware times every check itself and exports the durations to `/waffle-metrics`. **Why:**
+   nothing extra to freeze in the contract, and a duration measured by the runner cannot be misreported
+   by a check.
 
 ## 6. Acceptance Criteria (`Roadmap_Beta7.md`)
 

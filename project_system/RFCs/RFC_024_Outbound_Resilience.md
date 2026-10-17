@@ -9,7 +9,7 @@ aliases: []
 
 # RFC-024: Outbound Resilience (Client Policies & Circuit Breaker)
 
-**Status:** In progress for `0.1.0-beta7` — HTTP client resilience policies (`[NET-02]`) and the circuit breaker (`[NET-03]`). Inbound rate limiting (`[NET-01]`) stays in RFC-017 §3.1 and shares this RFC's state-storage family. **Components:** `waffle-commons/http-client` (policies, retries, breaker), `waffle-commons/contracts` (policy, breaker and state-storage contracts), and the component that implements the shared state storage (open — §5) **Author:** DevSecOps Lead **Tags:** http-client, resilience, timeouts, retry, backoff, circuit-breaker
+**Status:** In progress for `0.1.0-beta7` — HTTP client resilience policies (`[NET-02]`) and the circuit breaker (`[NET-03]`). Inbound rate limiting (`[NET-01]`) stays in RFC-017 §3.1 and shares this RFC's state-storage family. **Components:** `waffle-commons/http-client` (policies, retries, breaker), `waffle-commons/contracts` (policy, breaker and state-storage contracts), and `waffle-commons/data`, which implements the shared state storage over its Redis pool (§5.1, decided 2026-10-17) **Author:** DevSecOps Lead **Tags:** http-client, resilience, timeouts, retry, backoff, circuit-breaker
 
 **Reference RFCs:** RFC-003 (HTTP & Middleware Pipeline), RFC-005 (Logging & Observability), RFC-015 (Asynchronous Execution — concurrent fan-out), RFC-017 (Advanced Security & Edge Protection — rate limiting), RFC-021 (Universal Authentication Bridge — outbound credentials)
 
@@ -45,7 +45,8 @@ legacy upstream.
 - **Idempotency.** Only idempotent methods (RFC 9110: `GET`, `HEAD`, `OPTIONS`, `PUT`, `DELETE`) are
   retried by default. `POST` and `PATCH` are retried only when the caller opts in explicitly.
 - **Backoff:** exponential with full jitter. A `Retry-After` from a 429 or 503 is honoured only within
-  the remaining budget.
+  the remaining budget; it may exceed the backoff cap, and when it does not fit the budget the client
+  returns the response instead of waiting (§5.4, decided 2026-10-17).
 - **Bounded total time.** The wall-clock across all attempts never exceeds the policy's total budget.
 - **Every attempt re-runs the SSRF guard.** DNS can change between attempts, so resolve → validate → pin
   runs again each time.
@@ -60,7 +61,10 @@ legacy upstream.
 - **Key:** the upstream origin (scheme, host, port).
 - **Shared, atomic state.** State lives in shared storage (Redis), in the same storage family as the
   RFC-017 limiter, never in worker memory. Recording an outcome and changing state are single atomic
-  operations (for example a Lua script), so concurrent workers agree on the state.
+  operations (for example a Lua script), so concurrent workers agree on the state. The contract is
+  `LimiterStateStorageInterface` in `contracts`; its Redis implementation lives in `data` (§5.1).
+- **Storage unavailable:** the breaker behaves as closed: calls go through, with a warning log and a
+  metric, and the `[NET-02]` timeouts still bound every attempt (§5.2).
 - **Fail fast.** An open breaker short-circuits the call before any handle is allocated, with a specific
   exception implementing a contracts exception interface, which the error handler maps to 503.
 - **Observability.** Each transition is emitted as an event and as metrics (a transition counter and a
@@ -86,14 +90,36 @@ legacy upstream.
 - **Test the state machine with an injected clock**, never with `sleep()`; exercise the behaviour under
   load through fault injection (the `chaos-runner` agent).
 
-## 5. Open Questions (decide before the code lands)
+## 5. Open Questions (decided 2026-10-17)
 
 1. **Where the Redis-backed state storage lives** — in `http-client`, through
    `RedisConnectionPoolInterface`, or in the component that already owns Redis — while keeping every
    consumer on the contract.
+
+   **Decision (2026-10-17):** one contract, `LimiterStateStorageInterface` (atomic operations, in
+   `contracts`), shared by the RFC-017 limiter and the breaker. Its Redis implementation lives in
+   `waffle-commons/data`, over the `RedisConnectionPoolInterface` that `data` already implements (Lua
+   scripts on a leased connection). `security` and `http-client` depend on the contract only. **Why:**
+   `data` owns the framework's pooled phpredis connection (heal-on-lease, pool stats), which `queue`
+   already uses; `cache` reaches Redis through predis, outside that pool, so housing the state there
+   would add a second Redis client stack. PSR-16 `get`/`set` cannot be atomic, so the state never goes
+   through the cache contracts. This supersedes RFC-017 §3.1's "must rely on `waffle-commons/cache`".
 2. **Breaker behaviour when its own storage is unavailable** (treat as closed, or fail fast).
+
+   **Decision (2026-10-17): treat as closed.** Calls go through, with a warning log and a metric; the
+   `[NET-02]` timeouts still bound every attempt. **Why:** failing fast would turn a Redis outage into
+   an outage of every upstream integration.
 3. **Configuration keys** (frozen by beta8 `[FRZ-03]`).
+
+   **Decision (2026-10-17):** `waffle.http_client.resilience.*` for the policy and
+   `waffle.http_client.breaker.*` for the breaker, in snake_case like the existing keys (`redis_dsn`,
+   `trusted_hosts`). The leaf names are fixed with the code and frozen by beta8 `[FRZ-03]`.
 4. **Whether `Retry-After` may extend a wait beyond the backoff cap** when it still fits the total budget.
+
+   **Decision (2026-10-17): yes.** A `Retry-After` may exceed the backoff cap when it fits the remaining
+   total budget; when it does not, the client returns the 429 or 503 instead of waiting. **Why:** the cap
+   bounds the client's own guesses, while `Retry-After` is the server's instruction; the total budget
+   stays the hard bound.
 
 ## 6. Acceptance Criteria (`Roadmap_Beta7.md`)
 

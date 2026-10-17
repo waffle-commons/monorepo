@@ -1,7 +1,7 @@
 ---
 title: "Waffle Framework - Post-v1.0 Backlog (Vision 2027+)"
 date_created: '2026-04-13'
-date_updated: '2026-09-08'
+date_updated: '2026-10-17'
 type: roadmap
 status: draft
 tags:
@@ -47,6 +47,8 @@ aliases: []
     
 - **Additional queue drivers** — AMQP/RabbitMQ, SQS, database driver, beyond the Redis Streams reference driver.
     
+- **Live migration round trip on SQL Server and Oracle** — beta7 `[OPS-03]` covers both dialects with SQL-generation tests only (decided 2026-10-17): no image carries `pdo_sqlsrv` or `pdo_oci`. The live `db:migrate` / `db:rollback` round trip needs those drivers and a CI engine matrix.
+
 - **Additional serialization formats / content negotiation** — XML, MessagePack, beyond the committed JSON.
     
 

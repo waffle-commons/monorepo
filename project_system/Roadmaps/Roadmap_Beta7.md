@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-10-07
+date_updated: 2026-10-17
 type: project
 status: in-progress
 tags:
@@ -12,7 +12,7 @@ aliases: []
 ---
 # 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta7
 
-> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below)
+> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*)
 > 
 > **Target Release:** **October 2026** (the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
@@ -23,6 +23,8 @@ aliases: []
 > **Capacity guard (added 2026-09-08, amended 2026-10-06):** beta7 is the **heaviest release of the train in the shortest window** — four brand-new repositories (`queue`, `openapi`, `serializer`, `testing`, each needing repo creation, scaffolding, CI, a `RELEASE_INCLUDE` entry and a first Packagist publication) plus eleven items across five axes. Plan against the measured evidence, not the intent: umbrella-tag cadence has run beta3→beta4 in 7 days, →beta5 in 24, →beta6 in 62. Beta6 was code-complete on 2026-08-02/03 and tagged in September, but that ~5-week tail was the maintainer's time off, not verification, documentation or wave prep, so it is not a planning baseline. The 2026-09-29 kickoff leaves about four weeks of build before an end-of-October tag. **Therefore:** the stretch tier (`[DXP-01]`, `[GATE-02]`) is cut on first contact with the schedule, not renegotiated late; and unless `[API-01]`, `[API-02]` and `[TEST-01]` have code landed and green on their own gates by **mid-October** (`wfl dod` green on `openapi`, `serializer` and `testing` with tests and coverage switched on), split the release — NET + OPS + QUEUE tag as beta7 in October, API + TEST fold into the beta8 window — instead of letting beta7 slide into November. **The freeze date (beta8, November) is what is being protected here; beta7's scope is not.**
 >
 > *Amended 2026-10-06:* the beta6 tail was first read as release work ("roughly five weeks of verification, documentation and wave prep"); it was time off. The checkpoint first asked for the four new repositories to be "scaffolded and green on their own gates", which the empty scaffolds already met on 2026-09-29 (tests and coverage switch on with the first class), so it now checks the items' code.
+>
+> *Checkpoint 2026-10-17 — met, no split:* `wfl dod` PASS on `openapi` (98.71 %), `serializer` (98.94 %) and `testing` (100 %), igor 0 KO, and `wfl check:all --with-tests` 27/27. The maintainer decided not to split: API + TEST stay in beta7. The stretch tier stays cut.
 
 ## 🧰 KICKOFF STATE & CARRY-OVERS (2026-09-29)
 
@@ -156,7 +158,9 @@ _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams
         
     - Implement a Token Bucket limiter as a `security/` middleware, keyed by IP, authenticated subject (`UserIdentityInterface`), or API token.
         
-    - Storage backends through the existing cache contracts (Redis for multi-worker correctness; in-memory fallback documented as single-worker only).
+    - Storage backends behind `LimiterStateStorageInterface` (atomic operations, in contracts), shared with `[NET-03]`: the Redis implementation lives in `data` over its connection pool (multi-worker correctness); an in-memory fallback is documented as single-worker only. *Amended 2026-10-17:* this bullet first read "through the existing cache contracts"; PSR-16 `get`/`set` cannot be atomic, so concurrent workers would over-admit and fail the NET acceptance criterion (RFC-024 §5.1, RFC-017 §3.1).
+        
+    - Storage unavailable (*decided 2026-10-17*): each limiter takes `on_storage_failure: open|closed`, default `open` with a warning log and a metric; `closed` is recommended on authentication endpoints. Authentication and authorization stay fail-closed regardless (RFC-017 §4).
         
     - Emit standard `RateLimit-*` response headers and a fail-closed `429` with `Retry-After`.
         
@@ -165,7 +169,7 @@ _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams
 
 ### `[NET-02]` HTTP Client Resilience Policies
 
-- **RFC:** RFC-024 §3.1 (outbound resilience policy).
+- **RFC:** RFC-024 §3.1 (outbound resilience policy); its open questions were decided on 2026-10-17 (§5).
 
 - **Specification:**
     
@@ -178,7 +182,7 @@ _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams
 
 ### `[NET-03]` Circuit Breaker
 
-- **RFC:** RFC-024 §3.2–3.3 (circuit breaker, composition with retries).
+- **RFC:** RFC-024 §3.2–3.3 (circuit breaker, composition with retries); its open questions were decided on 2026-10-17 (§5).
 
 - **Specification:**
     
@@ -228,7 +232,7 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
 
 ### `[OPS-01]` Health & Readiness Endpoints
 
-- **RFC:** RFC-023 §3.1–3.3 (health contract, endpoints, component probes).
+- **RFC:** RFC-023 §3.1–3.3 (health contract, endpoints, component probes); its open questions were decided on 2026-10-17 (§5).
 
 - **Specification:**
     
@@ -241,13 +245,13 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
 
 ### `[OPS-02]` Graceful Shutdown & Connection Draining
 
-- **RFC:** RFC-023 §3.4 (worker-mode signal path, shutdown sequence, CLI consumers).
+- **RFC:** RFC-023 §3.4 (worker-mode signal path, shutdown sequence, CLI consumers); its open questions were decided on 2026-10-17 (§5).
 
 - **Specification:**
     
     - Handle SIGTERM in the runtime: stop accepting work, flush deferred tasks (beta5 `[ASYNC-01]` if landed), return pooled connections (beta5 `[DBAL-01]`), close streams, then exit within the configurable grace period.
         
-    - `/readyz` flips to not-ready immediately on SIGTERM so K8s stops routing before the drain.
+    - `/readyz` flips to not-ready immediately on SIGTERM so K8s stops routing before the drain (through Caddy's `shutdown_delay`, RFC-023 §5.1).
         
 
 ### `[OPS-03]` Schema Migration Workflow Maturity
@@ -256,9 +260,9 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
     
     - Build on the existing `data/src/Migration/MigrationRunner.php` — do not rewrite it.
         
-    - Add versioned migration files, a ledger table, and console commands: `migrate`, `migrate:rollback`, `migrate:status`, `make:migration` (Maker conventions from RFC-020).
+    - Add versioned migration files, a ledger table, and console commands: `db:migrate` (it already exists — extend it), `db:rollback`, `db:status`, `make:migration` (Maker conventions from RFC-020). *Amended 2026-10-17:* the names first read `migrate`, `migrate:rollback`, `migrate:status`; `bin/waffle db:migrate` already ships, so the family keeps its `db:` prefix.
         
-    - SQL dialects already supported by `data/` only; NoSQL backends are schema-less and out of scope.
+    - SQL dialects already supported by `data/` only; NoSQL backends are schema-less and out of scope. *Scope change 2026-10-17:* the live migrate/rollback round trip runs on PostgreSQL, SQLite, MySQL and MariaDB (the images carry `pdo_pgsql`, `pdo_sqlite` and `pdo_mysql`; MySQL and MariaDB need their own containers); SQL Server and Oracle are covered by SQL-generation tests only, because no image carries `pdo_sqlsrv` or `pdo_oci`. Their live round trip moved to `Roadmap_Post_v1.md`.
         
 
 ## 📜 AXE 4: API SURFACE TOOLING
@@ -322,6 +326,6 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
 
 - **NET:** limiter correct under concurrent multi-worker load (no over-admission beyond bucket size); breaker opens/half-opens per thresholds in fault-injection tests; zero infinite timeouts possible by construction.
 - **QUEUE:** message survives worker crash (Redis Streams pending-list reclaim); failed messages land in the dead-letter store with full envelope; `queue:work` drains cleanly on SIGTERM.
-- **OPS:** `/readyz` flips on dependency failure and on SIGTERM; rolling-restart under k6 load loses zero in-flight requests; `migrate` + `migrate:rollback` round-trip on every supported SQL dialect.
+- **OPS:** `/readyz` flips on dependency failure and on SIGTERM; rolling-restart under k6 load loses zero in-flight requests; `db:migrate` + `db:rollback` round-trip live on PostgreSQL, SQLite, MySQL and MariaDB, with SQL-generation tests for SQL Server and Oracle (*scope change 2026-10-17*, see `[OPS-03]`).
 - **API:** generated `openapi.json` validates against the OpenAPI 3.1 schema; serializer round-trips every DTO shape in the test matrix (hooks, asymmetric visibility, nested DTOs, arrays).
 - **All items:** `composer mago && composer tests` green, $\geq 95\%$ coverage, zero Mago baselines, `wfl igor` 0 KO; contracts-first sequencing; new submodules (`queue`, `openapi`, `serializer`, `testing`) scaffolded from `component-template`.
