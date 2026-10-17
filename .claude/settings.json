@@ -464,7 +464,11 @@
       "Bash(claude plugin test *)",
       "Bash(claude plugin list)",
       "Bash(claude plugin list *)",
-      "Bash(claude --version)"
+      "Bash(claude --version)",
+      "mcp__waffle-cockpit__dod",
+      "mcp__waffle-cockpit__xref",
+      "mcp__waffle-cockpit__coverage_gaps",
+      "mcp__waffle-cockpit__dod_history"
     ],
     "ask": [
       "Bash(git commit)",
@@ -879,7 +883,21 @@
       "Bash(vendor/bin/*)",
       "Bash(./vendor/bin/*)",
       "Bash(git submodule update *--remote*)",
-      "Bash(git -C * submodule update *--remote*)"
+      "Bash(git -C * submodule update *--remote*)",
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/.env.dev)",
+      "Read(**/.env.prod)",
+      "Read(**/.env.production)",
+      "Read(**/.env.staging)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Read(**/*.p12)",
+      "Read(**/*.pfx)",
+      "Read(**/*.jks)",
+      "Read(**/*.keystore)",
+      "Read(~/.ssh/**)"
     ]
   },
   "enabledMcpjsonServers": [
