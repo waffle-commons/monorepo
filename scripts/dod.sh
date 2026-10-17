@@ -92,9 +92,13 @@ fi
 # and no file to measure. Tests and coverage are N/A until the first PHP file
 # lands outside tests/ (src/, or app/ for the workspace) — from then on the full
 # bar applies. mago and igor always run.
+# `-print -quit` stops at the first PHP file and its output is read whole. A
+# `find | grep -q .` pipe broke under `set -o pipefail`: grep quit at the first
+# line, find died of SIGPIPE, and a real component read as an empty scaffold,
+# so its tests and coverage were skipped (contracts, every run).
 scaffold=0
-if ! find "$REPO_ROOT/$COMP" \( -name vendor -o -name tests -o -name var -o -name .git \) -prune \
-     -o -type f -name '*.php' -print 2>/dev/null | grep -q .; then
+if [ -z "$(find "$REPO_ROOT/$COMP" \( -name vendor -o -name tests -o -name var -o -name .git \) -prune \
+     -o -type f -name '*.php' -print -quit 2>/dev/null)" ]; then
   scaffold=1
 fi
 

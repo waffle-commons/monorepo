@@ -822,8 +822,11 @@ cmd_check_all() {
       # Same rule as scripts/dod.sh and the CI workflows: a fresh scaffold (no PHP
       # outside tests/, vendor/, var/) has nothing to test yet; its first class
       # switches tests on. (Not "no src/": the workspace keeps its code in app/.)
-      if [ "$script" = tests ] && ! find "$REPO_ROOT/$c" \( -name vendor -o -name tests -o -name var -o -name .git \) \
-           -prune -o -type f -name '*.php' -print 2>/dev/null | grep -q .; then
+      # `-print -quit` + command substitution, never `find | grep -q .`: under
+      # pipefail grep's early exit killed find with SIGPIPE, and a real component
+      # read as a scaffold whose tests were skipped.
+      if [ "$script" = tests ] && [ -z "$(find "$REPO_ROOT/$c" \( -name vendor -o -name tests -o -name var -o -name .git \) \
+           -prune -o -type f -name '*.php' -print -quit 2>/dev/null)" ]; then
         printf 'PASS' >"$tmp/$c.$script.ok"; printf 'scaffold' >"$tmp/$c.$script.na"; : >"$tmp/$c.$script"
         continue
       fi
