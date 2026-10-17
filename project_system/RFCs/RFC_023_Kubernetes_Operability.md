@@ -92,13 +92,17 @@ private view only.
   within Caddy's `grace_period`; each worker's `frankenphp_handle_request()` then returns `false` and
   `WaffleRuntime::loop()` exits. After the loop, the runtime runs an explicit shutdown sequence: deferred
   tasks are already flushed per request on `TerminateEvent`; pooled connections are closed; streams are
-  closed. Today nothing runs after the loop.
+  closed. Today nothing runs after the loop. *Decided 2026-10-17:* no explicit step is added. Deferred tasks
+  and streams are already settled per request, and pooled connections are released per request and
+  closed by PHP when the worker script ends; an explicit close would need a new contract (the pool
+  contract has no `close()`, and the container cannot enumerate services by interface) for no
+  observable gain before the freeze.
 - **Readiness during termination.** The roadmap requires `/readyz` to report not-ready as soon as
   termination starts, so the orchestrator stops routing before the drain. PHP does not see the signal,
-  so Caddy flips it (decided 2026-10-17, §5.1): during the global `shutdown_delay`, the server keeps
-  serving while `{http.shutting_down}` is true, and the Caddyfile answers `/readyz` with 503 before PHP
-  is reached; `grace_period` then drains the in-flight requests.
-- **Kubernetes sizing:** `terminationGracePeriodSeconds` must exceed Caddy's `shutdown_delay` plus its
+  so the pod's `preStop` hook flips it (decided 2026-10-17, §5.1): it creates the drain marker
+  (`waffle.health.drain_marker`) and sleeps; while the marker exists `/readyz` answers 503 and PHP keeps
+  serving every other request. SIGTERM follows, and Caddy's `grace_period` drains the in-flight requests.
+- **Kubernetes sizing:** `terminationGracePeriodSeconds` must exceed the `preStop` sleep plus Caddy's
   `grace_period`, or the kubelet kills the pod mid-drain.
 - **CLI consumers** (`bin/waffle queue:work`) are ordinary CLI processes and do receive SIGTERM. They
   drain through `pcntl` — installed in the development and production images since 2026-09-30:
@@ -121,14 +125,18 @@ private view only.
    Kubernetes removing terminating pods from Service endpoints, plus a `preStop` sleep while that
    propagates; (c) Caddy's `grace_period` alone.
 
-   **Decision (2026-10-17): a fourth option, Caddy's `shutdown_delay`.** After the signal, the global
-   `shutdown_delay` keeps the server serving while the `{http.shutting_down}` placeholder is true; the
-   Caddyfile answers `/readyz` with 503 during that window, before PHP is reached, and `grace_period`
-   then drains the in-flight requests. Measured on FrankenPHP 1.12.7 on 2026-10-09. Sizing:
-   `terminationGracePeriodSeconds` > `shutdown_delay` + `grace_period`. **Why:** it flips readiness the
-   instant the signal arrives, with no state shared across processes: (a) needs a writable shared
-   volume, (b) leaves readiness green until the endpoint removal propagates, and (c) stops accepting
-   connections without ever reporting not-ready.
+   **Decision (2026-10-17, revised the same day): option (a), a drain marker.** The pod's `preStop` hook
+   runs `touch /tmp/waffle-draining && sleep 5` in the container itself, so no shared volume is needed for
+   a single-container pod. While the marker (`waffle.health.drain_marker`) exists, `/readyz` answers 503
+   without running any probe, and PHP keeps serving every other request. SIGTERM then follows, Caddy
+   closes its listeners, and `grace_period` drains what is in flight. Sizing:
+   `terminationGracePeriodSeconds` > `preStop` sleep + `grace_period`. **Evidence (FrankenPHP 1.12.7,
+   worker mode, 2026-10-17):** `/readyz` 503 while other paths answered 200; after SIGTERM a 2-second
+   request in flight completed with 200 and the process exited 0 with no error.
+   **Superseded:** the first decision of the day, Caddy's global `shutdown_delay` with a 503 on `/readyz`
+   while `{http.shutting_down}`, flips readiness but FrankenPHP stops at SIGTERM, so every PHP request
+   during the delay got a 500 ("FrankenPHP is not running"), in classic and in worker mode alike. Without
+   a `preStop` hook (plain Docker), readiness does not flip; the `grace_period` drain still holds.
 2. **Home of the probe middleware** — `waffle-commons/pipeline` hosts the infrastructure middlewares
    (`TrustedHostMiddleware`, `SecureHeadersMiddleware`) — and its position relative to the `Host` check.
 

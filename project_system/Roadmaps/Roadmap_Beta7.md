@@ -251,7 +251,7 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
     
     - Handle SIGTERM in the runtime: stop accepting work, flush deferred tasks (beta5 `[ASYNC-01]` if landed), return pooled connections (beta5 `[DBAL-01]`), close streams, then exit within the configurable grace period.
         
-    - `/readyz` flips to not-ready immediately on SIGTERM so K8s stops routing before the drain (through Caddy's `shutdown_delay`, RFC-023 §5.1).
+    - `/readyz` flips to not-ready immediately on SIGTERM so K8s stops routing before the drain (through the `preStop` drain marker, RFC-023 §5.1 — revised 2026-10-17 after Caddy's `shutdown_delay` proved to stop FrankenPHP at SIGTERM). No explicit post-loop pool close (RFC-023 §3.4, decided 2026-10-17).
         
 
 ### `[OPS-03]` Schema Migration Workflow Maturity
