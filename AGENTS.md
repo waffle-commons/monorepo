@@ -160,12 +160,18 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 
 ## 6. Git & release safety (every agent, every runtime)
 
-The human drives every git and GitHub write. An agent edits files; it does not publish them.
+Git and GitHub writes happen **on the person's request, and only then**. When the person asks for an
+operation, the agent carries it out without asking again; it never performs one that was not asked for.
 
+- **On request, no second question:** "commit this", "push", "open the PR", "merge it", "tag it" or
+  "release it" is the go-ahead for that operation and its routine follow-through (staging the files
+  it names, bumping the umbrella gitlinks a submodule commit needs, pushing the branch a PR needs).
+  Do it, then report what ran (hashes, URLs). Stop and ask only when the request is ambiguous, a
+  safety rule below would be broken, or the outcome cannot be undone (history rewrite, deletion).
 - **Never implied:** commit, push, tag, merge, rebase, reset, branch, stash, `git submodule update`,
-  PR create/merge, release, workflow dispatch, repository or ruleset settings — each needs an
-  explicit request **for that specific operation**. "Make the changes" means edit files, nothing more.
-  A command listed *for the human to run* is not permission to run it.
+  PR create/merge, release, workflow dispatch, repository or ruleset settings — each needs a
+  request **for that operation**. "Make the changes" means edit files, nothing more. A command
+  listed *for the human to run* is not permission to run it.
 - **Tags are live:** pushing a tag matching `N.N.N[-*]` fires the LIVE release wave to Packagist.
   Never create or push one incidentally, not even to "test" the workflow.
 - **Released repos are artefacts:** once a wave ships, add nothing to a component's `main` unless that
