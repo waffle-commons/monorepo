@@ -107,6 +107,15 @@ _assess() {
     fail=1
   fi
 
+  # The bill of materials the release ships with (CycloneDX, from composer.lock).
+  if [ -f "$REPO_ROOT/$comp/composer.lock" ]; then
+    if python3 -I "$REPO_ROOT/scripts/sbom.py" "$comp" --version "$VERSION" >/dev/null; then
+      ok "  SBOM written: tmp/sbom/$comp-$VERSION.cdx.json"
+    else
+      fail=1; warn "  SBOM could not be generated (scripts/sbom.py $comp)"
+    fi
+  fi
+
   return "$fail"
 }
 

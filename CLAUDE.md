@@ -42,15 +42,23 @@ messages. Native-first fixes; never a baseline or suppression.
 > sanity-checked), `wfl changed` (dirty submodules — commit prep), `wfl sync:status [--fetch]`
 > (read-only branch/ahead/behind/gitlink report), `wfl ci:check` (CI, Dependabot and toolchain drift
 > against `component-template`), `wfl rulesets:check`, `wfl boot-smoke <app>` (kernel boots without
-> HTTP), `wfl wf-report <file>` (digest a workflow/agent JSON output). Run `wfl help` for the full surface.
+> HTTP), `wfl wf-report <file>` (digest a workflow/agent JSON output). **Strictness & supply chain:**
+> `wfl coverage:ratchet` (`.coverage-floors`: the DoD fails below a component's floor), `wfl mutation <comp>`
+> (Infection, pinned in `.infection-version`; MSI vs `.mutation-floors`), `wfl sbom`, `wfl images:pin`,
+> `wfl offline warm|check` (installs with the network off), `wfl local-only`, `wfl backup`
+> (+ `backup:schedule`), `wfl ai:settings` (merge the hardened settings; the person runs it),
+> `wfl ai:telemetry`. Run `wfl help` for the full surface.
 >
 > 🔌 **MCP:** postgres · mongo · redis · github, each through a pinned launcher in `scripts/mcp/`
 > (`.mcp.json`, enabled by `.claude/settings.json`). GitHub and Mongo are read-only; database writes
 > ask first. `wfl mcp:check` opens a real session with each one. See **[`/MCP.md`](./MCP.md)**.
 >
 > 🧩 **Plugins:** the repository marketplace (`.claude-plugin/marketplace.json`) loads `waffle-cockpit`
-> (a mod: three lines under the prompt — model, effort, context, cache, cost, limits, repo, PR, Waffle
-> phase — plus `/dod <comp>` in a pane with no model turn and a Bash guard)
+> (a mod: lines under the prompt — model, effort, context, cache, cost, limits, repo, PR, Waffle
+> phase, local-only commits + backup age, background shells / monitors / subagents — plus `/dod <comp>`
+> in a pane with no model turn, the `mcp__waffle-cockpit__dod|xref|coverage_gaps|dod_history` tools,
+> a Bash guard, Edit/Write checks for new `mixed` and secrets, an instant Mago check after each PHP edit
+> and a done-means-evidence reminder before a turn ends)
 > and `mattpocock-skills` (vendored, pinned; `/mattpocock-skills:<name>`) once the folder is trusted.
 >
 > 🔒 **Git & release safety:** agents edit files; the human commits, pushes, tags, merges and releases —

@@ -151,7 +151,9 @@ ${C_DIM}EXECUTION${C_RST}
   igor [args...]        run the Igor memory-leak/state audit across all components (igor.sh)
   compare-audit [comp...]  SEC-03 gate: ban naive === / !== on secret/token/hmac sites (hash_equals)
   check:all [--with-tests]  parallel 'composer mago' across all components (add --with-tests for PHPUnit)
-  dod <comp> [--compare-audit]  full Definition of Done (mago 0 + tests + coverage ≥95 + igor 0 KO)
+  dod <comp> [--compare-audit]  full Definition of Done (mago 0 + tests + coverage ≥95 and ≥ floor + igor 0 KO + composer audit)
+  coverage:ratchet <comp…>|--all [--dry-run]  raise .coverage-floors to the last measured coverage (never lowers)
+  mutation <comp> [--min-msi=N] [--ratchet]   Infection mutation testing (pinned phar); MSI vs .mutation-floors
   coverage <comp>       print line-coverage % from clover.xml (parses var/data/phpunit-coverage)
   flake-hunt <comp> [N=20] [--filter=PAT]  loop phpunit N× to surface flaky tests
 
@@ -164,6 +166,16 @@ ${C_DIM}DIAGNOSTICS / AGENT HELPERS${C_RST}
   boot-smoke <app>      boot a template app's kernel without HTTP (runs its Boot/Smoke test)
   wf-report <file>      summarize a workflow/agent JSON output file (per-item findings/created/updated)
   ai:check [--no-claude]  lint the Claude Code layer: skills, agents, plugins, references (+ claude plugin validate/test)
+  ai:settings [--write] [--telemetry] [--sandbox]  merge the hardened Claude Code settings (dry run by default)
+  ai:telemetry [--raw]  digest of Claude Code's own metrics (cost, tokens, lines, commits) from localhost:9464
+
+${C_DIM}SUPPLY CHAIN / INDEPENDENCE${C_RST}
+  sbom <comp…>|--all    CycloneDX 1.5 SBOM from composer.lock → tmp/sbom/<comp>-<version>.cdx.json
+  images:pin [--write] [--pull]  report (or pin) every base/service image without a digest
+  offline warm|check|status [comp…]  persistent Composer cache (tmp/composer-cache); check installs with the network off
+  local-only            commits on no remote + age of the last backup (what the cockpit shows)
+  backup [--dest DIR] [--dry-run]  bundle every repository off-disk (iCloud by default) and stamp the time
+  backup:schedule install [--at HH:MM]|uninstall|status  daily backup via a macOS LaunchAgent
 
 ${C_DIM}ACADEMY${C_RST}
   academy:test [--lab=N_MM]   run the labs TDD suite + render the progress card (academy/labs, in container)
@@ -1012,6 +1024,13 @@ cmd_coverage_gaps() {
 }
 
 # Cross-reference a PHP symbol across component src (vendor excluded, sanity-checked).
+# Supply chain, independence and gates added 2026-10: thin wrappers over scripts/.
+cmd_script() {
+  local script="$REPO_ROOT/scripts/$1"; shift
+  [ -x "$script" ] || die "scripts/${script##*/scripts/} not found or not executable"
+  exec "$script" "$@"
+}
+
 cmd_xref() {
   [ -x "$REPO_ROOT/scripts/xref.sh" ] || die "scripts/xref.sh not found or not executable"
   exec "$REPO_ROOT/scripts/xref.sh" "$@"
@@ -1094,6 +1113,16 @@ main() {
     rulesets:sync)  cmd_rulesets sync  "$@" ;;
     coverage:gaps) cmd_coverage_gaps "$@" ;;
     xref)          cmd_xref          "$@" ;;
+    coverage:ratchet) cmd_script coverage-ratchet.sh "$@" ;;
+    mutation)      cmd_script mutation.sh        "$@" ;;
+    sbom)          cmd_script sbom.py            "$@" ;;
+    images:pin)    cmd_script images-pin.py      "$@" ;;
+    offline)       cmd_script offline.sh         "$@" ;;
+    local-only)    cmd_script local-only.sh      "$@" ;;
+    backup)        cmd_script backup-bundles.sh  "$@" ;;
+    backup:schedule) cmd_script backup-schedule.sh "$@" ;;
+    ai:settings)   cmd_script claude/settings-apply.py "$@" ;;
+    ai:telemetry)  cmd_script claude/telemetry.py "$@" ;;
     changed)       cmd_changed       "$@" ;;
     sync:status)   cmd_sync_status   "$@" ;;
     ci:check)      cmd_ci_check      "$@" ;;
