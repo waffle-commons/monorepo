@@ -84,17 +84,22 @@ legacy upstream.
   SSRF guard, and an open circuit is never retried. Timeouts are `Client::withTimeouts(TimeoutPolicy)`.
   The retry budget bounds the waits and the start of each attempt, so the worst case is the budget plus
   one attempt's total timeout.
-- *Concurrent path, implemented 2026-10-21:* both decorators implement http-client's
-  `SettlingClientInterface` (component-local: `ConcurrentClientInterface` plus `settleRequests()`, which
-  settles every request instead of throwing the first failure; no contract change).
+- *Concurrent path, implemented 2026-10-21:* both decorators implement `SettlingClientInterface`
+  (`ConcurrentClientInterface` plus `settleRequests()`, which settles every request instead of throwing the
+  first failure). It moved to `contracts` (`HttpClient\SettlingClientInterface`) the same day, so a decorator
+  in another component can implement it.
   - The breaker asks the storage about every request of a batch before any is sent, sends the admitted
     ones together and records each outcome. A refused request settles as its `CircuitOpenException`.
   - The retry policy retries a batch in waves: each request keeps its own attempts, backoff,
     `Retry-After` and budget, and the requests to retry go out together after the longest of their waits.
   - `sendRequests()` is the fail-fast view of the settled batch: the first failure in key order, thrown
     once every outcome is recorded. `promise()` runs the decorator's `sendRequest()` when it is waited on.
-  - A decorator that implements only PSR-18, such as `AuthenticatedClient`, keeps a batch correct but
-    sends it one request at a time below it.
+  - A decorator that implements only PSR-18 keeps a batch correct but sends it one request at a time below
+    it. For the outbound credentials, auth's `AuthenticatedSettlingClient` keeps the batch concurrent.
+  - An unresolvable host is a `NetworkException` (cURL code 6) from the SSRF guard, so a DNS outage of a
+    public upstream is retried and counted like any transport failure; `SsrfException` stays a refusal.
+  - A half-open trial that records no outcome within a cool-down gives its slot back in the shared storage,
+    so a worker that dies mid-trial never holds the circuit half-open until the state expires.
 
 ## 4. Contributor Guidelines
 
