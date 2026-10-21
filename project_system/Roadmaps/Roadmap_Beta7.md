@@ -268,6 +268,8 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
         
     - SQL dialects already supported by `data/` only; NoSQL backends are schema-less and out of scope. *Scope change 2026-10-17:* the live migrate/rollback round trip runs on PostgreSQL, SQLite, MySQL and MariaDB (the images carry `pdo_pgsql`, `pdo_sqlite` and `pdo_mysql`; MySQL and MariaDB need their own containers); SQL Server and Oracle are covered by SQL-generation tests only, because no image carries `pdo_sqlsrv` or `pdo_oci`. Their live round trip moved to `Roadmap_Post_v1.md`.
         
+    - *Status 2026-10-21:* landed. `MigrationRunner::rollback()` and `status()` work through `V.down.sql` scripts and a per-dialect ledger (contracts `MigrationState`, `Enum\MigrationStatus`). `console` gains `db:status`, `db:rollback [--steps=N]` and `make:migration`, wired into the skeleton and the workspace. A script with no SQL statement is refused, never logged, so an unedited scaffold cannot be recorded as applied. Found on the way: every DDL migration failed on MySQL and MariaDB (implicit commit, then PHP 8's `commit()` threw); fixed. Evidence: the live round trip passes on PostgreSQL, MySQL 8.4 and MariaDB 11.4 (`MigrationRoundTripTest`, against the workspace `waffle-mysql`/`waffle-mariadb` services) and on SQLite (`MigrationRunnerTest`); `MigrationLedgerTest` covers the SQL Server and Oracle ledger SQL; the full CLI cycle (make → refuse unedited → migrate → status → rollback 2 steps) ran on PostgreSQL through the workspace `bin/waffle`; `wfl dod` PASS on data, console, skeleton and workspace.
+        
 
 ## 📜 AXE 4: API SURFACE TOOLING
 
