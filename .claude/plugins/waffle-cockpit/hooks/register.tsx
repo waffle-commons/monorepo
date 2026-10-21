@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register } from 'claude-code'
+import type { EngineInterface, Register, Timer } from 'claude-code'
 
-import type { CockpitStatus, DodRecord, DodRun, DodView, Job, RepoInfo, SessionInfo } from '../types'
+import type { CockpitStatus, DodRecord, DodRun, DodView, Job, JobState, RepoInfo, SessionInfo } from '../types'
 import { applyLine, emptyRun, excerptOf, LineSplitter, summaryOf } from './dod'
 import {
   EMPTY_EVIDENCE,
@@ -18,7 +18,21 @@ import {
   withRecords,
 } from './evidence'
 import { isSecretPath, verdictOf } from './guard'
-import { ended, evented, jobOf, liveOf, notificationsOf, oneLine, pruned, started, stateOf, withAgents } from './jobs'
+import {
+  backgrounded,
+  dropped,
+  ended,
+  evented,
+  jobOf,
+  liveOf,
+  notificationsOf,
+  oneLine,
+  pruned,
+  started,
+  startedCommand,
+  stateOf,
+  withAgents,
+} from './jobs'
 import { optionsOf } from './options'
 import type { CockpitOptions } from './options'
 import { dirtyComponentsOf, dirtyCountOf, phaseOf } from './status'
@@ -33,6 +47,8 @@ const CONTAINER = 'waffle-dev'
 
 /** One timer drives the lines: the session every tick, the repository every other, the umbrella every tenth. */
 const TICK_MS = 30_000
+/** While a command runs, the lines redraw this often so its running time moves. */
+const PULSE_MS = 1_000
 /** The least time between two umbrella refreshes, and between two `gh pr view`. */
 const REFRESH_GAP_MS = 20_000
 const PR_GAP_MS = 5 * 60_000
@@ -63,6 +79,7 @@ const session = atom({ plugin: 'waffle-cockpit', key: 'session' } as const, null
 const repo = atom({ plugin: 'waffle-cockpit', key: 'repo' } as const, null)
 const dod = atom({ plugin: 'waffle-cockpit', key: 'dod' } as const, null)
 const jobs = atom({ plugin: 'waffle-cockpit', key: 'jobs' } as const, [])
+const pulse = atom({ plugin: 'waffle-cockpit', key: 'pulse' } as const, 0)
 const evidence = atom({ plugin: 'waffle-cockpit', key: 'evidence' } as const, EMPTY_EVIDENCE)
 const history = atom({ plugin: 'waffle-cockpit', key: 'history' } as const, {})
 const isHidden = atom({ plugin: 'waffle-cockpit', key: 'isHidden' } as const, false)
@@ -102,6 +119,12 @@ const local: {
   localCheckedAt: number
   /** Per component, the edit time a stop reminder already named, so it is not repeated for the same edits. */
   reminded: Record<string, number>
+  /** Numbers the commands that came without a `tool_use_id`. */
+  commands: number
+  /** Commands started and not yet ended, counted at once (the job list follows a moment later). */
+  runningCommands: number
+  /** The redraw timer, alive only while a command runs or lingers. */
+  pulseTimer: Timer | undefined
 } = {
   rootPromise: undefined,
   refreshing: undefined,
@@ -118,6 +141,9 @@ const local: {
   backupAgeS: null,
   localCheckedAt: -LOCAL_GAP_MS,
   reminded: {},
+  commands: 0,
+  runningCommands: 0,
+  pulseTimer: undefined,
 }
 
 /** Work started without awaiting (a refresh, a /dod run) reports nothing when it fails. */
@@ -331,6 +357,58 @@ async function refreshNow($: EngineInterface): Promise<void> {
 async function changeJobs($: EngineInterface, change: (was: Job[], now: number) => Job[]): Promise<void> {
   const now = await $.clock.now()
   await update($, jobs, was => pruned(change(was, now), now, local.options.jobLingerSeconds * 1000))
+}
+
+/** The call's own id, else a fresh one for a command the engine gave none. */
+function commandIdOf(toolUseId: string | undefined): string {
+  if (toolUseId !== undefined && toolUseId !== '') return toolUseId
+  local.commands += 1
+  return `command-${local.commands}`
+}
+
+/**
+ * Puts a foreground command on the work line and starts the redraw pulse; resolves once the job is
+ * recorded. The call it tracks never waits for it.
+ */
+function startCommand($: EngineInterface, id: string, label: string, detail: string): Promise<void> {
+  local.runningCommands += 1
+  local.pulseTimer ??= $.clock.every(PULSE_MS, () => void beat($).catch(ignoreFailure))
+  return changeJobs($, (was, now) => startedCommand(was, jobOf('command', id, label, detail, now))).catch(ignoreFailure)
+}
+
+/** Ends a command once its start is recorded, so a fast command never ends before it began. */
+function endCommand($: EngineInterface, shown: Promise<void>, change: (was: Job[], now: number) => Job[]): void {
+  local.runningCommands = Math.max(0, local.runningCommands - 1)
+  void shown.then(() => changeJobs($, change)).catch(ignoreFailure)
+}
+
+/** Runs a script as a command on the work line: running, then ticked, or crossed when `isOk` says it failed. */
+async function tracked<T>($: EngineInterface, label: string, work: () => Promise<T>, isOk: (value: T) => boolean): Promise<T> {
+  const id = commandIdOf(undefined)
+  const shown = startCommand($, id, label, label)
+  let state: JobState = 'killed'
+  try {
+    const value = await work()
+    state = isOk(value) ? 'completed' : 'failed'
+    return value
+  } finally {
+    endCommand($, shown, (was, now) => ended(was, id, state, now))
+  }
+}
+
+/**
+ * One pulse: a redraw, so a running command's time moves and an ended one leaves on time. The timer stops
+ * once no command runs or lingers; the running count is read after the last await, so a command starting
+ * meanwhile keeps it alive.
+ */
+async function beat($: EngineInterface): Promise<void> {
+  const now = await $.clock.now()
+  const isShown = pruned(await read($, jobs), now, local.options.jobLingerSeconds * 1000).some(job => job.kind === 'command')
+  if (!isShown && local.runningCommands === 0) {
+    local.pulseTimer?.cancel()
+    local.pulseTimer = undefined
+  }
+  await update($, pulse, beats => beats + 1)
 }
 
 /** Ends or counts the jobs a delivered task notification names; a failed one raises a toast. */
@@ -549,14 +627,26 @@ export const register: Register = (on, options) => {
       if (verdict !== undefined && /holds secrets/.test(verdict)) return { deny: `${PLUGIN}: ${verdict}` }
     }
 
-    const ran = await next(e)
+    // A foreground command is on the work line while it runs; a backgrounded one joins it by its task id.
+    const commandId = e.run_in_background === true ? undefined : commandIdOf(e.tool_use_id)
+    const shown = commandId === undefined ? undefined : startCommand($, commandId, e.description ?? e.command, e.command)
+    const ran = await next(e).catch((error: unknown) => {
+      if (commandId !== undefined && shown !== undefined) endCommand($, shown, (was, now) => ended(was, commandId, 'killed', now))
+      throw error
+    })
     if (root !== undefined && RUNS_DOD.test(e.command) && ran.deny === undefined) {
       const output = ran.text ?? (ran.isError === true ? '' : `${ran.result?.stdout ?? ''}\n${ran.result?.stderr ?? ''}`)
       void recordRuns($, runsOfOutput(output)).catch(ignoreFailure)
     }
     // run_in_background, or Ctrl+B on a running command: either way the result names the task.
     const taskId = ran.deny === undefined && ran.isError !== true ? ran.result?.backgroundTaskId : undefined
-    if (taskId !== undefined) {
+    if (commandId !== undefined && shown !== undefined) {
+      const state: JobState = ran.isError === true ? 'failed' : ran.result?.interrupted === true ? 'killed' : 'completed'
+      endCommand($, shown, (was, now) => {
+        if (taskId !== undefined) return backgrounded(was, commandId, taskId)
+        return ran.deny === undefined ? ended(was, commandId, state, now) : dropped(was, commandId)
+      })
+    } else if (taskId !== undefined) {
       void changeJobs($, (was, now) => started(was, jobOf('shell', taskId, e.description ?? e.command, e.command, now))).catch(ignoreFailure)
     }
     if (REFRESHES_STATUS.test(e.command)) {
@@ -614,7 +704,7 @@ export const register: Register = (on, options) => {
     const runs: DodRun[] = []
     for (const component of components) {
       try {
-        const out = await collect($, [`${root}/bin/wfl`, 'dod', component], root)
+        const out = await tracked($, `wfl dod ${component}`, () => collect($, [`${root}/bin/wfl`, 'dod', component], root), done => done.code === 0)
         const parsed = runsOfOutput(out.output)[0]
         runs.push(parsed ?? { ...emptyRun(component), verdict: out.code === 0 ? 'pass' : 'fail', error: out.code === 0 ? '' : `wfl dod exited ${out.code ?? '?'}` })
       } catch (error) {
@@ -636,7 +726,7 @@ export const register: Register = (on, options) => {
     const symbol = fieldOf(e, 'symbol')
     if (root === undefined || typeof symbol !== 'string' || !/^[A-Za-z_\\][A-Za-z0-9_\\:]*$/.test(symbol)) return { result: 'Give a PHP symbol: a class, interface, function or constant name.' }
     const argv = [`${root}/scripts/xref.sh`, symbol, ...(fieldOf(e, 'tests') === true ? ['--tests'] : [])]
-    const out = await textOf($, argv, root, 60_000)
+    const out = await tracked($, `wfl xref ${symbol}`, () => textOf($, argv, root, 60_000), found => found !== undefined)
     const refs = (out ?? '')
       .split('\n')
       .map(line => /^\.\/([^:]+):(\d+):(.*)$/.exec(line))
@@ -649,7 +739,12 @@ export const register: Register = (on, options) => {
     const root = await rootOf($)
     const component = fieldOf(e, 'component')
     if (root === undefined || typeof component !== 'string' || !COMPONENT.test(component)) return { result: 'Give one component name.' }
-    const out = await collect($, [`${root}/bin/wfl`, 'coverage:gaps', component], root).catch(() => ({ code: null, output: '' }))
+    const out = await tracked(
+      $,
+      `wfl coverage:gaps ${component}`,
+      () => collect($, [`${root}/bin/wfl`, 'coverage:gaps', component], root).catch(() => ({ code: null, output: '' })),
+      gaps => gaps.code === 0,
+    )
     return { result: out.output.trim() || `wfl coverage:gaps ${component} printed nothing or failed (is waffle-dev running?)` }
   })
 
@@ -765,6 +860,8 @@ export const register: Register = (on, options) => {
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     if (await read($, isHidden)) return next(e)
     const { Box, Text } = $.ui.resolve(e)
+    // Reading the pulse redraws the lines every second while a command runs.
+    await read($, pulse)
     const now = await $.clock.now()
     const lines = linesOf({
       session: await read($, session),
@@ -794,9 +891,10 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'Pane', requestId: JOBS_PANE }, async ($, e) => {
     const { Box, Text } = $.ui.resolve(e)
+    await read($, pulse)
     const now = await $.clock.now()
     const all = pruned(await read($, jobs), now)
-    if (all.length === 0) return <Text dimColor>No background job: shells, monitors, subagents and wakeups show here while they run.</Text>
+    if (all.length === 0) return <Text dimColor>Nothing running: commands, background shells, monitors, subagents and wakeups show here while they run.</Text>
 
     const order = [...liveOf(all), ...all.filter(job => job.endedAt !== null)]
     const stateText = (job: Job) =>

@@ -41,7 +41,7 @@ describe('linesOf', () => {
     const fresh: SessionInfo = { ...SESSION, contextPercent: null, cacheInput: 0, cacheRead: 0, costUsd: null, startedAt: null }
     const lines = linesOf({ session: fresh, repo: null, waffle: null, now: 0, hint: '? for shortcuts' })
     expect(text(lines[1])).toBe('ctx —')
-    expect(text(lines[2])).toBe('⧗ 0 │ no background shell, monitor or subagent')
+    expect(text(lines[2])).toBe('⧗ 0 │ no command, background shell, monitor or subagent')
     expect(text(lines[3])).toBe('? for shortcuts')
   })
 

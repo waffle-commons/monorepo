@@ -5,7 +5,7 @@
  *
  *   1. model · effort │ repo ⎇ branch ●dirty │ phase · waffle-dev · igor
  *   2. context bar, tokens │ prompt cache │ cost · duration · diff
- *   3. background work: shells, monitors, subagents, the next wakeup (always drawn, idle when there is none)
+ *   3. work: the running commands, background shells, monitors, subagents, the next wakeup (always drawn, idle when there is none)
  *   4. 5h / 7d limits │ PR │ the engine's own hint (shortcuts, esc to interrupt)
  */
 import type { CockpitStatus, Job, RepoInfo, SessionInfo } from '../types'
@@ -180,8 +180,8 @@ function prGroup(repo: RepoInfo | null): Line {
   return mark === undefined ? [{ text: `PR #${repo.pr.number}`, tone: 'plain' }] : [{ text: `PR #${repo.pr.number}`, tone: 'plain' }, mark]
 }
 
-/** The glyph each kind of background work is drawn with. */
-export const JOB_ICONS: Record<Job['kind'], string> = { shell: '$', monitor: '◉', agent: '◆', wakeup: '⏰' }
+/** The glyph each kind of work is drawn with. */
+export const JOB_ICONS: Record<Job['kind'], string> = { command: '▶', shell: '$', monitor: '◉', agent: '◆', wakeup: '⏰' }
 
 /** How many jobs the line names before it says `+N`. */
 const JOBS_SHOWN = 4
@@ -193,7 +193,9 @@ export function jobGroup(job: Job, now: number): Line {
   }
   if (job.endedAt !== null) {
     const mark: Segment = job.state === 'completed' ? { text: '✓ ', tone: 'green' } : { text: `✗ ${job.state} `, tone: 'red' }
-    return [mark, { text: `${JOB_ICONS[job.kind]} ${job.label}`, tone: 'dim' }]
+    // A command says how long it took; background work said so while it ran.
+    const took = job.kind === 'command' ? ` ${elapsed(job.endedAt - job.startedAt)}` : ''
+    return [mark, { text: `${JOB_ICONS[job.kind]} ${job.label}${took}`, tone: 'dim' }]
   }
   const group: Line = [
     { text: `${JOB_ICONS[job.kind]} `, tone: 'cyan' },
@@ -204,14 +206,21 @@ export function jobGroup(job: Job, now: number): Line {
   return group
 }
 
-/** What the background line says while nothing runs in the background, so the line never disappears. */
-export const NO_JOB = 'no background shell, monitor or subagent'
+/** What the work line says while nothing runs, so the line never disappears. */
+export const NO_JOB = 'no command, background shell, monitor or subagent'
 
-/** The background line: a running count, then the jobs, running ones first; an idle count when there is no job. */
+/**
+ * The work line: a running count, then the jobs — running commands first, the rest of the running work,
+ * then what ended; an idle count when there is no job.
+ */
 export function jobsLine(jobs: readonly Job[], now: number): Line {
   if (jobs.length === 0) return [{ text: '⧗ 0', tone: 'dim' }, SEPARATOR, { text: NO_JOB, tone: 'dim' }]
   const running = jobs.filter(job => job.endedAt === null)
-  const order = [...running, ...jobs.filter(job => job.endedAt !== null)]
+  const order = [
+    ...running.filter(job => job.kind === 'command'),
+    ...running.filter(job => job.kind !== 'command'),
+    ...jobs.filter(job => job.endedAt !== null),
+  ]
   const groups = order.slice(0, JOBS_SHOWN).map(job => jobGroup(job, now))
   if (order.length > JOBS_SHOWN) groups.push([{ text: `+${order.length - JOBS_SHOWN} more (/cockpit jobs)`, tone: 'dim' }])
   const head: Line = [{ text: `⧗ ${running.length}`, tone: running.length > 0 ? 'yellow' : 'dim' }]

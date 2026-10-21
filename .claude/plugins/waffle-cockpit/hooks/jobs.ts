@@ -1,14 +1,17 @@
 /**
- * The session's background work as the cockpit tracks it: backgrounded shells,
- * monitors, subagents and the /loop wakeup. The engine gives a mod no task
- * list, so the cockpit records each start from its tool call and each end from
- * the task notification the session receives. Pure, so it is tested without an
- * engine.
+ * The session's work as the cockpit tracks it: the foreground commands while
+ * they run, backgrounded shells, monitors, subagents and the /loop wakeup. The
+ * engine gives a mod no task list, so the cockpit records each start from its
+ * tool call and each end from the call's result or the task notification the
+ * session receives. Pure, so it is tested without an engine.
  */
 import type { Job, JobKind, JobState } from '../types'
 
 /** How long an ended job stays on the line, ticked or crossed, before it goes. */
 export const LINGER_MS = 60_000
+
+/** How long an ended foreground command stays, at most: the next command replaces it sooner. */
+export const COMMAND_LINGER_MS = 10_000
 
 /** The longest label the line shows; the pane shows the whole one. */
 const LABEL_MAX = 48
@@ -27,6 +30,21 @@ export function jobOf(kind: JobKind, id: string, label: string, detail: string, 
 /** Adds a job, replacing one with the same id (a re-armed monitor, a resumed agent). */
 export function started(jobs: readonly Job[], job: Job): Job[] {
   return [...jobs.filter(one => one.id !== job.id), job]
+}
+
+/** Adds a foreground command; the commands that already ended give it their place. */
+export function startedCommand(jobs: readonly Job[], job: Job): Job[] {
+  return started(jobs.filter(one => one.kind !== 'command' || one.endedAt === null), job)
+}
+
+/** A foreground command sent to the background (Ctrl+B): the same job, now the shell the task id names. */
+export function backgrounded(jobs: readonly Job[], id: string, taskId: string): Job[] {
+  return jobs.map(job => (job.id === id && job.endedAt === null ? { ...job, id: taskId, kind: 'shell' } : job))
+}
+
+/** Drops a job outright: a command that never ran (refused, denied). */
+export function dropped(jobs: readonly Job[], id: string): Job[] {
+  return jobs.filter(job => job.id !== id)
 }
 
 /**
@@ -87,10 +105,13 @@ export function withAgents(jobs: readonly Job[], agents: readonly AgentSeen[], n
   return next
 }
 
-/** Drops the jobs ended more than `lingerMs` ago, and a wakeup whose time has come. */
+/**
+ * Drops the jobs ended more than `lingerMs` ago (a command: `COMMAND_LINGER_MS` at most), and a wakeup whose
+ * time has come.
+ */
 export function pruned(jobs: readonly Job[], now: number, lingerMs = LINGER_MS): Job[] {
   return jobs.filter(job => {
-    if (job.endedAt !== null) return now - job.endedAt < lingerMs
+    if (job.endedAt !== null) return now - job.endedAt < (job.kind === 'command' ? Math.min(lingerMs, COMMAND_LINGER_MS) : lingerMs)
     return job.dueAt === null || job.dueAt > now
   })
 }

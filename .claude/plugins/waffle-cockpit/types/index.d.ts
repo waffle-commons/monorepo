@@ -106,14 +106,20 @@ export type DodView = {
   isActive: boolean
 }
 
-/** What kind of background work: a backgrounded Bash command, a Monitor watch, a subagent, a /loop wakeup. */
-export type JobKind = 'shell' | 'monitor' | 'agent' | 'wakeup'
+/**
+ * What kind of work: a foreground command (a Bash call, or a cockpit tool running a repository script) while
+ * it runs, a backgrounded Bash command, a Monitor watch, a subagent, a /loop wakeup.
+ */
+export type JobKind = 'command' | 'shell' | 'monitor' | 'agent' | 'wakeup'
 
 export type JobState = 'running' | 'completed' | 'failed' | 'killed'
 
-/** One piece of background work of this session, as the cockpit saw it start and end. */
+/** One piece of work of this session, as the cockpit saw it start and end. */
 export type Job = {
-  /** The task id the engine gave it (`backgroundTaskId`, the Monitor `taskId`, the agent id); `wakeup` for the loop. */
+  /**
+   * The id the engine gave it (the call's `tool_use_id` for a command, `backgroundTaskId`, the Monitor
+   * `taskId`, the agent id); `wakeup` for the loop.
+   */
   id: string
   kind: JobKind
   /** The call's own description, else its command or prompt, on one line. */
@@ -139,6 +145,8 @@ declare module 'claude-code' {
       repo: RepoInfo | null
       dod: DodView | null
       jobs: Job[]
+      /** Bumped every second while a command runs, so the lines redraw its running time. */
+      pulse: number
       evidence: Evidence
       history: Record<string, DodRecord>
       isHidden: boolean
