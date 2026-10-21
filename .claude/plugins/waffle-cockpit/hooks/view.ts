@@ -5,7 +5,7 @@
  *
  *   1. model · effort │ repo ⎇ branch ●dirty │ phase · waffle-dev · igor
  *   2. context bar, tokens │ prompt cache │ cost · duration · diff
- *   3. background work: shells, monitors, subagents, the next wakeup (only while there is some)
+ *   3. background work: shells, monitors, subagents, the next wakeup (always drawn, idle when there is none)
  *   4. 5h / 7d limits │ PR │ the engine's own hint (shortcuts, esc to interrupt)
  */
 import type { CockpitStatus, Job, RepoInfo, SessionInfo } from '../types'
@@ -204,9 +204,12 @@ export function jobGroup(job: Job, now: number): Line {
   return group
 }
 
-/** The background line: a running count, then the jobs, running ones first; empty when there is no job. */
+/** What the background line says while nothing runs in the background, so the line never disappears. */
+export const NO_JOB = 'no background shell, monitor or subagent'
+
+/** The background line: a running count, then the jobs, running ones first; an idle count when there is no job. */
 export function jobsLine(jobs: readonly Job[], now: number): Line {
-  if (jobs.length === 0) return []
+  if (jobs.length === 0) return [{ text: '⧗ 0', tone: 'dim' }, SEPARATOR, { text: NO_JOB, tone: 'dim' }]
   const running = jobs.filter(job => job.endedAt === null)
   const order = [...running, ...jobs.filter(job => job.endedAt !== null)]
   const groups = order.slice(0, JOBS_SHOWN).map(job => jobGroup(job, now))

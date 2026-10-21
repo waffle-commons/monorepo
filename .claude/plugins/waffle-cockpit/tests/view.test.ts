@@ -25,7 +25,7 @@ const text = (line: Line | undefined) => (line ?? []).map(segment => segment.tex
 describe('linesOf', () => {
   test('outside the umbrella: no Waffle segment, the rest stays', () => {
     const lines = linesOf({ session: SESSION, repo: REPO, waffle: null, now: 120_000, hint: '' })
-    expect(lines).toHaveLength(2)
+    expect(lines).toHaveLength(3)
     expect(text(lines[0])).toBe('Opus 5.5 · max │ site ⎇ main ✓')
     expect(text(lines[1])).toContain('ctx ▓▓▓▓▓▓▓▓▓░ 85% 850k/1.0M')
     expect(text(lines[1])).toContain('cache 94% · last turn 1m ago')
@@ -41,7 +41,8 @@ describe('linesOf', () => {
     const fresh: SessionInfo = { ...SESSION, contextPercent: null, cacheInput: 0, cacheRead: 0, costUsd: null, startedAt: null }
     const lines = linesOf({ session: fresh, repo: null, waffle: null, now: 0, hint: '? for shortcuts' })
     expect(text(lines[1])).toBe('ctx —')
-    expect(text(lines[2])).toBe('? for shortcuts')
+    expect(text(lines[2])).toBe('⧗ 0 │ no background shell, monitor or subagent')
+    expect(text(lines[3])).toBe('? for shortcuts')
   })
 
   test('with no session data yet it still draws a model line', () => {

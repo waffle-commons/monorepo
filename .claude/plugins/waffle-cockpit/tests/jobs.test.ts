@@ -79,8 +79,9 @@ describe('the job records', () => {
 })
 
 describe('the background line', () => {
-  test('none without jobs', () => {
-    expect(jobsLine([], 0)).toEqual([])
+  test('idle, never empty, without jobs', () => {
+    expect(text(jobsLine([], 0))).toBe('⧗ 0 │ no background shell, monitor or subagent')
+    expect(jobsLine([], 0).every(segment => segment.tone === 'dim')).toBe(true)
   })
 
   test('running first, with durations, events, end marks and a wakeup', () => {
@@ -138,6 +139,6 @@ describe('tracking from the tool calls', () => {
     await $.tool.call({ tool: 'Bash', command: 'ls' })
     await until(world, () => false, 20)
 
-    expect(textOf(await $.ui.render(HINT))).not.toContain('⧗')
+    expect(textOf(await $.ui.render(HINT))).toContain('⧗ 0 │ no background shell, monitor or subagent')
   })
 })
