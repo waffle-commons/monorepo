@@ -51,6 +51,36 @@ describe('Edit and Write checks', () => {
     expect((ran.context ?? []).join('\n')).toContain('Mago on security/src/A.php is not clean')
     expect(world.runs).toContainEqual(['docker', 'exec', '-w', '/waffle-commons/security', 'waffle-dev', 'vendor/bin/mago', 'analyze', 'src/A.php'])
   })
+
+  test('the instant check waits until the container sees the whole file', async ($, on) => {
+    const world = inUmbrella(on, { mago: 'warning[no-isset]: Use of isset\n', sizes: ['3\n', '3\n'] })
+    on('agent.list', () => ({ value: [] }))
+    on('tool.call', () => ({ result: { filePath: '', oldString: '', newString: '', originalFile: '', structuredPatch: [], userModified: false, replaceAll: false } }))
+    await $.session.start(SESSION)
+    await $.command.run(commandOf('cockpit'))
+
+    const call = $.tool.call({ tool: 'Edit', file_path: `${ROOT}/security/src/A.php`, old_string: 'a', new_string: 'b' })
+    await world.clock.advance(500)
+    const ran = await call
+
+    expect((ran.context ?? []).join('\n')).toContain('Mago on security/src/A.php is not clean')
+    expect(world.runs.filter(argv => argv.includes('stat'))).toHaveLength(3)
+  })
+
+  test('a file the container never catches up with is not checked', async ($, on) => {
+    const world = inUmbrella(on, { mago: 'warning[no-isset]: Use of isset\n', sizes: Array.from({ length: 15 }, () => '3\n') })
+    on('agent.list', () => ({ value: [] }))
+    on('tool.call', () => ({ result: { filePath: '', oldString: '', newString: '', originalFile: '', structuredPatch: [], userModified: false, replaceAll: false } }))
+    await $.session.start(SESSION)
+    await $.command.run(commandOf('cockpit'))
+
+    const call = $.tool.call({ tool: 'Edit', file_path: `${ROOT}/security/src/A.php`, old_string: 'a', new_string: 'b' })
+    await world.clock.advance(3_000)
+    const ran = await call
+
+    expect((ran.context ?? []).join('\n')).not.toContain('Mago on')
+    expect(world.runs.some(argv => argv.includes('vendor/bin/mago'))).toBe(false)
+  })
 })
 
 describe('done means evidence', () => {

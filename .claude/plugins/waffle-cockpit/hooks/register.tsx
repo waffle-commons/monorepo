@@ -220,9 +220,32 @@ async function loadHistory($: EngineInterface): Promise<void> {
 }
 
 /** Mago on one edited PHP file, inside the container: what the model should read, or undefined when clean. */
+/** How long between two looks at the container's copy of an edited file, and how many looks at most. */
+const SYNC_GAP_MS = 100
+const SYNC_TRIES = 15
+
+/**
+ * Whether the container sees the file as the host wrote it. Docker's file sharing can show a just-written
+ * file with its old size for a moment (the new text cut at the old length), and Mago then reports parse
+ * errors or unused imports that are not there. Waits for the two sizes to match, `SYNC_TRIES` looks at most.
+ */
+async function caughtUp($: EngineInterface, root: string, component: string, inner: string): Promise<boolean> {
+  const text = await $.fs.read(`${root}/${component}/${inner}`).catch(() => undefined)
+  if (text === undefined) return true
+  const size = new TextEncoder().encode(text).length
+  for (let look = 0; look < SYNC_TRIES; look++) {
+    if (look > 0) await $.clock.sleep(SYNC_GAP_MS)
+    const seen = await textOf($, ['docker', 'exec', CONTAINER, 'stat', '-c', '%s', `/waffle-commons/${component}/${inner}`], root, 5_000)
+    if (Number((seen ?? '').trim()) === size) return true
+  }
+  return false
+}
+
 async function instantLint($: EngineInterface, root: string, component: string, inner: string): Promise<string | undefined> {
   const mode = local.options.instantLint
   if (mode === 'off' || (await read($, status))?.container !== 'running') return undefined
+  // A check of a copy the container has not caught up with reports what is not there: skip it.
+  if (!(await caughtUp($, root, component, inner))) return undefined
   const base = ['docker', 'exec', '-w', `/waffle-commons/${component}`, CONTAINER, 'vendor/bin/mago']
   const outputs: string[] = []
   for (const sub of mode === 'lint' ? ['lint'] : ['lint', 'analyze']) {

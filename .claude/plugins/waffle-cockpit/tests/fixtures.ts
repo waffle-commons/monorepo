@@ -67,8 +67,14 @@ export const CHANGED = [
 
 export type World = { runs: string[][]; toasts: string[]; opened: string[]; clock: MockClock }
 
-/** What the machine answers, where a test needs something else than the defaults. */
-export type Answers = { branch?: string; container?: string; changed?: string; mago?: string; dod?: string }
+/**
+ * What the machine answers, where a test needs something else than the defaults. `sizes` are the
+ * container's `stat -c %s` answers, one per look, before it shows the host's size.
+ */
+export type Answers = { branch?: string; container?: string; changed?: string; mago?: string; dod?: string; sizes?: string[] }
+
+/** The size of every file `fs.read` answers ('0.9.7\n'), as the container reports it once in sync. */
+const SYNCED_SIZE = '6\n'
 
 /** What git, gh, docker and the changed-components report answer, by command. */
 function stdoutOf(argv: readonly string[], answers: Answers): string {
@@ -82,6 +88,7 @@ function stdoutOf(argv: readonly string[], answers: Answers): string {
   if (line.includes('status --porcelain')) return ' M AGENTS.md\n M README.md\n?? notes.md\n'
   if (line.includes('diff --shortstat')) return ' 2 files changed, 812 insertions(+), 95 deletions(-)\n'
   if (argv[0] === 'gh') return '{"number":12,"reviewDecision":"APPROVED","isDraft":false}\n'
+  if (argv[0] === 'docker' && argv.includes('stat')) return answers.sizes?.shift() ?? SYNCED_SIZE
   if (argv[0] === 'docker') return answers.container ?? 'running\n'
   return answers.changed ?? CHANGED
 }
