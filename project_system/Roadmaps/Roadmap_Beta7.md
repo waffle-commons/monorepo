@@ -183,7 +183,7 @@ _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams
         
     - *Status 2026-10-17:* landed — contracts `TimeoutPolicy`/`RetryPolicy`, `Client::withTimeouts()`, `RetryingClient`; the concurrent path is not yet covered (RFC-024 §3.3).
         
-    - *Status 2026-10-21:* the concurrent path is covered (RFC-024 §3.3). `RetryingClient` and `CircuitBreakerClient` settle batches through http-client's `SettlingClientInterface`: retries in waves, the breaker checked for every request before any is sent, promises deferred to the decorator. Still open for `[NET-02]`/`[NET-03]`: the app wiring with the `waffle.http_client.resilience.*` / `.breaker.*` configuration, and the breaker's fault-injection acceptance.
+    - *Status 2026-10-21:* the concurrent path is covered (RFC-024 §3.3). `RetryingClient` and `CircuitBreakerClient` settle batches through http-client's `SettlingClientInterface`: retries in waves, the breaker checked for every request before any is sent, promises deferred to the decorator. The workspace wires both clients from the `waffle.http_client.resilience.*` / `.breaker.*` keys (leaf names in RFC-024 §5.3), with the breaker state in Redis; live, the fan-out and proxy calls record their outcomes on their origins' circuits. Still open for `[NET-02]`/`[NET-03]`: the skeleton wiring (it has no Redis pool factory yet), and the breaker's fault-injection acceptance.
         
 
 ### `[NET-03]` Circuit Breaker

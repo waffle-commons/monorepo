@@ -136,6 +136,14 @@ legacy upstream.
    **Decision (2026-10-17):** `waffle.http_client.resilience.*` for the policy and
    `waffle.http_client.breaker.*` for the breaker, in snake_case like the existing keys (`redis_dsn`,
    `trusted_hosts`). The leaf names are fixed with the code and frozen by beta8 `[FRZ-03]`.
+
+   *Fixed 2026-10-21 with the workspace wiring (`Workspace\Factory\HttpClientFactory`):*
+   - `resilience`: `connect_timeout_ms`, `total_timeout_ms`, `max_attempts`, `base_delay_ms`,
+     `max_delay_ms`, `budget_ms`, `retry_non_idempotent`.
+   - `breaker`: `enabled`, `failure_rate_percent`, `minimum_calls`, `window_seconds`,
+     `cool_down_seconds`, `half_open_trials`.
+   - A missing key takes the contract default. The breaker is on only with `enabled: true`, like the
+     limiter. Its state shares the queue's Redis DSN, as the limiter's does.
 4. **Whether `Retry-After` may extend a wait beyond the backoff cap** when it still fits the total budget.
 
    **Decision (2026-10-17): yes.** A `Retry-After` may exceed the backoff cap when it fits the remaining
