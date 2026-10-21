@@ -82,9 +82,19 @@ legacy upstream.
 - *Implemented 2026-10-17:* composition is by decorators around any PSR-18 client —
   `RetryingClient(CircuitBreakerClient(Client))` — so every attempt goes through the breaker and re-runs the
   SSRF guard, and an open circuit is never retried. Timeouts are `Client::withTimeouts(TimeoutPolicy)`.
-  **Not yet covered:** the concurrent path (`sendRequests()`, `promise()`) has no retry or breaker; the
-  retry budget bounds the waits and the start of each attempt, so the worst case is the budget plus one
-  attempt's total timeout.
+  The retry budget bounds the waits and the start of each attempt, so the worst case is the budget plus
+  one attempt's total timeout.
+- *Concurrent path, implemented 2026-10-21:* both decorators implement http-client's
+  `SettlingClientInterface` (component-local: `ConcurrentClientInterface` plus `settleRequests()`, which
+  settles every request instead of throwing the first failure; no contract change).
+  - The breaker asks the storage about every request of a batch before any is sent, sends the admitted
+    ones together and records each outcome. A refused request settles as its `CircuitOpenException`.
+  - The retry policy retries a batch in waves: each request keeps its own attempts, backoff,
+    `Retry-After` and budget, and the requests to retry go out together after the longest of their waits.
+  - `sendRequests()` is the fail-fast view of the settled batch: the first failure in key order, thrown
+    once every outcome is recorded. `promise()` runs the decorator's `sendRequest()` when it is waited on.
+  - A decorator that implements only PSR-18, such as `AuthenticatedClient`, keeps a batch correct but
+    sends it one request at a time below it.
 
 ## 4. Contributor Guidelines
 
