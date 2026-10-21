@@ -131,8 +131,9 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 | `0.1.0-beta8` | Consolidation & API freeze (last feature release) | `Roadmap_Beta8.md` |
 | `1.0.0-RC1` → `1.0.0` | Freeze cert + EcoShield-Gateway soak → Gold | `Roadmap_RC1.md` / `Roadmap_v1_Gold.md` |
 
-- **Dates:** beta6 **Sep 2026** · beta7 **Oct** · beta8 **Nov** · RC1 **Dec** · Gold **Jan 2027** (the
-  post-BBL pivot of 2026-07 pulled the audit into beta6; the train slipped one month on 2026-09-06).
+- **Dates:** beta6 **Sep 2026** · beta7 **Nov** (tag targeted 5 November, re-dated 2026-10-21) ·
+  beta8 **Dec** (~3 Dec) · RC1 **Dec** (~12 Dec) · Gold **late Jan 2027** (the post-BBL pivot of 2026-07 pulled the audit into
+  beta6; the train slipped one month on 2026-09-06).
 - **Version stamps:** `0.1.0-betaN` — **no `v` prefix** (the tag gate rejects it). Fix the *current*
   stamp; never bulk-bump historical CHANGELOGs. See the `roadmap-steward` skill.
 - **Release dates are month-precision:** `YYYY-MM`, never `YYYY-MM-DD` — a CHANGELOG heading reads
@@ -143,15 +144,15 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
   LIVE wave. Per-component steps live in `release-manager`; the orchestration lives in `release-wave`.
 - **What each phase allows** (binding guards from `Roadmap_v1_Master.md`):
   - **beta7 (build):** the `Roadmap_Beta7.md` items.
-    - The stretch tier (`[DXP-01]`, `[GATE-02]`) is cut first.
-    - Unless `[API-01]`, `[API-02]` and `[TEST-01]` have code landed and green on their own gates by
-      mid-October, the release splits: NET + OPS + QUEUE as beta7, API + TEST into the beta8 window.
-    - The November freeze is what is protected, not beta7's scope.
+    - Full scope (decided 2026-10-21): nothing is cut, the stretch tier (`[DXP-01]`, `[GATE-02]`)
+      included. The mid-October checkpoint was met on 2026-10-17, so the release does not split.
+    - The freeze is still what is protected: the later rows moved by the same week on 2026-10-21,
+      never compressed.
   - **beta8 (freeze):** the tag *is* the feature freeze. The release holds the spike verdicts, the
     contracts BC review + `contracts/BC-POLICY.md`, deprecations, the naming pass, the 72 h soak, the
     final security re-audit and the docs. After the tag, bug fixes only; an item that slips leaves v1
     (`api-freeze` skill).
-  - **RC1 (certification):** tagged `1.0.0-RC1` (never `0.1.0-RC1`) by ~5 December 2026 (`rc-certification`
+  - **RC1 (certification):** tagged `1.0.0-RC1` (never `0.1.0-RC1`) by ~12 December 2026 (`rc-certification`
     skill).
     - Zero features; the beta8 deprecations are removed.
     - A ≥4-week EcoShield soak that is never shortened.

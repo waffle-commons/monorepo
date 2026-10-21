@@ -20,7 +20,8 @@ December 2026 work.
 - **Tag `1.0.0-RC1`**, never `0.1.0-RC1`: the RC certifies the v1 API and must sort correctly for
   Composer.
 - **Branches:** `pre-release/1.0.0-RC1` in every component, then `release/1.0.0`.
-- **Tag by ~5 December 2026** for a January 2027 Gold: the ≥4-week soak starts at the tag.
+- **Tag by ~12 December 2026** for a late-January 2027 Gold (re-dated 2026-10-21): the ≥4-week soak
+  starts at the tag and ends ~9 January, with no slack.
 - **Holidays:** the soak straddles the year-end holidays, so incident response must be staffed.
 - **Slips:** a beta8 slip moves RC1 and Gold by the same amount. **The soak is never shortened to
   recover a date.**

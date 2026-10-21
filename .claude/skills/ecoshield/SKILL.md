@@ -59,7 +59,7 @@ moving the gateway onto a new framework release, any claim about the gateway's p
 | Step | Framework | Gateway | What must be true |
 |---|---|---|---|
 | `[GATE-01]` POC | beta6 | 0.1.x | ✅ shipped: proxy, rescue and shield on public APIs; igor 0 KO; 100 % coverage |
-| `[GATE-02]` alpha | beta7 | 0.2.0 | the Strangler route served natively with cache **and the beta7 rate limiter** `[NET-01]`; the catch-all proxy **over the resilient client** `[NET-02/03]` (bounded timeouts, idempotency-aware retries, breaker); a reproducible legacy lab. **Beta7 stretch tier:** cut first when the schedule bites. |
+| `[GATE-02]` alpha | beta7 | 0.2.0 | the Strangler route served natively with cache **and the beta7 rate limiter** `[NET-01]`; the catch-all proxy **over the resilient client** `[NET-02/03]` (bounded timeouts, idempotency-aware retries, breaker); a reproducible legacy lab. **Beta7 stretch tier:** in scope since 2026-10-21 (nothing cut), built last on the finished NET items. |
 | `[GATE-03]` beta | beta8 | 0.3.0 | the FinOps benchmark in its own repo: k6 **≥1000 rps**, Scenario A (legacy PHP-FPM direct) vs Scenario B (through the gateway) — RAM ceiling, latency, breaking point. The report is a v1 launch asset and the proof for indicator #2 (slope + measured RAM factor + crossover). |
 | `[RC-04]` soak | RC1 | RC1 build | ≥4 weeks continuous, production-like traffic, chaos injections — `[[soak-endurance]]` |
 | `[RC-05]` | RC1 | RC1 build | the FinOps benchmark re-run **on the RC bits**; launch numbers come from the RC, not a beta |

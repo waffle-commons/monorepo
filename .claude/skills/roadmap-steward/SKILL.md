@@ -31,7 +31,7 @@ v1", any planning that needs the canonical direction.
   audits, Diátaxis docs, EcoShield POC, K6 — shipped) → beta7 (**production surface**, current:
   `queue`/`openapi`/`serializer`/`testing`, NET, OPS) → beta8 (freeze) → `1.0.0-RC1`
   (EcoShield-Gateway 4-week soak) → `1.0.0` Gold. Dates (one-month slip, 2026-09-06): beta6 Sep 2026 ·
-  beta7 Oct · beta8 Nov · RC1 Dec · Gold Jan 2027. Only beta6 lands before the API Platform
+  beta7 Nov (5 November target, 2026-10-21) · beta8 Dec (~3 Dec) · RC1 Dec (~12 Dec) · Gold late Jan 2027 (re-dated 2026-10-21). Only beta6 lands before the API Platform
   Conference (Lille, Sep 17–18 2026), which drove the original train.
   EcoShield-Gateway (not Sentinel) is the v1 validation dogfood.
 
@@ -61,14 +61,14 @@ acceptance criteria measurable (gates, not vibes). Honor contracts-first sequenc
 DoD in every item: `composer mago` zero output, `composer tests` ≥95%, `wfl igor` 0 KO.
 
 ## Schedule guards (binding — `Roadmap_v1_Master.md`)
-- **beta7 capacity guard:** the heaviest release of the train in its shortest window. The stretch tier
-  (`[DXP-01]`, `[GATE-02]`) is cut on first contact with the schedule. Unless `[API-01]`, `[API-02]`
-  and `[TEST-01]` have code landed and green on their own gates by **mid-October**, the release splits:
-  NET + OPS + QUEUE tag as beta7 in October, API + TEST fold into the beta8 window. The November freeze
-  is what is protected, not beta7's scope.
+- **beta7 capacity guard:** the heaviest release of the train in its shortest window. The mid-October
+  checkpoint (`[API-01]`, `[API-02]`, `[TEST-01]` green on their own gates) was met on 2026-10-17: no
+  split. On 2026-10-21 the maintainer kept the stretch tier (`[DXP-01]`, `[GATE-02]`) in scope and
+  moved the tag to 5 November 2026; the later rows moved by the same week. The freeze is still what
+  is protected.
 - **RC1 schedule guard:** the ≥4-week soak, not the tag, is the binding constraint. A January 2027 Gold
-  needs the `1.0.0-RC1` tag by **~5 December 2026**. An RC2 restarts the clock, pushing Gold to
-  February–March 2027.
+  needs the `1.0.0-RC1` tag by **~12 December 2026** (soak to ~9 January, no slack). An RC2 restarts
+  the clock, pushing Gold to March 2027.
 - **Corollary:** a slip at beta7 or beta8 moves every later row by the same amount. Never absorb it by
   compressing the freeze or the soak.
 - Raise a threatened guard as soon as it shows; re-dating or splitting is the maintainer's decision.

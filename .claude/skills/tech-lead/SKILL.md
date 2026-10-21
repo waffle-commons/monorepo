@@ -16,12 +16,12 @@ Read `AGENTS.md` §5b and the status line of the current roadmap first.
 
 | Phase | Branch | What is allowed | Skills |
 |---|---|---|---|
-| **beta7 — production surface** (October 2026, current) | `pre-release/0.1.0-beta7` | the `Roadmap_Beta7.md` items: NET, QUEUE, OPS, API, TEST, the `[CARRY-*]` follow-ups, the stretch tier last | `resilience-net`, `queue-worker`, `k8s-ops`, `api-surface`, `testing-bridge`, `ecoshield` |
-| **beta8 — consolidation & API freeze** (November 2026) | `pre-release/0.1.0-beta8` | spike verdicts, BC fixes, deprecations, the naming pass, soak and audit fixes, docs — **no new capability** | `api-freeze`, `soak-endurance`, `security-audit`, `diataxis-doc`, `ecoshield` |
-| **RC1 — certification** (December 2026) | `pre-release/1.0.0-RC1` | bug fixes only, deprecation removal, packaging | `rc-certification`, `soak-endurance` |
+| **beta7 — production surface** (November 2026 — tag targeted 5 November, current) | `pre-release/0.1.0-beta7` | the `Roadmap_Beta7.md` items: NET, QUEUE, OPS, API, TEST, the `[CARRY-*]` follow-ups, the stretch tier (in scope since 2026-10-21) last | `resilience-net`, `queue-worker`, `k8s-ops`, `api-surface`, `testing-bridge`, `ecoshield` |
+| **beta8 — consolidation & API freeze** (December 2026, ~3 Dec) | `pre-release/0.1.0-beta8` | spike verdicts, BC fixes, deprecations, the naming pass, soak and audit fixes, docs — **no new capability** | `api-freeze`, `soak-endurance`, `security-audit`, `diataxis-doc`, `ecoshield` |
+| **RC1 — certification** (December 2026, ~12 Dec) | `pre-release/1.0.0-RC1` | bug fixes only, deprecation removal, packaging | `rc-certification`, `soak-endurance` |
 
-Work that belongs to an earlier phase is never squeezed in. In beta7 the stretch tier (`[DXP-01]`,
-`[GATE-02]`) is cut first. After the beta8 tag, a feature is post-v1 (`Roadmap_Post_v1.md`).
+Work that belongs to an earlier phase is never squeezed in. In beta7 nothing is cut (2026-10-21): the stretch tier
+(`[DXP-01]`, `[GATE-02]`) lands last. After the beta8 tag, a feature is post-v1 (`Roadmap_Post_v1.md`).
 
 **Beta7 capacity guard:** unless `[API-01]`, `[API-02]` and `[TEST-01]` have **code landed and green on
 their own gates by mid-October**, the release splits: NET + OPS + QUEUE tag as beta7, and API + TEST

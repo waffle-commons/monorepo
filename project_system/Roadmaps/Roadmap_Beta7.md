@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-10-17
+date_updated: 2026-10-21
 type: project
 status: in-progress
 tags:
@@ -12,19 +12,21 @@ aliases: []
 ---
 # 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta7
 
-> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*)
+> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026
 > 
-> **Target Release:** **October 2026** (the first release after the API Platform Conference, Lille — September 17–18, 2026)
+> **Target Release:** **November 2026** — tag targeted for 5 November (re-dated 2026-10-21 from October 2026; the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
 > **Core Mandate:** Close every gap between "high-performance framework" and **full production-ready API ecosystem**: traffic protection, outbound resilience, background processing, Kubernetes operability, API tooling, and testability. This is the release where the missing components get built — beta8 then freezes, so anything not landed here is post-v1.
 > 
-> **Commitment Tiers:** Committed — AXE 1 (NET), AXE 2 (QUEUE contracts + driver), AXE 3 (OPS), AXE 5 (TEST) · High — AXE 4 (API) · Stretch — `[DXP-01]`, `[GATE-02]`.
+> **Commitment Tiers:** Committed — AXE 1 (NET), AXE 2 (QUEUE contracts + driver), AXE 3 (OPS), AXE 5 (TEST) · High — AXE 4 (API) · Stretch — `[DXP-01]`, `[GATE-02]` (kept in scope on 2026-10-21, see below).
 > 
 > **Capacity guard (added 2026-09-08, amended 2026-10-06):** beta7 is the **heaviest release of the train in the shortest window** — four brand-new repositories (`queue`, `openapi`, `serializer`, `testing`, each needing repo creation, scaffolding, CI, a `RELEASE_INCLUDE` entry and a first Packagist publication) plus eleven items across five axes. Plan against the measured evidence, not the intent: umbrella-tag cadence has run beta3→beta4 in 7 days, →beta5 in 24, →beta6 in 62. Beta6 was code-complete on 2026-08-02/03 and tagged in September, but that ~5-week tail was the maintainer's time off, not verification, documentation or wave prep, so it is not a planning baseline. The 2026-09-29 kickoff leaves about four weeks of build before an end-of-October tag. **Therefore:** the stretch tier (`[DXP-01]`, `[GATE-02]`) is cut on first contact with the schedule, not renegotiated late; and unless `[API-01]`, `[API-02]` and `[TEST-01]` have code landed and green on their own gates by **mid-October** (`wfl dod` green on `openapi`, `serializer` and `testing` with tests and coverage switched on), split the release — NET + OPS + QUEUE tag as beta7 in October, API + TEST fold into the beta8 window — instead of letting beta7 slide into November. **The freeze date (beta8, November) is what is being protected here; beta7's scope is not.**
 >
 > *Amended 2026-10-06:* the beta6 tail was first read as release work ("roughly five weeks of verification, documentation and wave prep"); it was time off. The checkpoint first asked for the four new repositories to be "scaffolded and green on their own gates", which the empty scaffolds already met on 2026-09-29 (tests and coverage switch on with the first class), so it now checks the items' code.
 >
 > *Checkpoint 2026-10-17 — met, no split:* `wfl dod` PASS on `openapi` (98.71 %), `serializer` (98.94 %) and `testing` (100 %), igor 0 KO, and `wfl check:all --with-tests` 27/27. The maintainer decided not to split: API + TEST stay in beta7. The stretch tier stays cut.
+>
+> *Decision 2026-10-21 — full scope, tag on 5 November 2026:* the maintainer decided that beta7 cuts nothing: `[DXP-01]` and `[GATE-02]` stay in scope, which supersedes the "stretch tier is cut on first contact" rule above and the 2026-10-17 note. Reason: finishing the production surface completely in beta7 matters more than an October tag; the maintainer works on it full-time from 2026-10-21 to 2026-10-23, then verification, docs and wave prep run to the tag. Per the master roadmap corollary, the later rows moved by the same week on the same day: beta8 ~3 December, RC1 ~12 December, Gold late January 2027 (`Roadmap_v1_Master.md`).
 
 ## 🧰 KICKOFF STATE & CARRY-OVERS (2026-09-29)
 
@@ -306,14 +308,14 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
     - Dev-only component (`require-dev` in userland); EcoShield-Gateway and Academy labs are the first consumers.
         
 
-### `[DXP-01]` Dev Profiler Headers (stretch)
+### `[DXP-01]` Dev Profiler Headers (stretch — in scope, 2026-10-21)
 
 - **Specification:**
     
     - Dev-mode middleware emitting `X-Waffle-Time`, `X-Waffle-Memory`, `X-Waffle-Queries` headers; no web toolbar (API-first).
         
 
-## 🛡️ AXE 6: ECOSHIELD-GATEWAY ALPHA (DOGFOODING — stretch)
+## 🛡️ AXE 6: ECOSHIELD-GATEWAY ALPHA (DOGFOODING — stretch, in scope 2026-10-21)
 
 ### `[GATE-02]` Gateway Lab Bootstrap
 

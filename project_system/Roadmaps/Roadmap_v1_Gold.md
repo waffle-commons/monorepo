@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (v1.0 Gold)"
 date_created: 2026-06-07
-date_updated: 2026-09-08
+date_updated: 2026-10-21
 type: project
 status: pending
 tags:
@@ -15,7 +15,7 @@ aliases: []
 
 > **Status:** Pending Validation — Draft
 > 
-> **Target Release:** January 2027 — re-dated 2026-09-06 for the one-month train slip; see `Roadmap_v1_Master.md`
+> **Target Release:** late January 2027 — re-dated 2026-09-06 for the one-month train slip, and narrowed to late January on 2026-10-21 (beta7 slip of one week: RC1 ~12 December, soak to ~9 January); see `Roadmap_v1_Master.md`
 > 
 > **Core Mandate:** The launch itself. No engineering scope — every line of code shipped in RC1. Gold is packaging, publication, policy, and announcement.
 

@@ -61,7 +61,7 @@ span", OBS-01/02.
   answers scrapers; keep them separate, with the same fail-closed stance on detail (`[[k8s-ops]]`).
 - **`[DXP-01]` dev profiler headers (stretch, RFC-018 §3.2):** `X-Waffle-Time`, `X-Waffle-Memory` and
   `X-Waffle-Queries`, emitted **only** in dev mode — never in production, where they would leak timing
-  and footprint. It is a stretch item: cut first under the beta7 capacity guard.
+  and footprint. A stretch item, in beta7 scope since 2026-10-21.
 
 ## Gate
 W3C trace context propagated end-to-end across two services; `/waffle-metrics` scrape overhead
