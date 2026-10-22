@@ -109,6 +109,17 @@ aliases: []
   the igor-php fork.
 - **`[CARRY-06]` Small follow-ups** (Retro_Beta6 §6): `Constant::ATTR_PARAMS` promotion, AOT compiled-memo
   runtime write-through, a PHPUnit step in the workspace CI job.
+  - *Status 2026-10-22 — done:*
+    - `contracts` names the route-params attribute `Constant::ATTR_PARAMS` (`'_params'`, pinned by a test).
+      `CoreRoutingMiddleware` sets it, and `ControllerDispatcher` and the skeleton's subject resolver read it.
+    - The compiled container builds its inlined services through the new `Container::memoise()`, so every
+      path shares one instance and `reset()` resets it once. Beta-6's "one instance per memo" constraint is
+      gone. `memoise()` only memoises ids the container can resolve, so it never adds one after `lock()`.
+      The compiler refuses a runtime class without `memoise()`.
+    - The workspace CI job runs PHPUnit against a Redis service on the dev compose's pinned image.
+    - Evidence: `wfl dod` PASS on contracts, pipeline, waffle, skeleton, container, console and workspace.
+      The new compiler tests fail against the previous compiler. A smoke against the real runtime container
+      shows one shared instance and one reset per `reset()`. Only its first GitHub run will prove the CI step.
 - **`[CARRY-07]` Workspace coverage policy — decided 2026-09-30:** the workspace demo app's coverage
   (54.40 %) is reported, not gated, in `scripts/dod.sh` as well — the same demo-app policy as `umbrella-ci`.
   It still has to pass mago, tests and igor; everything released (skeleton included) keeps the 95 % bar.
