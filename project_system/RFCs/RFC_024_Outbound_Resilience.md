@@ -149,6 +149,11 @@ legacy upstream.
      `cool_down_seconds`, `half_open_trials`.
    - A missing key takes the contract default. The breaker is on only with `enabled: true`, like the
      limiter. Its state shares the queue's Redis DSN, as the limiter's does.
+
+   *Added 2026-10-22 with the skeleton wiring (`App\Factory\HttpClientFactory`, `App\Factory\RateLimitFactory`):*
+   `breaker.redis_dsn`, and `waffle.security.rate_limit.redis_dsn` for the limiter. The skeleton has no
+   queue, so each consumer names the Redis that holds its state; the template feeds both from `REDIS_DSN`.
+   The workspace still reads the queue's DSN. These leaves freeze with the others at beta8 `[FRZ-03]`.
 4. **Whether `Retry-After` may extend a wait beyond the backoff cap** when it still fits the total budget.
 
    **Decision (2026-10-17): yes.** A `Retry-After` may exceed the backoff cap when it fits the remaining
