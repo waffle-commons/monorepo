@@ -417,10 +417,11 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
       - **Evidence** (lab checks, not published numbers):
         - Gates: mago zero output, 85 tests OK, 99.50 % lines, igor 0.9.7 15/15 OK.
         - Limiter: 700 requests from one client in 1.3 s gave 612 × 200 and 88 × 429, nothing admitted beyond the bucket.
-        - Breaker: with PHP-FPM stopped, a GET made 3 attempts and a POST 1. The circuit opened at the tenth failure, then refused in about 5 ms without calling the legacy; a trial after the cool-down failed while the legacy was down and closed it once the legacy was back.
+        - Breaker: with PHP-FPM stopped, the circuit opened on the tenth call (nine of them failures), then refused in about 5 ms without calling the legacy; a trial after the cool-down failed while the legacy was down and closed it once the legacy was back.
+        - Retries, after the framing fix (nginx then answers 502, a retryable status, to every method): a GET and a PUT with a body made 3 attempts each, a POST exactly 1. The 429 carries `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset` and `Retry-After`.
         - PostgreSQL stopped: a cached read still answered 200, an uncached one 503, never cached.
         - Redis stopped: every route answered 200 (Shield bypass, breaker closed, limiter open, each with a warning), and the cache recovered without a restart.
-        - Perimeter: k6 280/280 and the raw-socket framing probes, identical to 0.1.1.
+        - Perimeter: k6 280/280. The raw-socket probes give the same verdicts as 0.1.1: one response each, no desync, and a double `Content-Length` refused by Caddy. The CL.TE status differs because the upstream is now the Symfony legacy.
         - Every body-carrying method (JSON, form, chunked, 1 MiB) reaches the Symfony legacy.
       - **Found by the dogfood, fixed:**
         - http-client: an unsized body (`php://input`) went out chunked next to the caller's `Content-Length`. nginx answered 400 to every proxied POST and PUT, on beta6 as on beta7, and the wire capture shows both headers. `41abcd9` honours the declared length and drops the caller's framing headers whenever libcurl frames an upload; a test fails against the old client.
