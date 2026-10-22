@@ -9,10 +9,10 @@
 #   - every engine: cpus "2", mem_limit 1g, PHP 8.5, APP_ENV=prod,
 #     APP_DEBUG=false, opcache.validate_timestamps=0, JIT 1234 / 128M buffer,
 #     no Xdebug.
-#   - worker engines (A, C): 4 workers pinned. FPM engine (B): pm.static,
+#   - worker engines (A, C, D): 4 workers pinned. FPM engine (B): pm.static,
 #     children sized to the same 1G RAM budget (~16).
 #   - MAX_REQUESTS=1000000 on Engine A and FRANKENPHP_LOOP_MAX=1000000 on
-#     Engine C, so neither worker loop recycles and masks a leak during the
+#     Engines C and D, so no worker loop recycles and masks a leak during the
 #     BENCH-03 soak (documented honest-method note).
 # =============================================================================
 
@@ -41,7 +41,10 @@ services:
     cpus: "2"
     mem_limit: 1g
     # Hardening mirrored from skeleton/docker-compose.prod.yml (read-only rootfs
-    # + 1777 tmpfs for the only writable paths — Caddy state, /tmp, var/).
+    # + 1777 tmpfs for the only writable paths — Caddy state, /tmp, var/). The
+    # mode must be written in octal: Compose reads a bare `1777` as decimal,
+    # i.e. 0o3361, and the non-root user then cannot write any of these paths
+    # (beta7's fail-fast upload root stops the boot on it).
     read_only: true
     security_opt:
       - "no-new-privileges:true"
@@ -49,19 +52,19 @@ services:
       - type: tmpfs
         target: /tmp
         tmpfs:
-          mode: 1777
+          mode: 0o1777
       - type: tmpfs
         target: /config
         tmpfs:
-          mode: 1777
+          mode: 0o1777
       - type: tmpfs
         target: /data
         tmpfs:
-          mode: 1777
+          mode: 0o1777
       - type: tmpfs
         target: /app/var
         tmpfs:
-          mode: 1777
+          mode: 0o1777
       # JIT parity drop-in (opcache.jit=1234, buffer 128M) — see README.
       - type: bind
         source: ./engines/waffle/jit-bench.ini
@@ -249,6 +252,37 @@ services:
     mem_limit: 6g
     ports: !override
       - "127.0.0.1:8086:80"
+
+  # ---------------------------------------------------------------------------
+  # Engine D — the same Symfony app doing Engine A's per-request work
+  # (CARRY-02): trusted hosts, CORS, a stateless bearer-token firewall,
+  # per-action authorisation, stateless CSRF, three security headers and one
+  # transaction per unsafe request (scripts/stubs/app-secured/). Built from
+  # engine C's Dockerfile with the derived app, so C vs D isolates the features
+  # and A vs D compares the frameworks doing the same work. Not mirrored, for
+  # want of a Symfony counterpart: Waffle's anonymous session id, its telemetry
+  # and its SecureContainer (see bench/README.md).
+  # ---------------------------------------------------------------------------
+  engine-d:
+    extends:
+      service: engine-c
+    build:
+      args:
+        APP_DIR: engines/symfony-app-secured
+    image: waffle-bench-engine-d
+    container_name: engine-d
+    ports: !override
+      - "127.0.0.1:8087:80"
+
+  # BENCH-05 leg for Engine D: C-mem vs D-mem is the features' memory cost.
+  engine-d-mem:
+    extends:
+      service: engine-d
+    container_name: engine-d-mem
+    cpus: "2"
+    mem_limit: 6g
+    ports: !override
+      - "127.0.0.1:8088:80"
 
   # ---------------------------------------------------------------------------
   # Shared PostgreSQL 17 — deterministic 10k-row seed via sql/init.sql (runs on

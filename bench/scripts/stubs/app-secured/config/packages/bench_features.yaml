@@ -1,0 +1,13 @@
+# Engine D (equivalent features) — the framework-level counterparts of Engine
+# A's pipeline (tracked stub, see bootstrap-symfony.sh):
+#   - trusted_hosts: Waffle's TrustedHostMiddleware with the same kind of list
+#     as bench/engines/waffle/app.bench.yaml — the in-network names plus
+#     localhost for host-side probes. Any other Host answers 400.
+#   - csrf_protection: Symfony's stateless CSRF, as the framework recipe enables
+#     it. Like Waffle's CsrfMiddleware on these routes it validates nothing: no
+#     bench action requires a token, on either engine.
+framework:
+    trusted_hosts: ['^engine-d$', '^engine-d-mem$', '^localhost$']
+    csrf_protection:
+        enabled: true
+        stateless_token_ids: ['submit', 'authenticate', 'logout']

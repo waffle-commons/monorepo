@@ -314,6 +314,33 @@ BENCH-02 and BENCH-03 for Engine C.
 - BENCH-02 and BENCH-03 for Engine C still need their re-run on the new rig, so the readings above
   stand as annotated.
 
+## Engine D and what building it exposed (`[CARRY-02]`, 2026-10-22)
+
+Engine D is the bare Symfony app plus Engine A's per-request work: trusted hosts, CORS, a stateless
+bearer-token firewall, per-action authorisation, stateless CSRF, three security headers and one
+transaction per unsafe request (`bench/README.md`). It has not been measured yet. Building it exposed
+three facts about this rig; none changes a measured number above.
+
+1. **Engine A's `POST /greet` is not a database-free workload.** `TransactionIsolationMiddleware` wraps
+   every POST, so each `/greet` leases a pooled connection, runs the pool's liveness `SELECT 1`
+   (ping-before-dispense, `[CARRY-01]`) and commits a transaction. `scripts/check-features.sh` counted
+   603 commits for 200 `/greet` on A, 207 on D and 4 on C. B and C never touch the database on that
+   route, and the same middleware and ping were in place in beta6, so the beta6 `greet` comparison
+   charged A database round trips that B and C did not make.
+2. **Engine A issues a new session id on most bench requests.** k6 empties its cookie jar after every
+   iteration, so `AnonymousSessionMiddleware` generates a 32-byte id and a `Set-Cookie` each time.
+   Neither Symfony engine does such work, and Engine D does not mirror it.
+3. **The rig's tmpfs mounts were closed to Engine A's user.** Compose reads `mode: 1777` as a decimal
+   number (octal 3361), so `/tmp`, `/config`, `/data` and `/app/var` were not writable by the non-root
+   `waffle` user. The beta6 run booted anyway; beta7's fail-fast upload root (`http` `b6c2213`) turns it
+   into a boot failure. The rig now writes `0o1777`. `skeleton/docker-compose.prod.yml` carries the same
+   four lines (reported, not changed in this item).
+
+Harness checks on the rebuilt rig, not measurements: `check-features.sh` passed on A, C and D, and the
+smoke runs (A `20261022T124138Z`, C `20261022T115850Z`, D `20261022T124248Z`) and the short memscales
+(C-mem `20261022T120027Z`, D-mem `20261022T124356Z`) finished with no failed request. Engine D's
+security components are pinned to the 7.4 line like the rest of the app.
+
 ## Defects found by this benchmark (all fixed at source)
 
 | Defect | Where | Consequence |

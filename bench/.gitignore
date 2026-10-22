@@ -1,5 +1,6 @@
-# Generated Symfony application (recreated by scripts/bootstrap-symfony.sh)
+# Generated Symfony applications (recreated by scripts/bootstrap-symfony.sh)
 engines/symfony-app/
+engines/symfony-app-secured/
 
 # Raw run outputs (archived to project_system/Audits/Beta6/bench/ instead)
 results/

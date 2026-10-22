@@ -40,7 +40,11 @@ ENV APP_ENV=prod \
     DB_PASSWORD=waffle
 
 WORKDIR /app
-COPY engines/symfony-app/ /app/
+# Engine C copies the bare app; engine D builds this same file with
+# APP_DIR=engines/symfony-app-secured (docker-compose.bench.yml), so the two
+# images differ only by the app.
+ARG APP_DIR=engines/symfony-app
+COPY ${APP_DIR}/ /app/
 
 # Re-warm the prod cache at the runtime path (see engine B Dockerfile note:
 # the bootstrap-warmed cache hardcodes the waffle-dev project dir).

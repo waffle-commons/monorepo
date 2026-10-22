@@ -1,11 +1,15 @@
 # Waffle Beta6 — K6 Tri-Engine Benchmark Rig (AXE 5 / BENCH-01..04)
 
 Reproducible harness comparing the **Waffle skeleton (prod stage)** against a
-minimal, idiomatic **Symfony** API app deployed two ways. One Symfony codebase,
-two deployments, so each comparison isolates exactly one variable:
+minimal, idiomatic **Symfony** API app deployed two ways, plus a variant of that app
+doing Engine A's per-request work. Each comparison isolates one variable:
 
-- **A vs C** — same runtime (FrankenPHP worker), different framework → isolates the framework.
+- **A vs C** — same runtime (FrankenPHP worker), different framework → isolates the framework,
+  except that A also runs its secured pipeline and C does not.
 - **B vs C** — same framework (Symfony), different runtime → isolates the runtime.
+- **C vs D** — same app and runtime, D adding Engine A's per-request features → their cost in Symfony.
+- **A vs D** — same runtime and per-request work, different framework → the framework at equal
+  features (CARRY-02).
 
 Published numbers live in the tracked [`BENCH-GATE-RESULT.md`](./BENCH-GATE-RESULT.md)
 (benchmark-gate convention: baseline → representative load → verdict vs threshold → record).
@@ -15,13 +19,13 @@ run is a new series.
 
 ## Engine matrix & fairness pinning
 
-| | Engine A | Engine B | Engine C |
-|---|---|---|---|
-| App | Waffle skeleton (prod image stage) | Symfony (shared app, gitignored) | same Symfony app |
-| Runtime | FrankenPHP 1.13.2 worker | php:8.5-fpm + nginx | FrankenPHP 1.13.2 worker (symfony/runtime 7.4's native `FrankenPhpWorkerRunner`) |
-| Workers | **4** (pinned via `FRANKENPHP_CONFIG="worker ./public/index.php 4"`) | `pm.static`, **16** children | **4** (pinned) |
-| HTTP (in-network) | `http://engine-a` | `http://engine-b` | `http://engine-c` |
-| Host smoke port | `127.0.0.1:8081` | `127.0.0.1:8082` | `127.0.0.1:8083` |
+| | Engine A | Engine B | Engine C | Engine D |
+|---|---|---|---|---|
+| App | Waffle skeleton (prod image stage) | Symfony (shared app, gitignored) | same Symfony app | same app + Engine A's per-request features (derived, gitignored) |
+| Runtime | FrankenPHP 1.13.2 worker | php:8.5-fpm + nginx | FrankenPHP 1.13.2 worker (symfony/runtime 7.4's native `FrankenPhpWorkerRunner`) | as Engine C (same Dockerfile) |
+| Workers | **4** (pinned via `FRANKENPHP_CONFIG="worker ./public/index.php 4"`) | `pm.static`, **16** children | **4** (pinned) | **4** (pinned) |
+| HTTP (in-network) | `http://engine-a` | `http://engine-b` | `http://engine-c` | `http://engine-d` |
+| Host smoke port | `127.0.0.1:8081` | `127.0.0.1:8082` | `127.0.0.1:8083` | `127.0.0.1:8087` |
 
 Identical on every engine (enforced in `docker-compose.bench.yml` + per-engine ini):
 
@@ -56,7 +60,34 @@ best under the same 1 G", not a strawman.
   env var, so the 4-worker pin would otherwise silently not apply.
 - `jit-bench.ini` into `conf.d/` — the JIT parity values above.
 
-## Workload routes (identical on all three engines)
+## Engine D — Engine A's per-request work in Symfony (CARRY-02)
+
+`scripts/bootstrap-symfony.sh` derives it from the bare app's lock, so every shared package stays at
+the same version, adds `symfony/security-bundle` with its components pinned to 7.4, and copies the
+tracked stubs in `scripts/stubs/app-secured/`. It fails if a shared package drifts or a Symfony
+component leaves the 7.4 line (the bundle's ranges reach 8.x).
+
+| Engine A (skeleton pipeline) | Engine D |
+|---|---|
+| `TrustedHostMiddleware` | `framework.trusted_hosts` |
+| `CorsMiddleware`, empty allow-list | `CorsSubscriber`: no `Origin` or the request's own origin passes, any other origin gets 403 |
+| `AuthenticationMiddleware` (anonymous without credentials) | stateless, eager firewall with an `access_token` authenticator; a presented token is refused (401) |
+| `SecurityMiddleware` + `#[PublicAccess]` | `#[IsGranted('PUBLIC_ACCESS')]` on every action |
+| `CsrfMiddleware` (no bench route requires a token) | stateless CSRF on; no action validates a token |
+| `TransactionIsolationMiddleware`: one transaction per POST, PUT, PATCH, DELETE | `TransactionSubscriber`, opened after the authorisation check and before payload validation |
+| `SecureHeadersMiddleware` | `SecureHeadersSubscriber`: the same three headers and values |
+
+Not mirrored, for want of a Symfony counterpart: the anonymous session id (k6 empties its cookie jar
+after every iteration, so Engine A issues a new id and a `Set-Cookie` on most bench requests), the
+telemetry (APCu request counters and histogram, cache counters, the no-op span, the probe and metrics
+path checks) and the `SecureContainer`. That work stays in Engine A's column.
+
+`POST /greet` touches no table, yet on Engines A and D it runs in a transaction (BEGIN + COMMIT); on B
+and C it never reaches the database. Run `scripts/check-features.sh` before a measured run: A and D must
+refuse an untrusted `Host` (400) and a junk bearer token (401), send the three headers and commit one
+transaction per `POST /greet`, and C must do none of that.
+
+## Workload routes (identical on all engines)
 
 | Route | Shape |
 |---|---|
@@ -110,7 +141,7 @@ container and its page cache are deliberately kept warm between engines.)
 Prerequisites: Docker running; Phase-B skeleton pre-work merged (`#[PublicAccess]`
 on the hello routes, `GET /read/demo`, `DB_POOL_SIZE` knob, pgsql driver);
 `scripts/bootstrap-symfony.sh` executed once (generates the gitignored
-`engines/symfony-app/`, then Engines B/C build from it).
+`engines/symfony-app/` for Engines B and C, and `engines/symfony-app-secured/` for Engine D).
 
 Everything goes through the runner (one engine at a time, warmup included):
 
@@ -121,6 +152,10 @@ cd bench
 scripts/run-bench.sh engine-a smoke
 scripts/run-bench.sh engine-b smoke
 scripts/run-bench.sh engine-c smoke
+scripts/run-bench.sh engine-d smoke
+
+# Before measuring: prove the per-request work each engine is credited with (CARRY-02).
+scripts/check-features.sh
 
 # BENCH-02 — constant-arrival-rate ladder 50/100/200/400/800 rps × 2 min per step.
 # Produces the published PER-RATE latency table. It does NOT produce a RAM factor:
@@ -130,6 +165,7 @@ scripts/run-bench.sh engine-c smoke
 scripts/run-bench.sh engine-a constant dbread
 scripts/run-bench.sh engine-b constant dbread
 scripts/run-bench.sh engine-c constant dbread
+scripts/run-bench.sh engine-d constant dbread
 
 # BENCH-05 — memory as a function of CONCURRENCY (the experiment BENCH-02 cannot
 # run). Pins only CPU, lets memory grow to 6g, and switches FPM to a dynamic pool
@@ -141,6 +177,8 @@ VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-b-dyn mems
 # Engine C's leg (CARRY-02) splits the A-vs-B gap: A-mem vs C-mem holds the runtime
 # constant, B-dyn vs C-mem holds the framework constant.
 VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-c-mem memscale
+# Engine D's leg: C-mem vs D-mem is the memory cost of the features.
+VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-d-mem memscale
 
 # BENCH-03 — soak ~150 rps, A then C (2–3 h each, sequential; B shorter, footprint
 # only). ΔM = |mean RSS(last 10 min) − mean RSS(first 10 min after warmup)| ≤ ~1% / 5 MB:

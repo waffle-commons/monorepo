@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # bench/scripts/run-bench.sh — one measured bench run, end to end (BENCH-01).
 #
-#   usage: run-bench.sh <engine-a|engine-b|engine-c|engine-a-mem|engine-b-dyn|engine-c-mem> <smoke|constant|soak|starve|memscale> [workload]
+#   usage: run-bench.sh <engine-a|engine-b|engine-c|engine-d|engine-a-mem|engine-b-dyn|engine-c-mem|engine-d-mem> <smoke|constant|soak|starve|memscale> [workload]
 #
 #   engine    engine-a = waffle skeleton (FrankenPHP worker)
 #             engine-b = Symfony (php-fpm + nginx, pm.static)
 #             engine-c = Symfony (FrankenPHP worker)
-#             engine-a-mem / engine-b-dyn / engine-c-mem = BENCH-05 only (memory
+#             engine-d = the same Symfony app doing Engine A's per-request work
+#                        (equivalent-features control, CARRY-02)
+#             engine-a-mem / engine-b-dyn / engine-c-mem / engine-d-mem = BENCH-05 only (memory
 #             free to grow, FPM pool dynamic) — never mix their numbers with BENCH-02
 #   scenario  smoke    -> k6/scenarios/smoke.js
 #             constant -> k6/scenarios/constant-load.js   (BENCH-02)
@@ -34,7 +36,7 @@ INIT_SQL="$BENCH_DIR/sql/init.sql"
 RESULTS_DIR="$BENCH_DIR/results"
 
 usage() {
-  echo "usage: $0 <engine-a|engine-b|engine-c|engine-a-mem|engine-b-dyn|engine-c-mem> <smoke|constant|soak|starve|memscale> [workload]" >&2
+  echo "usage: $0 <engine-a|engine-b|engine-c|engine-d|engine-a-mem|engine-b-dyn|engine-c-mem|engine-d-mem> <smoke|constant|soak|starve|memscale> [workload]" >&2
   echo "       workload: json|hello|greet|dbread|dbwrite (constant only, default json)" >&2
   exit 2
 }
@@ -47,7 +49,7 @@ SCENARIO="$2"
 WORKLOAD_ARG="${3:-}"
 
 case "$ENGINE" in
-  engine-a|engine-b|engine-c|engine-a-mem|engine-b-dyn|engine-c-mem) ;;
+  engine-a|engine-b|engine-c|engine-d|engine-a-mem|engine-b-dyn|engine-c-mem|engine-d-mem) ;;
   *) echo "error: unknown engine '$ENGINE'" >&2; usage ;;
 esac
 
