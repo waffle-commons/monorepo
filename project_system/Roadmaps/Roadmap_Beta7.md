@@ -107,6 +107,12 @@ aliases: []
   lives in the dev-mode `ComplianceScanner` and the igor gate, with `#[WorkerSafe]` as the only escape
   hatch. Decide — as an RFC-001 amendment, not code — whether a first-class "intentional state" marker
   is needed and how it differs from `#[WorkerSafe]`.
+  - *Status 2026-10-22 — decided (RFC-001 §5):* no second marker for v1. `#[WorkerSafe(reason: …)]` is the
+    declared marker for state kept on purpose, and `ResettableInterface` stays optional (runtime reset is
+    already opt-in, as in Symfony; the strictness stays in the dev `ComplianceScanner` and the igor gate).
+    §5 adds where each kind of state goes and the rules for the attribute; no contracts symbol for the
+    freeze. The `#[KeepsState]` idea goes upstream instead: an igor-php issue (French, for its maintainer
+    first) is drafted in `project_system/Notes/`, not posted.
 - **`[CARRY-04]` Perimeter design for `testing` and `openapi` — decided 2026-10-07:** `WaffleTestCase` must
   boot a kernel and `openapi:generate` must read route and DTO metadata without importing a sibling's
   concrete classes. The kickoff expected three new seams. A single contracts change covers it (the clock

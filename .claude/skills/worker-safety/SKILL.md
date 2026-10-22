@@ -75,14 +75,18 @@ invocation …") is valid for them and **false** for `queue:work` — never copy
 Rate-limiter and circuit-breaker state belongs in shared storage (`[[resilience-net]]`). In worker
 memory it is both a leak and a correctness bug, because each worker would count separately.
 
-## "Keeps state on purpose" (`[CARRY-03]` — decide as an RFC-001 amendment, not code)
-At the API Platform Conference (2026-09-17), the suggestion was to make `ResettableInterface` optional
-for services that must keep state. That is already how the runtime behaves: `Container::reset()` resets
-only Resettable services. The strictness lives in the dev-mode `ComplianceScanner`
-(`container/src/Compliance/`) and in the igor gate, with `#[WorkerSafe]` as the only escape hatch.
+## "Keeps state on purpose" (`[CARRY-03]`, decided 2026-10-22 — RFC-001 §5)
+`ResettableInterface` stays optional at runtime (`Container::reset()` resets only Resettable services, as
+Symfony does), and v1 has no second marker: `#[WorkerSafe(reason: …)]` is how a resident service declares
+state it keeps on purpose. RFC-001 §5 says where each kind of state goes — request-scoped → a direct
+`ResettableInterface`; built at boot and frozen, or a bounded request-independent cache → `#[WorkerSafe]`
+on the property; never-resident objects → on the class — and the rules: the reason says why nothing
+request- or user-specific survives, a surviving cache is bounded by something fixed at boot and never
+keyed by request data, user data is never kept.
 
-The open question is whether a first-class "intentional state" marker is needed, and how it would differ
-from `#[WorkerSafe]`. Record the decision before beta8 freezes contracts.
+Do not add a Waffle-owned attribute before v1. A distinct `#[KeepsState]` is proposed to igor-php
+upstream instead (the issue is the maintainer's call). Note that igor matches `WorkerSafe` by short name,
+whatever the namespace, while the `ComplianceScanner` matches igor's class by its full name.
 
 ## Upstreaming a detector fix (`[CARRY-05]`)
 igor 0.9.x flags writes *through* an injected service (`$this->cache->set(…)`) as a mutation.
