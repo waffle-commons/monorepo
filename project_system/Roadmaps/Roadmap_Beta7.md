@@ -43,7 +43,8 @@ aliases: []
 - **Toolchain baseline for the release** (the whole Dependabot backlog, applied in lockstep): mago 1.50,
   psalm 6.19, igor-php **0.9.7** (pinned by `.igor-version`, enforced in CI and in `wfl dod`), GitHub
   Actions checkout v7 / cache v6 / codecov v7 / paths-filter v4, TruffleHog pinned to a release instead
-  of `main`, FrankenPHP **1.12.7** / PHP 8.5.11 (1.12.5 was a security release). PHPUnit 13 is a major and
+  of `main`, FrankenPHP **1.13.2** / PHP 8.5.12 (bumped from 1.12.7 / 8.5.11 on 2026-10-22: both are the
+  2026-10-21 security releases for PHP2Shell, CVE-2026-109618 and CVE-2026-109619). PHPUnit 13 is a major and
   stays out of this release unless an item needs it. **`pcntl`** joined the development image, the
   skeleton `base` stage and the bench engine on 2026-09-30: the SIGTERM drain of `queue:work`
   (`[QUEUE-02]`, `[OPS-02]`) depends on it.
