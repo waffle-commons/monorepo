@@ -14,6 +14,10 @@
 #      compiled caches (fairness note in bench/README.md).
 #   3. database — pgsql against bench-postgres (skeleton's tracked default was
 #      the broken mysql-no-service pairing; Phase B fixes it to pgsql too).
+#   4. rate_limit and http_client.breaker disabled — same reason as 2: no Redis
+#      in the rig, so the limiter would fail open and log a warning on every
+#      request, and the breaker would warn on every outbound call. The retry
+#      and timeout policy needs no Redis and mirrors the skeleton.
 # Everything else must mirror skeleton/config/app.yaml.
 waffle:
   env: '%env(APP_ENV)%'
@@ -36,6 +40,21 @@ waffle:
       allowed_origins: []
     ssrf:
       allowed_hosts: []
+    # Bench delta #4: no Redis in the rig.
+    rate_limit:
+      enabled: false
+  http_client:
+    resilience:
+      connect_timeout_ms: 1000
+      total_timeout_ms: 10000
+      max_attempts: 3
+      base_delay_ms: 100
+      max_delay_ms: 2000
+      budget_ms: 15000
+      retry_non_idempotent: false
+    # Bench delta #4: no Redis in the rig.
+    breaker:
+      enabled: false
   auth:
     secret: '%env(WAFFLE_AUTH_SECRET)%'
     tenant: 'skeleton'
