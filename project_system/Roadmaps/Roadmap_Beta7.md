@@ -84,8 +84,8 @@ aliases: []
       200 `POST /greet`: A 603, D 207, C 4), and the A and D smokes and a short D-mem memscale finished
       with no failed request. These are harness checks, not published numbers.
     - Found on the way: Compose read the tmpfs `mode: 1777` as decimal (octal 3361), so Engine A could
-      not boot on beta7 (fixed in the rig; `skeleton/docker-compose.prod.yml` has the same four lines,
-      reported). A's `/greet` costs three commits, the transaction plus the pool's liveness `SELECT 1`
+      not boot on beta7 (fixed in the rig, and in `skeleton/docker-compose.prod.yml`, which had the same
+      four lines: skeleton `a50dea2`). A's `/greet` costs three commits, the transaction plus the pool's liveness `SELECT 1`
       (`[CARRY-01]`'s subject).
     - Open: the re-measurement on the new rig (FrankenPHP 1.13.2): BENCH-02 for A, C and D, BENCH-03 for
       C and D, and BENCH-05 for all four legs.

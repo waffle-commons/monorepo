@@ -333,8 +333,8 @@ three facts about this rig; none changes a measured number above.
 3. **The rig's tmpfs mounts were closed to Engine A's user.** Compose reads `mode: 1777` as a decimal
    number (octal 3361), so `/tmp`, `/config`, `/data` and `/app/var` were not writable by the non-root
    `waffle` user. The beta6 run booted anyway; beta7's fail-fast upload root (`http` `b6c2213`) turns it
-   into a boot failure. The rig now writes `0o1777`. `skeleton/docker-compose.prod.yml` carries the same
-   four lines (reported, not changed in this item).
+   into a boot failure. The rig now writes `0o1777`, and so does `skeleton/docker-compose.prod.yml`,
+   which had the same four lines (skeleton `a50dea2`).
 
 Harness checks on the rebuilt rig, not measurements: `check-features.sh` passed on A, C and D, and the
 smoke runs (A `20261022T124138Z`, C `20261022T115850Z`, D `20261022T124248Z`) and the short memscales
