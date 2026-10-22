@@ -67,19 +67,28 @@ aliases: []
   500-request default invalidated the beta6 soak comparison); Engine C in the memory test; an
   equivalent-features Symfony engine (security + CSRF + transaction subscriber) next to the bare one;
   host hardware recorded with every run; least-squares slopes published with their uncertainty.
-  - *Status 2026-10-22 — rig done except the equivalent-features engine; re-measurement open (umbrella
-    `34bfe84`, `4561370`):*
+  - *Status 2026-10-22 — rig done; re-measurement open (umbrella `34bfe84`, `4561370`, `5d2679a`):*
     - Done: run-unique result files (run id on the summary, RSS and new host files, and a run refuses to
       overwrite a series), a host record per run (host, Docker VM, engine limits, commit), and soak slopes
       with their 95 % bound in `report.sh` (`34bfe84`; checked on a synthetic +10 MB/h soak: +10.01 ± 0.10).
       Engine C on the native runner with `FRANKENPHP_LOOP_MAX=1000000` and no `APP_RUNTIME`, the bridge
-      package removed, and `engine-c-mem` as BENCH-05's third leg (`4561370`).
+      package removed, and `engine-c-mem` as BENCH-05's third leg (`4561370`). Engine D, the
+      equivalent-features engine (A's per-request work in Symfony: trusted hosts, CORS, firewall,
+      per-action authorisation, stateless CSRF, headers, one transaction per unsafe request; no
+      telemetry, as decided), with `engine-d-mem` and `scripts/check-features.sh` (`5d2679a`).
     - Evidence: a probe on the rebuilt image sent 3 000 requests twice; the workers restarted 5 times at a
       loop max of 500 and never at 1 000 000. The first runs of the new harness passed: the Engine C smoke
       (every check, run `20261022T115850Z`) and a 3 × 30 s `engine-c-mem` memscale (run
-      `20261022T120027Z`), each with its host record. These are harness checks, not published numbers.
-    - Open: the equivalent-features Symfony engine; then the re-measurement on the new rig (FrankenPHP
-      1.13.2): BENCH-02 and BENCH-03 for Engine C, and BENCH-05 for all three legs.
+      `20261022T120027Z`), each with its host record. `check-features.sh` passed on A, C and D (A and D
+      answer 400 to an untrusted host and 401 to a junk token and send the three headers; commits for
+      200 `POST /greet`: A 603, D 207, C 4), and the A and D smokes and a short D-mem memscale finished
+      with no failed request. These are harness checks, not published numbers.
+    - Found on the way: Compose read the tmpfs `mode: 1777` as decimal (octal 3361), so Engine A could
+      not boot on beta7 (fixed in the rig; `skeleton/docker-compose.prod.yml` has the same four lines,
+      reported). A's `/greet` costs three commits, the transaction plus the pool's liveness `SELECT 1`
+      (`[CARRY-01]`'s subject).
+    - Open: the re-measurement on the new rig (FrankenPHP 1.13.2): BENCH-02 for A, C and D, BENCH-03 for
+      C and D, and BENCH-05 for all four legs.
 - **`[CARRY-03]` "Keeps state on purpose" design note** (API Platform Conference feedback, 2026-09-17):
   runtime reset is already opt-in (`Container::reset()` resets only Resettable services); the strictness
   lives in the dev-mode `ComplianceScanner` and the igor gate, with `#[WorkerSafe]` as the only escape
