@@ -171,7 +171,7 @@ ${C_DIM}DIAGNOSTICS / AGENT HELPERS${C_RST}
 
 ${C_DIM}SUPPLY CHAIN / INDEPENDENCE${C_RST}
   sbom <comp…>|--all    CycloneDX 1.5 SBOM from composer.lock → tmp/sbom/<comp>-<version>.cdx.json
-  images:pin [--write] [--pull]  report (or pin) every base/service image without a digest
+  images:pin [--write] [--pull] [--verify]  report (or pin) every base/service image without a digest; --verify checks each pin against the image its tag names
   offline warm|check|status [comp…]  persistent Composer cache (tmp/composer-cache); check installs with the network off
   local-only            commits on no remote + age of the last backup (what the cockpit shows)
   backup [--dest DIR] [--dry-run]  bundle every repository off-disk (iCloud by default) and stamp the time
