@@ -107,6 +107,21 @@ aliases: []
   service (`$this->cache->set(…)`) as "mutation on an injected dependency". Each case in this release is
   adjudicated in code (fixed or `#[WorkerSafe]` with its reason); propose the detector fix upstream in
   the igor-php fork.
+  - *Status 2026-10-22 — adjudication done; the detector fix waits for its upstream PR:*
+    - `wfl igor` audits 28 targets with 0 KO. The only warning is the `component-template` scaffold, skipped
+      because it does not install igor. Every 0.9.7 finding carries a method-level `#[WorkerSafe]` with a
+      verified reason: 78 in all, 27 of them for write-through in `cache`, `data` and `telemetry`.
+    - Root cause: igor records a property-level `#[WorkerSafe]` (promoted parameters included), and its
+      direct-write and `reset()` checks honour it. The injected-dependency rule never read it, although the
+      README says such a property's mutations are ignored. So each method writing through the dependency
+      needed its own attribute.
+    - Fix: in the fork (`contributions/igor-php`), branch `fix/worker-safe-injected-dependency`, commit
+      `3655cbd`, on upstream `main`. The rule skips calls through a `#[WorkerSafe]` property. Fixture, visitor
+      test and README are updated. `make docker-ci` passes, and the Go sources never name Waffle. The same
+      fixture reports 4 findings on `main` and 2 with the fix.
+    - Open: pushing the branch and opening the PR are the maintainer's. Once a release carries the fix and
+      the pin moves, the 27 method-level annotations become one per dependency. Upstream is at 0.10.1;
+      whether to bump from 0.9.7 before the freeze is a separate decision.
 - **`[CARRY-06]` Small follow-ups** (Retro_Beta6 §6): `Constant::ATTR_PARAMS` promotion, AOT compiled-memo
   runtime write-through, a PHPUnit step in the workspace CI job.
   - *Status 2026-10-22 — done:*
