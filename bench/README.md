@@ -189,6 +189,14 @@ scripts/run-bench.sh engine-c soak
 # pool=8; optional sweep DB_POOL_SIZE=16):
 scripts/run-bench.sh engine-a starve
 DB_POOL_SIZE=16 scripts/run-bench.sh engine-a starve
+
+# CARRY-01 — the pool's ping freshness window (DB_PING_FRESHNESS_MS: default 500, the
+# skeleton's; 0 probes every lease). The functional half counts transactions per request
+# and checks that dead connections are caught; the knee half is the dbread ladder at 0
+# and 500, interleaved (data/benchmarks/CARRY-01-GATE-RESULT.md).
+scripts/check-pool-freshness.sh 0
+scripts/check-pool-freshness.sh 500
+DB_PING_FRESHNESS_MS=0 RATES=1100,1200,1300,1400,1500,1600 scripts/run-bench.sh engine-a constant dbread
 ```
 
 The runner: `up` ONE engine + `bench-postgres` → warmup → k6 (JSON to `results/`) →

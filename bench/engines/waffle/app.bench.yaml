@@ -88,3 +88,6 @@ waffle:
     # BENCH-04 knob (Phase B wires DB_POOL_SIZE into buildConnectionPool();
     # harmless extra key if Phase B reads the environment directly instead).
     pool_size: '%env(DB_POOL_SIZE)%'
+    # CARRY-01 gate knob: the pool's ping freshness window in ms, from
+    # DB_PING_FRESHNESS_MS (compose; default = the skeleton's 500).
+    ping_freshness_ms: '%env(DB_PING_FRESHNESS_MS)%'

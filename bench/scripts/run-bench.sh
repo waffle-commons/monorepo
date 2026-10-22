@@ -20,7 +20,8 @@
 #
 # Env passthrough to k6 (all optional): RATES, STEP_DURATION, RATE, DURATION,
 # VUS_STEPS (BENCH-05 concurrency steps).
-# Compose-interpolated knobs: DB_POOL_SIZE (BENCH-04 sweep), MAX_REQUESTS
+# Compose-interpolated knobs: DB_POOL_SIZE (BENCH-04 sweep), DB_PING_FRESHNESS_MS
+# (CARRY-01 gate: the pool's ping freshness window, ms), MAX_REQUESTS
 # (pinned to 1000000 here unless the caller overrides — Trap 3: worker recycle
 # at the 500 default would mask leaks in the soak).
 #
@@ -194,8 +195,10 @@ container = inspected[0] if inspected else {}
 config, host_config = container.get('Config') or {}, container.get('HostConfig') or {}
 # Only these knobs: the engine environment also holds fixture secrets.
 engine_env = dict(e.split('=', 1) for e in config.get('Env') or [] if '=' in e)
-kept = ('APP_ENV', 'APP_RUNTIME', 'FRANKENPHP_CONFIG', 'FRANKENPHP_LOOP_MAX', 'MAX_REQUESTS', 'DB_POOL_SIZE')
-knobs = ('WORKLOAD', 'RATES', 'STEP_DURATION', 'RATE', 'DURATION', 'VUS_STEPS', 'MAX_REQUESTS', 'DB_POOL_SIZE')
+kept = ('APP_ENV', 'APP_RUNTIME', 'FRANKENPHP_CONFIG', 'FRANKENPHP_LOOP_MAX', 'MAX_REQUESTS', 'DB_POOL_SIZE',
+        'DB_PING_FRESHNESS_MS')
+knobs = ('WORKLOAD', 'RATES', 'STEP_DURATION', 'RATE', 'DURATION', 'VUS_STEPS', 'MAX_REQUESTS', 'DB_POOL_SIZE',
+         'DB_PING_FRESHNESS_MS')
 record = {
     'run_id': os.environ['RUN_ID'],
     'recorded_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),

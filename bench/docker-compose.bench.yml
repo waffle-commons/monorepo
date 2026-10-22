@@ -112,6 +112,9 @@ services:
       DB_PASSWORD: "waffle"
       # BENCH-04 sweep knob (default pool size 8 — Trap 4).
       DB_POOL_SIZE: "${DB_POOL_SIZE:-8}"
+      # CARRY-01 gate knob: the pool's ping freshness window in ms (default =
+      # the skeleton's 500; 0 pings on every lease).
+      DB_PING_FRESHNESS_MS: "${DB_PING_FRESHNESS_MS:-500}"
     depends_on:
       bench-postgres:
         condition: service_healthy
