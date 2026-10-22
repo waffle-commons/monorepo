@@ -139,6 +139,9 @@ def main() -> int:
             if match is None:
                 continue
             ref = match.group(2) if dockerfile else match.group(3)
+            if not dockerfile and ref.startswith("!"):
+                # A YAML tag (`image: !reset null`) removes the image in an override; it names none.
+                continue
             if dockerfile:
                 seen_from = True
                 stage = re.search(r"\bAS\s+(\S+)", match.group(3), re.IGNORECASE)
