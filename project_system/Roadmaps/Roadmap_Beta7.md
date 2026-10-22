@@ -391,6 +391,13 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
 - **Specification:**
     
     - Dev-mode middleware emitting `X-Waffle-Time`, `X-Waffle-Memory`, `X-Waffle-Queries` headers; no web toolbar (API-first).
+- *Status 2026-10-22 — done (telemetry, skeleton, documentation; decisions: count traced queries, add `Server-Timing`):*
+  `Telemetry\Middleware\ProfilerHeadersMiddleware` (the three headers plus `Server-Timing: app;dur=…`) and
+  `Telemetry\Profiler\QueryCountingTracer` (counts the data layer's `waffle.db.query` spans, resettable per
+  request). The skeleton's `ProfilerFactory` adds both only when `$debug` is true, which production refuses, and puts
+  the headers first in the stack. No contracts change. `X-Waffle-Queries` cannot see raw PDO on a pooled
+  connection (the demo controllers report 0). Gates: `wfl dod telemetry` and `wfl dod skeleton` PASS; not yet seen
+  on a running dev app.
         
 
 ## 🛡️ AXE 6: ECOSHIELD-GATEWAY ALPHA (DOGFOODING — stretch, in scope 2026-10-21)
