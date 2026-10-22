@@ -60,6 +60,8 @@ _The three beta5 research spikes get their final verdict. "Go" means landing the
         
     - Cross-component grep for usages; skeleton/workspace/Academy templates updated to the final APIs.
         
+    - *Candidates recorded 2026-10-22:* `http-client`'s `Client::CONNECT_TIMEOUT_MS` and `Client::TIMEOUT_MS`, which the client no longer reads since `[NET-02]` (`TimeoutPolicy::DEFAULT_CONNECT_MS` / `DEFAULT_TOTAL_MS` replaced them).
+        
 
 ### `[FRZ-03]` Naming & Convention Consistency Pass
 
