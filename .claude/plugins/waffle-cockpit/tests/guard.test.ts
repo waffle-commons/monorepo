@@ -83,7 +83,7 @@ describe('verdictOf', () => {
   test('a push delete in any spelling but --delete is refused and pointed to --delete', () => {
     for (const line of [
       'git push origin :feature',
-      'git -C security push origin +:pre-release/0.1.0-beta7',
+      'git -C security push origin :pre-release/0.1.0-beta7',
       'git push -d origin feature',
       'git push -qd origin feature',
       'git push --del origin feature',
@@ -93,6 +93,27 @@ describe('verdictOf', () => {
       expect(verdictOf(line)).toContain('--delete <ref>')
     }
     for (const line of ['git push origin --delete feature', 'git -C security push --delete origin feature', 'git push origin HEAD:feature', 'git push origin :', 'git push -od origin main']) {
+      expect(verdictOf(line)).toBeUndefined()
+    }
+  })
+
+  test('push options are read as git reads them: abbreviated tag pushes and every force are refused', () => {
+    for (const line of ['git push --tag origin', 'git push --follow origin main', 'git push --m origin', 'git -C contracts push --mirr origin']) {
+      expect(verdictOf(line)).toContain('LIVE release wave')
+    }
+    for (const line of [
+      'git push -uf origin main',
+      'git push origin main -fu',
+      'git push -qf origin pre-release/0.1.0-beta7',
+      'git push --force origin main',
+      'git push --force-with-lease=main:abc123 origin main',
+      'git push origin +main',
+      'git push origin +:feature',
+      "docker exec waffle-dev sh -c 'git push -uf origin main'",
+    ]) {
+      expect(verdictOf(line)).toContain('never forced')
+    }
+    for (const line of ['git push -u origin pre-release/0.1.0-beta7', 'git push --set-upstream origin feature', 'git push --no-tags origin main', 'git push -o ci.skip origin main']) {
       expect(verdictOf(line)).toBeUndefined()
     }
   })
@@ -124,6 +145,8 @@ describe('the releaseTag option', () => {
       'git push origin --delete 0.1.0-beta7',
       'git push -qd origin 0.1.0-beta7',
       'git push --del origin 0.1.0-beta7',
+      'git push -uf origin 0.1.0-beta7',
+      'git push --tag origin',
       'git push origin HEAD:refs/tags/0.1.0-beta7',
       'git push origin 0.1.0-beta8',
       'git push origin v0.1.0-beta7',

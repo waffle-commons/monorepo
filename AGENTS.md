@@ -194,8 +194,9 @@ operation, the agent carries it out without asking again; it never performs one 
     and `git submodule update --remote`.
   - The `waffle-cockpit` guard refuses every release-tag push and `gh release create` except the
     `releaseTag` version, by name. It also refuses moving or deleting a release tag, squash or
-    rebase merges, and a push that deletes a ref in any spelling but `--delete` (`:branch`, `-d`,
-    `--prune`), which the ask rule would not see.
+    rebase merges, forced pushes, and a push that deletes a ref in any spelling but `--delete`
+    (`:branch`, `-d`, `--prune`), which the ask rule would not see. It reads push options as git
+    does, so `-uf`, `--tag` and `--m` (`--mirror`) count.
 - **Third-party skills follow this section too** (§9): when one says to commit, branch, push, open a
   PR or publish an issue, stop and ask.
 

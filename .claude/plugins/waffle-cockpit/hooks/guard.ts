@@ -9,10 +9,14 @@
  *   person names in the `releaseTag` option: pushed by name, never in bulk,
  *   forced or deleted. A `v` prefix, or moving or deleting a release tag, is
  *   always refused.
+ * - Pushes are never forced: `-f`, `--force`, `--force-with-lease` or a `+`
+ *   refspec (AGENTS.md §6).
  * - A push deletes a remote ref only through `--delete`, the spelling the
- *   permission rules ask the person about: `:ref`, `-d` (also in a cluster,
- *   `-qd`), a prefix git expands to `--delete` (`--del`) and `--prune` are
- *   refused (AGENTS.md §6).
+ *   permission rules ask the person about: `:ref`, `-d`, a prefix such as
+ *   `--del`, and `--prune` are refused (AGENTS.md §6).
+ * - Push options are read as git reads them: a short cluster's letters (`-uf`
+ *   is `-u -f`) and the long option a prefix expands to (`--tag` is `--tags`,
+ *   `--m` is `--mirror`).
  * - Merges are merge commits: a squash or rebase merge orphans the gitlink the
  *   release wave checks (AGENTS.md §6).
  * - No `cd` / `pushd` / `popd` on the host: the Bash tool's working directory
@@ -187,11 +191,27 @@ function isReleaseTagSpec(spec: string, releaseTag: string): boolean {
   return releaseTag !== '' && spec.split(':').every(side => side.replace(/^refs\/tags\//, '') === releaseTag)
 }
 
-/** Whether a `git push` word is its delete option as git reads it: `--delete` down to `--de`, or `-d`, also in a cluster (`-qd`; in `-od` the `d` is `-o`'s value). */
-const isPushDelete = (word: string) => (word.length >= 4 && '--delete'.startsWith(word)) || /^-[^-o]*d/.test(word)
+/** The `git push` options the push rules read, spelled in full. */
+const PUSH_OPTIONS = ['--delete', '--prune', '--tags', '--follow-tags', '--mirror', '--force', '--force-with-lease']
 
-/** Whether a `git push` word is `--prune` or a prefix git expands to it (`--pru`): it deletes the remote refs gone locally. */
-const isPushPrune = (word: string) => word.length >= 5 && '--prune'.startsWith(word)
+/** The short `git push` options the push rules read, by letter. */
+const PUSH_LETTERS: Readonly<Record<string, string>> = { d: '--delete', f: '--force' }
+
+/**
+ * The options of `PUSH_OPTIONS` a `git push` word turns on, as git reads it.
+ * A short cluster sets each letter up to an `o`, which takes the rest as its
+ * value: `-uf` is `-u -f`, `-od` is `-o d`. A long word is every option it is
+ * a prefix of: `--tag` is `--tags`, `--m` is `--mirror`. Git stops on a prefix
+ * two options share (`--fo`), so reading it as both refuses nothing git runs.
+ */
+function pushOptionsOf(word: string): string[] {
+  if (/^-[^-]/.test(word)) return [...(word.slice(1).split('o')[0] ?? '')].flatMap(letter => PUSH_LETTERS[letter] ?? [])
+  const name = word.replace(/=.*$/s, '')
+  return word.startsWith('--') && name.length > 2 ? PUSH_OPTIONS.filter(option => option.startsWith(name)) : []
+}
+
+/** Whether a `git push` word turns on one of the options. */
+const turnsOn = (word: string, ...options: string[]) => pushOptionsOf(word).some(option => options.includes(option))
 
 /** What the tag refusal tells Claude it may do instead. */
 function tagHintOf(releaseTag: string): string {
@@ -215,8 +235,8 @@ function gitVerdictOf(args: string[], releaseTag: string): string | undefined {
 
   if (sub === 'push') {
     const specs = rest.filter(a => !a.startsWith('-')).slice(1) // the first non-option word is the remote
-    const tagFlags = rest.filter(a => a === '--tags' || a === '--follow-tags' || a === '--mirror')
-    const isDelete = rest.some(isPushDelete)
+    const tagFlags = rest.filter(a => turnsOn(a, '--tags', '--follow-tags', '--mirror'))
+    const isDelete = rest.some(a => turnsOn(a, '--delete'))
     const tagRefs = specs.filter(spec => spec.split(':').some(side => side.replace(/^\+/, '').startsWith('refs/tags/') || VERSION_TAG.test(side.replace(/^\+/, ''))))
     const refused = [...tagFlags, ...tagRefs.filter(spec => isDelete || !isReleaseTagSpec(spec, releaseTag))]
 
@@ -224,8 +244,13 @@ function gitVerdictOf(args: string[], releaseTag: string): string | undefined {
       return `tags are live: pushing ${refused.join(' ')} fires the LIVE release wave (AGENTS.md §6). ${tagHintOf(releaseTag)}`
     }
 
+    const forced = [...rest.filter(a => turnsOn(a, '--force', '--force-with-lease')), ...specs.filter(spec => spec.startsWith('+'))]
+    if (forced.length > 0) {
+      return `\`${forced.join(' ')}\`: pushes are never forced: a forced push rewrites history on the remote, and the permission rules deny it (AGENTS.md §6). Ask the person.`
+    }
+
     // The ask rule matches the `--delete` word alone: any other spelling of a delete would run unasked.
-    const deletes = [...rest.filter(a => a !== '--delete' && (isPushDelete(a) || isPushPrune(a))), ...specs.filter(spec => /^\+?:./.test(spec))]
+    const deletes = [...rest.filter(a => a !== '--delete' && turnsOn(a, '--delete', '--prune')), ...specs.filter(spec => /^:./.test(spec))]
     if (deletes.length > 0) {
       return `\`${deletes.join(' ')}\`: a push deletes remote refs only through \`--delete\`, the spelling the permission rules ask the person about. Name each ref with \`git push <remote> --delete <ref>\` (AGENTS.md §6).`
     }

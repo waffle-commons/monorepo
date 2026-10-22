@@ -1,7 +1,7 @@
 {
   "name": "waffle-cockpit",
-  "version": "0.4.0",
-  "description": "Waffle-Commons cockpit: status lines under the prompt (model, effort, context, cache, cost, limits, repo, PR, Waffle phase, local-only commits and backup age, running commands, background shells / monitors / subagents), /dod in a pane with no model turn and the last verdict per component, model-callable dod / xref / coverage_gaps / dod_history tools, a Bash guard (host-side PHP, cd, heredoc continuations, secret files, submodule --remote syncs, release-tag pushes but the releaseTag option's, v-prefixed or moved tags, squash merges, ref deletes not spelled --delete), Edit/Write checks (new mixed, secrets), an instant Mago check after each PHP edit, and a done-means-evidence reminder at the end of a turn.",
+  "version": "0.4.1",
+  "description": "Waffle-Commons cockpit: status lines under the prompt (model, effort, context, cache, cost, limits, repo, PR, Waffle phase, local-only commits and backup age, running commands, background shells / monitors / subagents), /dod in a pane with no model turn and the last verdict per component, model-callable dod / xref / coverage_gaps / dod_history tools, a Bash guard (host-side PHP, cd, heredoc continuations, secret files, submodule --remote syncs, release-tag pushes but the releaseTag option's, v-prefixed or moved tags, squash merges, forced pushes, ref deletes not spelled --delete), Edit/Write checks (new mixed, secrets), an instant Mago check after each PHP edit, and a done-means-evidence reminder at the end of a turn.",
   "author": { "name": "Waffle-Commons" },
   "license": "MIT",
   "types": "./types/index.d.ts",
