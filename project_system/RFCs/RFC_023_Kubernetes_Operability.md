@@ -102,8 +102,12 @@ private view only.
   so the pod's `preStop` hook flips it (decided 2026-10-17, §5.1): it creates the drain marker
   (`waffle.health.drain_marker`) and sleeps; while the marker exists `/readyz` answers 503 and PHP keeps
   serving every other request. SIGTERM follows, and Caddy's `grace_period` drains the in-flight requests.
+  Where no `preStop` hook exists (Docker, Compose, ECS), Caddy flips it at SIGTERM instead (revised
+  2026-10-22, §5.1): during `shutdown_delay` the skeleton Caddyfile answers `/readyz` with the public 503
+  while PHP serves every other path, then the listeners close and `grace_period` drains.
 - **Kubernetes sizing:** `terminationGracePeriodSeconds` must exceed the `preStop` sleep plus Caddy's
-  `grace_period`, or the kubelet kills the pod mid-drain.
+  `grace_period`, or the kubelet kills the pod mid-drain. Elsewhere the orchestrator's stop timeout
+  (Docker's `stop_grace_period`, 10 s by default) must exceed `shutdown_delay` plus `grace_period`.
 - **CLI consumers** (`bin/waffle queue:work`) are ordinary CLI processes and do receive SIGTERM. They
   drain through `pcntl` — installed in the development and production images since 2026-09-30:
   `pcntl_async_signals(true)`, a handler that sets a stop flag, then finish and acknowledge the in-flight
@@ -133,10 +137,26 @@ private view only.
    `terminationGracePeriodSeconds` > `preStop` sleep + `grace_period`. **Evidence (FrankenPHP 1.12.7,
    worker mode, 2026-10-17):** `/readyz` 503 while other paths answered 200; after SIGTERM a 2-second
    request in flight completed with 200 and the process exited 0 with no error.
-   **Superseded:** the first decision of the day, Caddy's global `shutdown_delay` with a 503 on `/readyz`
-   while `{http.shutting_down}`, flips readiness but FrankenPHP stops at SIGTERM, so every PHP request
-   during the delay got a 500 ("FrankenPHP is not running"), in classic and in worker mode alike. Without
-   a `preStop` hook (plain Docker), readiness does not flip; the `grace_period` drain still holds.
+   **Superseded (on FrankenPHP 1.12.7):** the first decision of the day, Caddy's global `shutdown_delay`
+   with a 503 on `/readyz` while `{http.shutting_down}`, flips readiness but FrankenPHP stops at SIGTERM,
+   so every PHP request during the delay got a 500 ("FrankenPHP is not running"), in classic and in worker
+   mode alike. Without a `preStop` hook (plain Docker), readiness does not flip; the `grace_period` drain
+   still holds.
+
+   **Revised 2026-10-22: option (a), plus Caddy's `shutdown_delay` where no `preStop` hook exists.**
+   FrankenPHP 1.13.1 keeps PHP running until Caddy has stopped
+   ([php/frankenphp#2645](https://github.com/php/frankenphp/pull/2645)), and the runtime moved to 1.13.2 the
+   same day for PHP2Shell. The skeleton Caddyfile now sets `shutdown_delay {$CADDY_SHUTDOWN_DELAY:0s}` and
+   answers `/readyz` itself with the public 503 (`{"status":"unavailable"}`) while `{http.shutting_down}`.
+   The default stays `0s`, because under Kubernetes the `preStop` marker has already flipped readiness and
+   a delay would only lengthen every termination; `docker-compose.prod.yml` sets `5s` and
+   `stop_grace_period: 35s`. This lifts the plain-Docker limit above, and it makes "`/readyz` flips on
+   SIGTERM" (§6) literally true where no hook runs. **Evidence (2026-10-22, the same harness on both
+   versions, worker and classic mode, 6 s delay):** every PHP request during the delay got 200 on
+   FrankenPHP 1.13.2 and 500 on 1.12.7; a 3-second request in flight completed with 200 and the process
+   exited 0 on both. `scripts/drain-check.sh` (`wfl drain-check [image]`) runs the shipped Caddyfile on a
+   given image and checks both paths: all 9 checks pass on 1.13.2, 3 fail on 1.12.7. Re-run it on every
+   FrankenPHP bump.
 2. **Home of the probe middleware** — `waffle-commons/pipeline` hosts the infrastructure middlewares
    (`TrustedHostMiddleware`, `SecureHeadersMiddleware`) — and its position relative to the `Host` check.
 

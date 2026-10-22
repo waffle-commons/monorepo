@@ -260,7 +260,9 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
     
     - Handle SIGTERM in the runtime: stop accepting work, flush deferred tasks (beta5 `[ASYNC-01]` if landed), return pooled connections (beta5 `[DBAL-01]`), close streams, then exit within the configurable grace period.
         
-    - `/readyz` flips to not-ready immediately on SIGTERM so K8s stops routing before the drain (through the `preStop` drain marker, RFC-023 §5.1 — revised 2026-10-17 after Caddy's `shutdown_delay` proved to stop FrankenPHP at SIGTERM). No explicit post-loop pool close (RFC-023 §3.4, decided 2026-10-17).
+    - `/readyz` flips to not-ready immediately on SIGTERM so K8s stops routing before the drain (through the `preStop` drain marker, RFC-023 §5.1 — revised 2026-10-17 after Caddy's `shutdown_delay` proved to stop FrankenPHP 1.12.7 at SIGTERM). No explicit post-loop pool close (RFC-023 §3.4, decided 2026-10-17).
+        
+    - *Decision 2026-10-22:* the skeleton adds Caddy's `shutdown_delay` as a second path for runtimes without a `preStop` hook (Docker, Compose, ECS): `CADDY_SHUTDOWN_DELAY` (default `0s`, `5s` in `docker-compose.prod.yml` with `stop_grace_period: 35s`), during which Caddy answers `/readyz` with the public 503 while PHP serves the rest. Reason: on FrankenPHP 1.13.2, adopted that day for PHP2Shell, PHP keeps serving through the delay (200, where 1.12.7 answered 500, same harness), so the 2026-10-17 objection no longer holds. Evidence: `wfl drain-check` passes all 9 checks on 1.13.2 and fails 3 on 1.12.7 (RFC-023 §5.1).
         
 
 ### `[OPS-03]` Schema Migration Workflow Maturity
@@ -331,6 +333,8 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
     - Grow the beta6 reverse-proxy POC (`Roadmap_Beta6.md` `[GATE-01]`) to **alpha** on beta7, in the gateway's own repository: legacy monolith lab + Waffle proxy app (catch-all `ProxyController` over the resilient client `[NET-02/03]`, strangler route served natively with cache + rate limiter `[NET-01]`).
         
     - Built **exclusively on public Waffle APIs** — any private-API reach-through is a framework design bug to fix, not to work around.
+        
+    - *Decision 2026-10-22:* the gateway's runtime bump rides with this item. Its Dockerfile still builds on FrankenPHP 1.12.2 (no digest), exposed to PHP2Shell (CVE-2026-109618, CVE-2026-109619); moving it to beta7 moves it to FrankenPHP 1.13.2 or later with a digest pin. The maintainer chose to do it then rather than as a separate change.
         
 
 ## ✅ ACCEPTANCE CRITERIA
