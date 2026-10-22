@@ -67,6 +67,14 @@ aliases: []
   500-request default invalidated the beta6 soak comparison); Engine C in the memory test; an
   equivalent-features Symfony engine (security + CSRF + transaction subscriber) next to the bare one;
   host hardware recorded with every run; least-squares slopes published with their uncertainty.
+  - *Status 2026-10-22 — half done (umbrella `34bfe84`):*
+    - Done: run-unique result files (run id on the summary, RSS and new host files, and a run refuses to
+      overwrite a series), a host record per run (host, Docker VM, engine limits, commit), and soak slopes
+      with their 95 % bound in `report.sh`. Checked on the existing results and a synthetic +10 MB/h soak
+      (+10.01 ± 0.10); no real bench run yet.
+    - Open: Engine C on symfony/runtime 7.4's native runner (`FRANKENPHP_LOOP_MAX=1000000`, no `APP_RUNTIME`
+      override; today it selects `runtime/frankenphp-symfony`), Engine C in the memory test, and the
+      equivalent-features Symfony engine. Each needs an image rebuild and a measured run.
 - **`[CARRY-03]` "Keeps state on purpose" design note** (API Platform Conference feedback, 2026-09-17):
   runtime reset is already opt-in (`Container::reset()` resets only Resettable services); the strictness
   lives in the dev-mode `ComplianceScanner` and the igor gate, with `#[WorkerSafe]` as the only escape
