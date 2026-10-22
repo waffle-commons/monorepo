@@ -411,6 +411,29 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
     - Built **exclusively on public Waffle APIs** — any private-API reach-through is a framework design bug to fix, not to work around.
         
     - *Decision 2026-10-22:* the gateway's runtime bump rides with this item. Its Dockerfile still builds on FrankenPHP 1.12.2 (no digest), exposed to PHP2Shell (CVE-2026-109618, CVE-2026-109619); moving it to beta7 moves it to FrankenPHP 1.13.2 or later with a digest pin. The maintainer chose to do it then rather than as a separate change.
+
+    - *Status 2026-10-22 — built and checked on the local beta7 tree; `0.2.0` waits for the beta7 wave.* Gateway branch `alpha/beta7` (7 local commits), http-client `41abcd9`, documentation `fdc4abd`. Decisions that day: build now on local beta7, limiter on all traffic, lab as an override, OPS and metrics in GATE-03.
+      - **Built:** `^0.1.0-beta7` through a local-only Composer override (`bin/framework-local.sh`); the lock moves to Packagist after the wave. The catch-all proxy runs over `RetryingClient(CircuitBreakerClient(Client))`: bounded timeouts, retries for idempotent methods only (the gateway never replays a POST or PATCH, whatever the configuration says), circuit state in Redis, 503 when the circuit is open. The strangled route `/api/users/{id}` sits behind the Shield. The NET-01 limiter covers all traffic: 600 requests a minute per client IP, read behind `TRUSTED_PROXIES`, fail-open. FrankenPHP 1.13.2 / PHP 8.5.12, and every image is pinned by digest. The lab (`docker-compose.lab.yml`) puts the gateway in front of the Symfony 5.4 legacy, now tracked and installed from its lock. Public APIs only.
+      - **Evidence** (lab checks, not published numbers):
+        - Gates: mago zero output, 85 tests OK, 99.50 % lines, igor 0.9.7 15/15 OK.
+        - Limiter: 700 requests from one client in 1.3 s gave 612 × 200 and 88 × 429, nothing admitted beyond the bucket.
+        - Breaker: with PHP-FPM stopped, a GET made 3 attempts and a POST 1. The circuit opened at the tenth failure, then refused in about 5 ms without calling the legacy; a trial after the cool-down failed while the legacy was down and closed it once the legacy was back.
+        - PostgreSQL stopped: a cached read still answered 200, an uncached one 503, never cached.
+        - Redis stopped: every route answered 200 (Shield bypass, breaker closed, limiter open, each with a warning), and the cache recovered without a restart.
+        - Perimeter: k6 280/280 and the raw-socket framing probes, identical to 0.1.1.
+        - Every body-carrying method (JSON, form, chunked, 1 MiB) reaches the Symfony legacy.
+      - **Found by the dogfood, fixed:**
+        - http-client: an unsized body (`php://input`) went out chunked next to the caller's `Content-Length`. nginx answered 400 to every proxied POST and PUT, on beta6 as on beta7, and the wire capture shows both headers. `41abcd9` honours the declared length and drops the caller's framing headers whenever libcurl frames an upload; a test fails against the old client.
+        - Gateway: every proxied GET carried an empty chunked body and an `Expect: 100-continue` handshake, so the 0.1.1 proxied figures include that cost.
+        - Gateway: the Shield turned a Redis outage into 500s.
+      - **Report only:**
+        - http's `GlobalsFactory` leaves a parsed JSON POST body at its end (the gateway rewinds).
+        - The breaker counts every 5xx on one circuit per origin. In front of one monolith that is one circuit for every proxied route; to watch in GATE-03.
+        - `RetryPolicy` retries an upstream 429.
+        - libcurl still sends `Expect: 100-continue` on chunked uploads.
+      - **Open:**
+        - After the wave: the Packagist lock, the gates on Packagist, the production image on beta7, and the CHANGELOG stamp `[0.2.0] — 2026-11`. Push, PR, the `0.2.0` tag and Packagist are the maintainer's.
+        - GATE-03: OPS-01/02, metrics, and the ladder's per-step warm-up.
         
 
 ## ✅ ACCEPTANCE CRITERIA

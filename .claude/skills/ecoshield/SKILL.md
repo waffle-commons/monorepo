@@ -45,8 +45,10 @@ moving the gateway onto a new framework release, any claim about the gateway's p
   disclaimer), no invented statistic, no unmeasured environmental claim.
 - **Production is the default compose.** Only the gateway publishes a port; the monolith is reachable
   only through it (an exposed upstream makes the shield bypassable). `docker-compose.dev.yml` (bind
-  mounts), `docker-compose.perf.yml` (bounded measurement stack) and `docker-compose.symfony.yml` (the real
-  Symfony 5.4 monolith) are overrides.
+  mounts), `docker-compose.perf.yml` (bounded measurement stack, `APP_ENV=bench` loads `config/app_bench.yaml`:
+  limiter and the strangled route's Shield off), `docker-compose.symfony.yml` (the real Symfony 5.4 monolith,
+  after perf) and `docker-compose.lab.yml` (the Strangler-Fig lab: Symfony legacy + PostgreSQL, unbounded) are
+  overrides.
 - **Diagnostics closed by default.** `/__ecoshield/memory` answers only when `ECOSHIELD_DIAGNOSTICS` is
   set: a gateway's heap footprint tells an attacker how their requests affect it.
 - **Proxy invariants from the POC, regression-tested:** hop-by-hop headers stripped in both directions,
@@ -67,10 +69,23 @@ moving the gateway onto a new framework release, any claim about the gateway's p
 
 ## Carried into 0.2.0
 From the 0.1.1 release notes and `BENCHMARK_RESULTS.md`:
-- `MAX_REQUESTS` above the campaign total (10 000 000 rather than 1 000 000). The 3 h window contained a
-  worker recycle, so it proves "no drift over a window containing a recycle", not "one worker ran 3 h".
-- A per-step warm-up in the ladder: the first step starts cold and is penalised.
-- The fate of the two demonstration routes (`/api/products/{id}`, `/api/users/{id}`).
+- Done 2026-10-22: `MAX_REQUESTS` 10 000 000 in the perf stack (the 0.1.1 3 h window contained a worker
+  recycle); the two demonstration routes stay (they are the bench's measured pairs), `/api/users/{id}` now
+  behind the Shield.
+- Moved to `[GATE-03]`: a per-step warm-up in the ladder (only the ladder numbers 0.3.0 publishes need it).
+
+## Alpha state (`[GATE-02]`, 2026-10-22)
+- Built and checked on the LOCAL beta7 tree, branch `alpha/beta7` (7 commits, not pushed). Status, evidence
+  and findings: `Roadmap_Beta7.md` `[GATE-02]`.
+- Until a framework release reaches Packagist, the gateway builds on it through `{gateway}/bin/framework-local.sh`
+  (`VERSION=… install`, then `resync` after a framework change): copies in `var/framework-local/`,
+  `composer.local.json` excluded from git. The production image installs from `composer.lock`, so it cannot
+  build on the unpublished version: run the lab with `-f docker-compose.dev.yml` last.
+- After the beta7 wave: drop `composer.local.*` and `var/framework-local/`, `composer update 'waffle-commons/*'`,
+  rerun the gates and the lab on the production image, stamp `## [0.2.0] — 2026-11`. Push, PR, tag and
+  Packagist are the maintainer's.
+- `{gateway}/bench/legacy-symfony/app/` is tracked (no `vendor/`, `var/`, `.env`); `bootstrap.sh` installs it from its
+  lock with digest-pinned PHP 8.3 and Composer images. Never read its `.env` (the cockpit guard refuses).
 
 **Done on 2026-09-30:**
 - **Toolchain in lockstep with the umbrella:** mago `^1.50`, igor-php `^0.9.7`, and the CI igor job
@@ -92,7 +107,7 @@ CPU-bounded containers, a fixed arrival rate. The scripts find the gateway root 
 everything by absolute path (`{gateway}` is `{umbrella}/contributions/ecoshield-gateway`, `{umbrella}` the
 absolute path of the umbrella checkout):
 ```bash
-{gateway}/bench/legacy-symfony/bootstrap.sh     # the real Symfony 5.4 monolith (generated, not versioned)
+{gateway}/bench/legacy-symfony/bootstrap.sh     # the real Symfony 5.4 monolith, installed from its tracked lock
 docker compose -f {gateway}/docker-compose.yml -f {gateway}/docker-compose.perf.yml -f {gateway}/docker-compose.symfony.yml up -d --build
 {gateway}/bench/scripts/perf-run.sh full        # soak + ladder + memscale + perimeter (~55 min)
 DURATION=3h caffeinate -i {gateway}/bench/scripts/perf-run.sh full   # publication-grade soak (~3 h 50)
