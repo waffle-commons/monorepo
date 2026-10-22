@@ -23,6 +23,8 @@ export type CockpitOptions = {
   secretScan: boolean
   /** The backup segment turns yellow past this many hours with local-only commits (red past three times it). */
   backupWarnHours: number
+  /** The one release tag (`0.1.0-beta7`, no `v`) Claude may push and release by name; empty refuses them all. */
+  releaseTag: string
 }
 
 export const DEFAULTS: CockpitOptions = {
@@ -34,7 +36,11 @@ export const DEFAULTS: CockpitOptions = {
   guard: 'strict',
   secretScan: true,
   backupWarnHours: 24,
+  releaseTag: '',
 }
+
+/** A release tag as the wave's tag gate accepts it: no `v` prefix. */
+const RELEASE_TAG = /^\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?$/
 
 function numberOf(value: unknown, fallback: number, min: number, max: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max ? value : fallback
@@ -45,6 +51,7 @@ export function optionsOf(raw: PluginOptions | undefined): CockpitOptions {
   const get = (key: string): unknown => raw?.[key]
   const lint = get('instantLint')
   const guard = get('guard')
+  const tag = get('releaseTag')
   const warn = numberOf(get('contextWarn'), DEFAULTS.contextWarn, 1, 99)
   return {
     contextWarn: warn,
@@ -55,5 +62,6 @@ export function optionsOf(raw: PluginOptions | undefined): CockpitOptions {
     guard: guard === 'standard' || guard === 'strict' ? guard : DEFAULTS.guard,
     secretScan: typeof get('secretScan') === 'boolean' ? get('secretScan') === true : DEFAULTS.secretScan,
     backupWarnHours: numberOf(get('backupWarnHours'), DEFAULTS.backupWarnHours, 1, 24 * 30),
+    releaseTag: typeof tag === 'string' && RELEASE_TAG.test(tag) ? tag : DEFAULTS.releaseTag,
   }
 }

@@ -31,6 +31,13 @@ const DENIED = [
   'docker exec -it waffle-dev git submodule update --remote',
   "docker exec -w /waffle-commons waffle-dev sh -c 'git push origin 0.1.0-beta7'",
   "docker exec waffle-dev bash -lc 'git submodule update --remote'",
+  'git tag v0.1.0-beta7',
+  'git -C contracts tag -a v1.0.0 -m x',
+  'git tag -d 0.1.0-beta6',
+  'git tag -f 0.1.0-beta7 HEAD',
+  'git merge --squash pre-release/0.1.0-beta7',
+  'gh pr merge 12 --squash',
+  'gh pr merge 12 -r',
 ]
 
 const ALLOWED = [
@@ -71,6 +78,62 @@ describe('verdictOf', () => {
 
   test('the tag refusal names the live wave', () => {
     expect(verdictOf('git push origin 0.1.0-beta7')).toContain('LIVE release wave')
+  })
+
+  test('a push delete in any spelling but --delete is refused and pointed to --delete', () => {
+    for (const line of [
+      'git push origin :feature',
+      'git -C security push origin +:pre-release/0.1.0-beta7',
+      'git push -d origin feature',
+      'git push -qd origin feature',
+      'git push --del origin feature',
+      "git push --prune origin 'refs/heads/*:refs/heads/*'",
+      "docker exec waffle-dev sh -c 'git push origin :feature'",
+    ]) {
+      expect(verdictOf(line)).toContain('--delete <ref>')
+    }
+    for (const line of ['git push origin --delete feature', 'git -C security push --delete origin feature', 'git push origin HEAD:feature', 'git push origin :', 'git push -od origin main']) {
+      expect(verdictOf(line)).toBeUndefined()
+    }
+  })
+})
+
+describe('the releaseTag option', () => {
+  const allowedFor = (line: string) => verdictOf(line, 0, false, true, '0.1.0-beta7')
+
+  test('lets the named release tag through, by name, also in the container', () => {
+    for (const line of [
+      'git tag 0.1.0-beta7',
+      'git push origin 0.1.0-beta7',
+      'git -C /r push origin refs/tags/0.1.0-beta7',
+      'git push origin 0.1.0-beta7:refs/tags/0.1.0-beta7',
+      'gh release create 0.1.0-beta7 --generate-notes',
+      'gh pr merge 12 --merge --admin',
+      'docker exec -w /waffle-commons waffle-dev git push origin 0.1.0-beta7',
+    ]) {
+      expect(allowedFor(line)).toBeUndefined()
+    }
+  })
+
+  test('still refuses bulk, forced, deleted, other and v-prefixed tags', () => {
+    for (const line of [
+      'git push origin --tags',
+      'git push --follow-tags',
+      'git push origin +0.1.0-beta7',
+      'git push origin :0.1.0-beta7',
+      'git push origin --delete 0.1.0-beta7',
+      'git push -qd origin 0.1.0-beta7',
+      'git push --del origin 0.1.0-beta7',
+      'git push origin HEAD:refs/tags/0.1.0-beta7',
+      'git push origin 0.1.0-beta8',
+      'git push origin v0.1.0-beta7',
+      'gh release create 0.1.0-beta8',
+      'gh release create 0.1.0-beta7 --notes-start-tag 0.1.0-beta6',
+      'git tag -f 0.1.0-beta7',
+    ]) {
+      expect(allowedFor(line)).toBeDefined()
+    }
+    expect(allowedFor('git push origin 0.1.0-beta8')).toContain('Only `0.1.0-beta7`')
   })
 })
 

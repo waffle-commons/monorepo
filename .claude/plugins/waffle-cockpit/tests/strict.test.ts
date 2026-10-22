@@ -67,5 +67,8 @@ describe('options', () => {
     expect(set.guard).toBe('strict')
     expect(set.secretScan).toBe(false)
     expect(set.jobLingerSeconds).toBe(60)
+    expect(optionsOf({ releaseTag: '0.1.0-beta7' }).releaseTag).toBe('0.1.0-beta7')
+    expect(optionsOf({ releaseTag: 'v0.1.0-beta7' }).releaseTag).toBe('')
+    expect(optionsOf({ releaseTag: 'main' }).releaseTag).toBe('')
   })
 })

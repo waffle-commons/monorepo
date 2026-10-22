@@ -642,7 +642,7 @@ export const register: Register = (on, options) => {
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const root = await rootOf($)
     if (root !== undefined) {
-      const verdict = verdictOf(e.command, 0, false, local.options.guard === 'strict')
+      const verdict = verdictOf(e.command, 0, false, local.options.guard === 'strict', local.options.releaseTag)
       if (verdict !== undefined) return { deny: `${PLUGIN}: ${verdict}` }
     } else if (local.options.secretScan) {
       // Outside the umbrella only the secret-file rule applies.

@@ -5,7 +5,16 @@
  * - PHP tooling runs in Docker, never on the host (CLAUDE.md).
  * - `git submodule update --remote` is never a "sync" (AGENTS.md §6).
  * - Release tags are live: pushing one, or creating a GitHub release, fires
- *   the LIVE release wave (AGENTS.md §6).
+ *   the LIVE release wave (AGENTS.md §6). The one exception is the version the
+ *   person names in the `releaseTag` option: pushed by name, never in bulk,
+ *   forced or deleted. A `v` prefix, or moving or deleting a release tag, is
+ *   always refused.
+ * - A push deletes a remote ref only through `--delete`, the spelling the
+ *   permission rules ask the person about: `:ref`, `-d` (also in a cluster,
+ *   `-qd`), a prefix git expands to `--delete` (`--del`) and `--prune` are
+ *   refused (AGENTS.md §6).
+ * - Merges are merge commits: a squash or rebase merge orphans the gitlink the
+ *   release wave checks (AGENTS.md §6).
  * - No `cd` / `pushd` / `popd` on the host: the Bash tool's working directory
  *   persists and is shared with the person's `!` commands, so every path is
  *   absolute (`git -C`, `docker exec -w`). Inside the container it is harmless.
@@ -173,8 +182,26 @@ function commandWordsOf(words: string[]): string[] {
 
 const basenameOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
 
+/** Whether a push refspec only ever names the authorised release tag: `T`, `refs/tags/T`, `T:refs/tags/T`. */
+function isReleaseTagSpec(spec: string, releaseTag: string): boolean {
+  return releaseTag !== '' && spec.split(':').every(side => side.replace(/^refs\/tags\//, '') === releaseTag)
+}
+
+/** Whether a `git push` word is its delete option as git reads it: `--delete` down to `--de`, or `-d`, also in a cluster (`-qd`; in `-od` the `d` is `-o`'s value). */
+const isPushDelete = (word: string) => (word.length >= 4 && '--delete'.startsWith(word)) || /^-[^-o]*d/.test(word)
+
+/** Whether a `git push` word is `--prune` or a prefix git expands to it (`--pru`): it deletes the remote refs gone locally. */
+const isPushPrune = (word: string) => word.length >= 5 && '--prune'.startsWith(word)
+
+/** What the tag refusal tells Claude it may do instead. */
+function tagHintOf(releaseTag: string): string {
+  return releaseTag === ''
+    ? 'Release tags are pushed by the human, or by Claude once the person sets the cockpit\'s `releaseTag` option to that version.'
+    : `Only \`${releaseTag}\` (the cockpit's \`releaseTag\`) may be pushed, by name, never forced or deleted.`
+}
+
 /** Why `git <args>` is refused, or undefined. */
-function gitVerdictOf(args: string[]): string | undefined {
+function gitVerdictOf(args: string[], releaseTag: string): string | undefined {
   let i = 0
   while (i < args.length && (args[i] ?? '').startsWith('-')) {
     i += GIT_OPTION_WITH_VALUE.has(args[i] ?? '') ? 2 : 1
@@ -187,15 +214,37 @@ function gitVerdictOf(args: string[]): string | undefined {
   }
 
   if (sub === 'push') {
+    const specs = rest.filter(a => !a.startsWith('-')).slice(1) // the first non-option word is the remote
     const tagFlags = rest.filter(a => a === '--tags' || a === '--follow-tags' || a === '--mirror')
-    const tagRefs = rest
-      .filter(a => !a.startsWith('-'))
-      .slice(1) // the first non-option word is the remote
-      .filter(spec => spec.split(':').some(side => side.replace(/^\+/, '').startsWith('refs/tags/') || VERSION_TAG.test(side.replace(/^\+/, ''))))
+    const isDelete = rest.some(isPushDelete)
+    const tagRefs = specs.filter(spec => spec.split(':').some(side => side.replace(/^\+/, '').startsWith('refs/tags/') || VERSION_TAG.test(side.replace(/^\+/, ''))))
+    const refused = [...tagFlags, ...tagRefs.filter(spec => isDelete || !isReleaseTagSpec(spec, releaseTag))]
 
-    if (tagFlags.length > 0 || tagRefs.length > 0) {
-      return `tags are live: pushing ${[...tagFlags, ...tagRefs].join(' ')} fires the LIVE release wave (AGENTS.md §6). Release tags are pushed by the human.`
+    if (refused.length > 0) {
+      return `tags are live: pushing ${refused.join(' ')} fires the LIVE release wave (AGENTS.md §6). ${tagHintOf(releaseTag)}`
     }
+
+    // The ask rule matches the `--delete` word alone: any other spelling of a delete would run unasked.
+    const deletes = [...rest.filter(a => a !== '--delete' && (isPushDelete(a) || isPushPrune(a))), ...specs.filter(spec => /^\+?:./.test(spec))]
+    if (deletes.length > 0) {
+      return `\`${deletes.join(' ')}\`: a push deletes remote refs only through \`--delete\`, the spelling the permission rules ask the person about. Name each ref with \`git push <remote> --delete <ref>\` (AGENTS.md §6).`
+    }
+  }
+
+  if (sub === 'tag') {
+    const versions = rest.filter(a => VERSION_TAG.test(a))
+    const prefixed = versions.find(a => a.startsWith('v'))
+    if (prefixed !== undefined) {
+      return `\`${prefixed}\`: release tags carry no \`v\` prefix, and the release wave's tag gate rejects one (AGENTS.md §5b).`
+    }
+    const movesOrDeletes = rest.some(a => a === '--delete' || a === '--force' || /^-[A-Za-z]*[df][A-Za-z]*$/.test(a))
+    if (movesOrDeletes && versions.length > 0) {
+      return `release tags are never moved or deleted: \`${versions.join(' ')}\` may already have fired the wave (AGENTS.md §6). Ask the person.`
+    }
+  }
+
+  if (sub === 'merge' && rest.includes('--squash')) {
+    return 'merges are merge commits, never squash: a squash orphans the commit the umbrella gitlink pins, and the release wave exits 3 (AGENTS.md §6).'
   }
 
   return undefined
@@ -241,7 +290,7 @@ function dockerExecCommandOf(args: string[]): string[] | undefined {
 }
 
 /** Why one simple command is refused, or undefined. */
-function verdictOfWords(words: string[], depth: number, isInContainer: boolean, isStrict: boolean): string | undefined {
+function verdictOfWords(words: string[], depth: number, isInContainer: boolean, isStrict: boolean, releaseTag: string): string | undefined {
   const cmd = commandWordsOf(words)
   const head = cmd[0]
   if (head === undefined) return undefined
@@ -266,18 +315,28 @@ function verdictOfWords(words: string[], depth: number, isInContainer: boolean, 
 
   // PHP belongs in the container; git and release rules apply there all the same.
   const inner = name === 'docker' ? dockerExecCommandOf(args) : undefined
-  if (inner !== undefined && depth < 3) return verdictOfWords(inner, depth + 1, true, isStrict)
+  if (inner !== undefined && depth < 3) return verdictOfWords(inner, depth + 1, true, isStrict, releaseTag)
 
-  if (name === 'git') return gitVerdictOf(args)
+  if (name === 'git') return gitVerdictOf(args, releaseTag)
 
   if (name === 'gh' && args[0] === 'release' && args[1] === 'create') {
-    return 'creating a GitHub release creates its tag on the remote, which fires the LIVE release wave (AGENTS.md §6). Releases are cut by the human.'
+    const versions = args.slice(2).filter(a => VERSION_TAG.test(a))
+    if (versions.length !== 1 || versions[0] !== releaseTag) {
+      return `creating a GitHub release creates its tag on the remote, which fires the LIVE release wave (AGENTS.md §6). ${tagHintOf(releaseTag)}`
+    }
+  }
+
+  if (name === 'gh' && args[0] === 'pr' && args[1] === 'merge') {
+    const way = args.find(a => a === '--squash' || a === '-s' || a === '--rebase' || a === '-r')
+    if (way !== undefined) {
+      return `\`gh pr merge ${way}\`: merges are merge commits (\`--merge\`), never squash or rebase, which orphan the commit the umbrella gitlink pins; the release wave exits 3 (AGENTS.md §6).`
+    }
   }
 
   // A `sh -c` script runs where its shell runs: inside the container when a `docker exec` started it.
   if (SHELLS.has(name) && depth < 3) {
     const script = shellScriptOf(args)
-    if (script !== undefined) return verdictOf(script, depth + 1, isInContainer, isStrict)
+    if (script !== undefined) return verdictOf(script, depth + 1, isInContainer, isStrict, releaseTag)
   }
 
   return undefined
@@ -290,13 +349,14 @@ function verdictOfWords(words: string[], depth: number, isInContainer: boolean, 
  * @param depth how many `sh -c` levels deep this line sits
  * @param isInContainer whether a `docker exec` above this line runs it inside the container
  * @param isStrict the `strict` guard: also refuses `cd` on the host and a `\` after a heredoc start
+ * @param releaseTag the one release tag Claude may push or release by name; empty refuses them all
  */
-export function verdictOf(line: string, depth = 0, isInContainer = false, isStrict = true): string | undefined {
+export function verdictOf(line: string, depth = 0, isInContainer = false, isStrict = true, releaseTag = ''): string | undefined {
   const heredoc = isStrict ? heredocVerdictOf(line) : undefined
   if (heredoc !== undefined) return heredoc
 
   for (const words of simpleCommandsOf(withoutHeredocBodies(line))) {
-    const verdict = verdictOfWords(words, depth, isInContainer, isStrict)
+    const verdict = verdictOfWords(words, depth, isInContainer, isStrict, releaseTag)
     if (verdict !== undefined) return verdict
   }
 

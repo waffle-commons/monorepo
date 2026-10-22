@@ -75,5 +75,8 @@ When a release introduces packages (beta7: `queue`, `openapi`, `serializer`, `te
 # then, once ALL are pushed:
 git tag <umbrella-tag> && git push origin <umbrella-tag>   # ⚠️ fires the LIVE wave
 ```
-> Coordinate the exact umbrella-tag name and dispatch workflow with the user — this is an
-> outward-facing, hard-to-reverse action. Confirm before pushing.
+> The person's request for the release ("release beta7", "run the wave") is the go-ahead for the
+> whole protocol, umbrella tag included (AGENTS.md §6). The `waffle-cockpit` guard lets through only
+> the tag named by its `releaseTag` option. If it refuses, ask the person to set `releaseTag` to that
+> version in their user settings. Never work around the guard. Stop and ask when the tag name, the
+> component set or a gate result is in doubt: the push is the point of no return.

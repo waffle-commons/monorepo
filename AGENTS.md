@@ -174,17 +174,28 @@ operation, the agent carries it out without asking again; it never performs one 
   request **for that operation**. "Make the changes" means edit files, nothing more. A command
   listed *for the human to run* is not permission to run it.
 - **Tags are live:** pushing a tag matching `N.N.N[-*]` fires the LIVE release wave to Packagist.
-  Never create or push one incidentally, not even to "test" the workflow.
+  Never create or push one incidentally, not even to "test" the workflow. The agent runs a release
+  wave, umbrella tag included, only when the person asks for that release **and** has set the
+  `waffle-cockpit` option `releaseTag` to its version in their user settings; the person clears it
+  once the wave has shipped.
 - **Released repos are artefacts:** once a wave ships, add nothing to a component's `main` unless that
   repo is named in the request. Report a sibling bug; don't fix it in passing.
 - **Merges to `main` are merge commits, never squash:** the release wave requires every pinned gitlink
   to be an ancestor of the component's default branch; a squash orphans it and the wave exits 3.
 - **Never "sync" with `git submodule update --remote`:** it detaches every submodule from its local
   `pre-release/*` branch. Use `wfl sync:status` (read-only).
-- **Tooling enforces it:** the GitHub MCP server runs read-only; the team permission rules in
-  `.claude/settings.json` ask before every git/GitHub write and deny force-pushes, history rewrites,
-  host-side PHP and `git submodule update --remote`; the `waffle-cockpit` guard also refuses pushing
-  or creating a release tag.
+- **Tooling enforces it:** the GitHub MCP server runs read-only.
+  - The team permission rules in `.claude/settings.json` allow the release operations (commit, push,
+    tag, merge, branch, PR, `gh release create`, `gh workflow run`), so a request runs without a
+    prompt.
+  - They ask before history rewrites (`rebase`, `--amend`), discarded work, deletions, repository
+    settings and credentials.
+  - They deny force-pushes, `filter-branch`, squash merges, `v` tags, `gh auth token`, host-side PHP
+    and `git submodule update --remote`.
+  - The `waffle-cockpit` guard refuses every release-tag push and `gh release create` except the
+    `releaseTag` version, by name. It also refuses moving or deleting a release tag, squash or
+    rebase merges, and a push that deletes a ref in any spelling but `--delete` (`:branch`, `-d`,
+    `--prune`), which the ask rule would not see.
 - **Third-party skills follow this section too** (§9): when one says to commit, branch, push, open a
   PR or publish an issue, stop and ask.
 
