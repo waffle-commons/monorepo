@@ -27,7 +27,7 @@
 # Runtime posture is otherwise identical to skeleton's shipped prod stage:
 # non-root user, opcache preload, validate_timestamps=0 (via jit-bench.ini).
 # =============================================================================
-ARG FRANKEN_VERSION='1.12.7'
+ARG FRANKEN_VERSION='1.13.2'
 ARG PHP_VERSION='8'
 ARG OS='trixie'
 
