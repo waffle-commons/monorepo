@@ -18,7 +18,7 @@ run is a new series.
 | | Engine A | Engine B | Engine C |
 |---|---|---|---|
 | App | Waffle skeleton (prod image stage) | Symfony (shared app, gitignored) | same Symfony app |
-| Runtime | FrankenPHP 1.13.2 worker | php:8.5-fpm + nginx | FrankenPHP worker (`runtime/frankenphp-symfony`) |
+| Runtime | FrankenPHP 1.13.2 worker | php:8.5-fpm + nginx | FrankenPHP 1.13.2 worker (symfony/runtime 7.4's native `FrankenPhpWorkerRunner`) |
 | Workers | **4** (pinned via `FRANKENPHP_CONFIG="worker ./public/index.php 4"`) | `pm.static`, **16** children | **4** (pinned) |
 | HTTP (in-network) | `http://engine-a` | `http://engine-b` | `http://engine-c` |
 | Host smoke port | `127.0.0.1:8081` | `127.0.0.1:8082` | `127.0.0.1:8083` |
@@ -138,6 +138,9 @@ scripts/run-bench.sh engine-c constant dbread
 # Never mix these numbers with BENCH-02's — each pair answers exactly one question.
 VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-a-mem memscale
 VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-b-dyn memscale
+# Engine C's leg (CARRY-02) splits the A-vs-B gap: A-mem vs C-mem holds the runtime
+# constant, B-dyn vs C-mem holds the framework constant.
+VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-c-mem memscale
 
 # BENCH-03 — soak ~150 rps, A then C (2–3 h each, sequential; B shorter, footprint
 # only). ΔM = |mean RSS(last 10 min) − mean RSS(first 10 min after warmup)| ≤ ~1% / 5 MB:
@@ -177,6 +180,11 @@ published port.
   every `MAX_REQUESTS` (default 500). The bench pins it to one million so worker
   recycling cannot mask a leak during the soak: any RSS drift is real drift.
   The value is deliberate and recorded here and in the compose file.
+- **`FRANKENPHP_LOOP_MAX=1000000` on Engine C** — the same pin for Symfony's native
+  `FrankenPhpWorkerRunner`, which also exits after 500 requests by default. Beta6 left it unset
+  and forced the external `runtime/frankenphp-symfony` bridge through `APP_RUNTIME`, so its
+  Engine C soak was not a leak test (*Engine C corrections* in `BENCH-GATE-RESULT.md`). Both
+  fixed in CARRY-02; the host record keeps the engine's `APP_RUNTIME` and `FRANKENPHP_LOOP_MAX`.
 - **Soak window** — target is 2–3 h per worker engine, sequential. If wall-clock
   forces the 90 min/engine fallback, the shortened window is recorded explicitly
   in `BENCH-GATE-RESULT.md`; the verdict states what was measured, not vibes.

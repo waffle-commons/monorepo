@@ -20,12 +20,12 @@ ENGINES_IN_CONTAINER="/waffle-commons/bench/engines"
 APP_IN_CONTAINER="$ENGINES_IN_CONTAINER/symfony-app"
 
 # Symfony version: pinned to the 7.4 LTS line, NOT "latest stable" (8.1).
-# Reason (verified 2026-08-02): runtime/frankenphp-symfony 1.0.0 — the official
-# FrankenPHP worker runtime engine C depends on — requires
-# symfony/dependency-injection ^5.4|^6.0|^7.0 and does not install against
-# Symfony 8.x yet. 7.4 LTS is the current long-term-support production line,
-# a fair "typical Symfony deployment" baseline. Recorded as a method note in
-# BENCH-GATE-RESULT.md.
+# 7.4 LTS is the current long-term-support production line, a fair "typical
+# Symfony deployment" baseline, and the line the beta6 numbers were measured
+# on: the CARRY-02 re-run changes Engine C's runner, not the framework version
+# as well. (The first reason, runtime/frankenphp-symfony 1.0.0 not installing
+# against Symfony 8, left with that package: 7.4 ships the native
+# FrankenPhpWorkerRunner.) Recorded as a method note in BENCH-GATE-RESULT.md.
 SYMFONY_LINE="7.4.*"
 
 # Bench dependencies on top of symfony/skeleton:
@@ -33,13 +33,13 @@ SYMFONY_LINE="7.4.*"
 #       (the bundle is what reads config/packages/doctrine.yaml -> DB_* env vars;
 #        bare dbal alone has no container integration)
 #   symfony/validator + symfony/serializer-pack -> #[MapRequestPayload] DTO
-#   runtime/frankenphp-symfony               -> engine C worker runtime
+# Engine C needs no runtime package: symfony/runtime (part of symfony/skeleton)
+# has shipped the native FrankenPhpWorkerRunner since 7.4.
 BENCH_PACKAGES=(
     doctrine/dbal
     doctrine/doctrine-bundle
     symfony/validator
     symfony/serializer-pack
-    runtime/frankenphp-symfony
 )
 
 step() { printf '\n==> %s\n' "$*"; }
@@ -69,6 +69,13 @@ fi
 step "composer require bench dependencies (--no-scripts, stubs fix the config)"
 in_app composer require --no-interaction --no-progress --no-scripts "${BENCH_PACKAGES[@]}"
 
+# Apps bootstrapped before CARRY-02 still carry the bridge Engine C was forced
+# through (APP_RUNTIME); remove it so nothing can select it again.
+if grep -q '"runtime/frankenphp-symfony"' "$APP_HOST_DIR/composer.json"; then
+    step "composer remove runtime/frankenphp-symfony (Engine C uses the native runner)"
+    in_app composer remove --no-interaction --no-progress --no-scripts runtime/frankenphp-symfony
+fi
+
 step "overlay tracked stubs (controllers, DTO, doctrine dbal config, .env.prod)"
 cp -R "$STUBS_DIR/." "$APP_HOST_DIR/"
 
@@ -81,7 +88,7 @@ in_app_prod php bin/console cache:warmup --env=prod --no-debug
 
 step "resolved versions (record these in BENCH-GATE-RESULT.md)"
 in_app composer show --no-interaction 2>/dev/null |
-    grep -E '^(symfony/(framework-bundle|runtime|validator|serializer)|doctrine/(dbal|doctrine-bundle)|runtime/frankenphp-symfony)\s' || true
+    grep -E '^(symfony/(framework-bundle|runtime|validator|serializer)|doctrine/(dbal|doctrine-bundle))\s' || true
 
 step "bootstrap done — build the engines next:"
 echo "    docker compose -f $BENCH_DIR/docker-compose.bench.yml build engine-b engine-c"

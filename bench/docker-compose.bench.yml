@@ -11,8 +11,9 @@
 #     no Xdebug.
 #   - worker engines (A, C): 4 workers pinned. FPM engine (B): pm.static,
 #     children sized to the same 1G RAM budget (~16).
-#   - MAX_REQUESTS=1000000 on Engine A so the worker recycle does not mask
-#     leaks during the BENCH-03 soak (documented honest-method note).
+#   - MAX_REQUESTS=1000000 on Engine A and FRANKENPHP_LOOP_MAX=1000000 on
+#     Engine C, so neither worker loop recycles and masks a leak during the
+#     BENCH-03 soak (documented honest-method note).
 # =============================================================================
 
 name: waffle-bench
@@ -198,9 +199,9 @@ services:
       - "127.0.0.1:8085:80"
 
   # ---------------------------------------------------------------------------
-  # Engine C — the SAME Symfony app on FrankenPHP worker mode (4 workers,
-  # runtime/frankenphp-symfony). Dockerfile written by the engine-stub task
-  # into bench/engines/symfony-worker/.
+  # Engine C — the SAME Symfony app on FrankenPHP worker mode (4 workers),
+  # through symfony/runtime's native FrankenPhpWorkerRunner. Dockerfile in
+  # bench/engines/symfony-worker/.
   # ---------------------------------------------------------------------------
   engine-c:
     build:
@@ -214,8 +215,11 @@ services:
     environment:
       SERVER_NAME: ":80"
       FRANKENPHP_CONFIG: "worker ./public/index.php 4"
-      # Selects the FrankenPHP Symfony runtime loop (runtime/frankenphp-symfony).
-      APP_RUNTIME: "Runtime\\FrankenPhpSymfony\\Runtime"
+      # No APP_RUNTIME: symfony/runtime 7.4 sees FRANKENPHP_WORKER and picks its
+      # native FrankenPhpWorkerRunner. That loop exits after FRANKENPHP_LOOP_MAX
+      # requests (default 500, which invalidated the beta6 soak comparison), so
+      # it is pinned like Engine A's MAX_REQUESTS (CARRY-02).
+      FRANKENPHP_LOOP_MAX: "1000000"
       APP_ENV: "prod"
       APP_DEBUG: "0"
       APP_SECRET: "bench-fixture-app-secret-do-not-reuse-anywhere"
@@ -232,6 +236,19 @@ services:
       - "127.0.0.1:8083:80"
     networks:
       - bench-net
+
+  # BENCH-05 third leg: Engine C in the same memory-free box as the pair above.
+  # A-mem vs C-mem holds the runtime constant (the framework's effect); B-dyn vs
+  # C-mem holds the framework constant (the runtime's effect). Beta6 had only
+  # A vs B, which mixes the two.
+  engine-c-mem:
+    extends:
+      service: engine-c
+    container_name: engine-c-mem
+    cpus: "2"
+    mem_limit: 6g
+    ports: !override
+      - "127.0.0.1:8086:80"
 
   # ---------------------------------------------------------------------------
   # Shared PostgreSQL 17 — deterministic 10k-row seed via sql/init.sql (runs on

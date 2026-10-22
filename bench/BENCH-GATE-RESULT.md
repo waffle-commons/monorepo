@@ -299,6 +299,21 @@ worker mode, and set `FRANKENPHP_LOOP_MAX=1000000`. The native runner reads the 
 **also defaults to 500**, so switching runners alone would not stop the restarts. Then re-run
 BENCH-02 and BENCH-03 for Engine C.
 
+**Rig fixed 2026-10-22 (`[CARRY-02]`); Engine C not re-measured yet.**
+- `APP_RUNTIME` is gone from compose and the Dockerfile, both set `FRANKENPHP_LOOP_MAX=1000000`,
+  and `scripts/bootstrap-symfony.sh` removes the bridge package. `engine-c-mem` adds Engine C to
+  BENCH-05.
+- The bootstrap re-run also moved doctrine/dbal to 4.5.0, doctrine/doctrine-bundle to 3.3.2 and
+  symfony/validator to 7.4.21; framework-bundle 7.4.15 and runtime 7.4.14 are unchanged.
+- A probe on the rebuilt image (FrankenPHP 1.13.2, Caddy `metrics` enabled for the probe only) sent
+  3 000 requests twice. With the loop max at 500 the workers restarted 5 times; at 1 000 000 they did
+  not restart once.
+- Harness checks on the rebuilt rig, not measurements: the Engine C smoke passed every check (run
+  `20261022T115850Z`, 6 675 requests, none failed), and a 3 × 30 s `engine-c-mem` memscale ran end to
+  end (run `20261022T120027Z`, 172 923 requests, none failed).
+- BENCH-02 and BENCH-03 for Engine C still need their re-run on the new rig, so the readings above
+  stand as annotated.
+
 ## Defects found by this benchmark (all fixed at source)
 
 | Defect | Where | Consequence |
