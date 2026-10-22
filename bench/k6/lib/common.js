@@ -92,16 +92,19 @@ export function requireWorkload(name) {
 }
 
 // ---------------------------------------------------------------------------
-// Summary export — /results/<engine>-<scenario>-<workload>.json
+// Summary export — /results/<engine>-<scenario>-<workload>-<run id>.json
 // ---------------------------------------------------------------------------
 // The k6 service mounts ./results at /results (see docker-compose.bench.yml).
 // `defaultWorkload` is used when the scenario has no single workload
-// (smoke/soak = 'all', pool-starvation = 'db').
+// (smoke/soak = 'all', pool-starvation = 'db'). RUN_ID comes from run-bench.sh,
+// which names the RSS and host files after it too; a bare k6 run stamps its own
+// UTC start, so no run ever overwrites another (CARRY-02).
 
 export function makeHandleSummary(scenario, defaultWorkload) {
   const workload = __ENV.WORKLOAD || defaultWorkload || 'all';
   const engine = engineName();
-  const path = `/results/${engine}-${scenario}-${workload}.json`;
+  const runId = __ENV.RUN_ID || new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+Z$/, 'Z');
+  const path = `/results/${engine}-${scenario}-${workload}-${runId}.json`;
 
   return function (data) {
     // Embed run metadata so report.sh needs no filename archaeology.
@@ -109,6 +112,7 @@ export function makeHandleSummary(scenario, defaultWorkload) {
       engine: engine,
       scenario: scenario,
       workload: workload,
+      run_id: runId,
       target: BASE_URL,
       env: {
         RATES: __ENV.RATES || null,

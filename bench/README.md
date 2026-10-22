@@ -162,7 +162,12 @@ published port.
 
 ## Where results land
 
-- `results/` — raw k6 JSON + RSS CSVs, **gitignored**.
+- `results/` — raw k6 JSON + RSS CSVs, **gitignored**. Each run's files carry its id, the UTC start
+  unless `RUN_ID` is set: `<engine>-<scenario>-<workload>-<run id>.json`, `…-mem.csv`, and `…-host.json`
+  (host CPU, cores and RAM, the Docker VM's CPUs and memory, the engine's limits and image, the umbrella
+  commit). `run-bench.sh` refuses to start over an existing series (CARRY-02).
+- `report.sh` lists every run with its host. The soak table adds the least-squares RSS slope over the
+  settled window, with its 95 % bound (AGENTS.md §7). Files from before CARRY-02 show as `unstamped`.
 - Archived per run to `project_system/Audits/Beta6/bench/` (audit-artifact convention).
 - Published, human-readable numbers: tracked [`BENCH-GATE-RESULT.md`](./BENCH-GATE-RESULT.md).
 
