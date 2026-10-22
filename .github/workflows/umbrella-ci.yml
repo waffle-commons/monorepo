@@ -207,16 +207,28 @@ jobs:
 
   # --------------------------------------------------------------------------
   # 3. Workspace demo app — composer/security posture gate (audit FIX-01 #10).
-  #    Not a library: composer validate + install + static gates + composer
-  #    audit only — no phpunit/coverage gate. This is the demo-app policy; it is
-  #    the only exemption in this workflow (every framework component is fully
-  #    gated, igor included).
+  #    Not a library: composer validate + install + static gates + PHPUnit +
+  #    composer audit, with no coverage gate and no igor run. This is the
+  #    demo-app policy (CARRY-07); it is the only exemption in this workflow
+  #    (every framework component is fully gated, igor included).
   # --------------------------------------------------------------------------
   workspace:
     name: workspace
     needs: detect-changes
     if: needs.detect-changes.outputs.workspace == 'true'
     runs-on: ubuntu-latest
+    # The factory tests talk to a real Redis, as in the dev stack: same image,
+    # pinned as in workspace/docker-compose.yml.
+    services:
+      waffle-redis:
+        image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 15
     steps:
       - name: Checkout umbrella (no submodules)
         uses: actions/checkout@v7
@@ -244,7 +256,7 @@ jobs:
           php-version: '8.5'
           tools: composer:v2
           coverage: none
-          extensions: mbstring, intl, opcache, xml, dom, tokenizer, yaml
+          extensions: mbstring, intl, opcache, xml, dom, tokenizer, yaml, redis
 
       - name: Cache composer
         uses: actions/cache@v6
@@ -279,6 +291,15 @@ jobs:
       - name: mago guard
         working-directory: workspace
         run: vendor/bin/mago guard
+
+      # The tests reach Redis as waffle-redis:6379, its dev-stack name; the
+      # service container listens on the runner's localhost. Coverage is
+      # reported locally (wfl dod), never gated (CARRY-07).
+      - name: phpunit (CARRY-06)
+        working-directory: workspace
+        run: |
+          echo "127.0.0.1 waffle-redis" | sudo tee -a /etc/hosts
+          vendor/bin/phpunit --no-coverage
 
       - name: composer audit (DEP-04)
         working-directory: workspace
