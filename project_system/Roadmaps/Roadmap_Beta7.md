@@ -61,6 +61,19 @@ aliases: []
   Waffle's early saturation knee to the doubled DB round trip. Make the ping skippable when the
   connection was verified recently; keep the fail-safe for stale ones. Contracts-first if the pool
   contract changes.
+  - *Status 2026-10-22 — done, gate passed (data `3f7612e`, skeleton `7926665`, documentation `6af2531`):*
+    - `PDOConnectionPool(pingFreshnessMs)`, default 0: no probe within that many ms of a proof of life
+      (a connection or an answered probe; a returned lease is not one, the pool never sees caller
+      errors). `ConnectionPoolHealthCheck` asks `isAlive()` itself. The skeleton passes
+      `DB_PING_FRESHNESS_MS`, default 500. The pool contract is unchanged, so nothing went to contracts.
+    - Gate (`data/benchmarks/CARRY-01-GATE-RESULT.md`, thresholds fixed before the comparison):
+      transactions per pooled read 4.21 → 2.12 and per POST 3.15 → 1.07; `dbread` knee 1200 → 1500 and
+      ≥ 1600 rps in two interleaved repeats; dead connections caught (a worst-case kill fails reads for
+      286 ms at W = 500, none at W = 0). One laptop, a relative measurement. The beta6 knee (400 rps) no
+      longer reproduces: the unchanged code already held 1200 rps on today's rig.
+    - Not in scope, noted: `exec()` would make the remaining probes one round trip instead of two (all
+      drivers; SQL Server and Oracle unverifiable here); the Redis pool still probes every lease (no
+      Redis in the bench).
 - **`[CARRY-02]` Benchmark harness hardening** (before any new public number): run-unique result file
   names (a re-run must never overwrite a series); Engine C on symfony/runtime 7.4's native
   `FrankenPhpWorkerRunner` with `FRANKENPHP_LOOP_MAX=1000000` and no `APP_RUNTIME` override (its
