@@ -67,14 +67,19 @@ aliases: []
   500-request default invalidated the beta6 soak comparison); Engine C in the memory test; an
   equivalent-features Symfony engine (security + CSRF + transaction subscriber) next to the bare one;
   host hardware recorded with every run; least-squares slopes published with their uncertainty.
-  - *Status 2026-10-22 — half done (umbrella `34bfe84`):*
+  - *Status 2026-10-22 — rig done except the equivalent-features engine; re-measurement open (umbrella
+    `34bfe84`, `4561370`):*
     - Done: run-unique result files (run id on the summary, RSS and new host files, and a run refuses to
       overwrite a series), a host record per run (host, Docker VM, engine limits, commit), and soak slopes
-      with their 95 % bound in `report.sh`. Checked on the existing results and a synthetic +10 MB/h soak
-      (+10.01 ± 0.10); no real bench run yet.
-    - Open: Engine C on symfony/runtime 7.4's native runner (`FRANKENPHP_LOOP_MAX=1000000`, no `APP_RUNTIME`
-      override; today it selects `runtime/frankenphp-symfony`), Engine C in the memory test, and the
-      equivalent-features Symfony engine. Each needs an image rebuild and a measured run.
+      with their 95 % bound in `report.sh` (`34bfe84`; checked on a synthetic +10 MB/h soak: +10.01 ± 0.10).
+      Engine C on the native runner with `FRANKENPHP_LOOP_MAX=1000000` and no `APP_RUNTIME`, the bridge
+      package removed, and `engine-c-mem` as BENCH-05's third leg (`4561370`).
+    - Evidence: a probe on the rebuilt image sent 3 000 requests twice; the workers restarted 5 times at a
+      loop max of 500 and never at 1 000 000. The first runs of the new harness passed: the Engine C smoke
+      (every check, run `20261022T115850Z`) and a 3 × 30 s `engine-c-mem` memscale (run
+      `20261022T120027Z`), each with its host record. These are harness checks, not published numbers.
+    - Open: the equivalent-features Symfony engine; then the re-measurement on the new rig (FrankenPHP
+      1.13.2): BENCH-02 and BENCH-03 for Engine C, and BENCH-05 for all three legs.
 - **`[CARRY-03]` "Keeps state on purpose" design note** (API Platform Conference feedback, 2026-09-17):
   runtime reset is already opt-in (`Container::reset()` resets only Resettable services); the strictness
   lives in the dev-mode `ComplianceScanner` and the igor gate, with `#[WorkerSafe]` as the only escape
