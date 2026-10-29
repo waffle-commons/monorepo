@@ -13,7 +13,7 @@
 | `.claude-plugin/` | dir | yes | `marketplace.json`: the repository marketplace that loads the two plugins for every clone. |
 | `build/` | dir | gitignored | Output of `zip-project.sh` (audit archives, dated). |
 | `async/`, `auth/`, `cache/`, `config/`, `console/`, `container/`, `contracts/`, `data/`, `error-handler/`, `event-dispatcher/`, `http/`, `http-client/`, `log/`, `pipeline/`, `routing/`, `runtime/`, `security/`, `telemetry/`, `telemetry-otel/`, `utils/`, `waffle/` | submodules | yes | The 21 framework components. Each is its own Git repo released on Packagist. |
-| `queue/`, `openapi/`, `serializer/`, `testing/` | submodules | yes | The four beta7 components (scaffolded at the beta7 kickoff; code lands during the release). |
+| `queue/`, `openapi/`, `serializer/`, `testing/` | submodules | yes | The four beta7 components (scaffolded at the beta7 kickoff), first released with `0.1.0-beta7`: they are in the release wave's `RELEASE_INCLUDE`. |
 | `component-template/` | submodule | yes | Scaffold for new components (`configure-component.sh`); its CI workflow is the canonical copy every component carries. |
 | `docs/` | dir | yes | Monorepo contributor documentation (this Diátaxis tree). |
 | `documentation/` | submodule | yes | Framework user documentation (separate Diátaxis tree). |

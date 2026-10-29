@@ -40,7 +40,7 @@ Edit these in the workflow file (tag-push triggers cannot take UI inputs).
 
 | Variable | Default | Purpose |
 | :--- | :--- | :--- |
-| `RELEASE_INCLUDE` | `async,auth,cache,config,console,container,contracts,data,documentation,error-handler,event-dispatcher,http,http-client,log,pipeline,routing,runtime,security,skeleton,telemetry,telemetry-otel,utils,waffle` | **Fail-closed allowlist** of submodule paths to tag/release. A path absent from this list is `excluded`. |
+| `RELEASE_INCLUDE` | `async,auth,cache,config,console,container,contracts,data,documentation,error-handler,event-dispatcher,http,http-client,log,openapi,pipeline,queue,routing,runtime,security,serializer,skeleton,telemetry,telemetry-otel,testing,utils,waffle` | **Fail-closed allowlist** of submodule paths to tag/release. A path absent from this list is `excluded`. |
 | `PRERELEASE_REGEX` | `^[0-9]+\.[0-9]+\.[0-9]+-(alpha\|beta\|rc\|dev\|pre)([0-9.]*)?$` | POSIX ERE matched against the umbrella tag. A match marks every component release as a GitHub **pre-release**. |
 | `BACKOFF_SECONDS` | `2` | Sleep between components that did **live work**, to stay under GitHub's secondary rate limiter. `0` disables it. |
 
