@@ -180,4 +180,6 @@ private view only.
 
 - `/readyz` flips on dependency failure and on SIGTERM.
 - A rolling restart under k6 load loses zero in-flight requests (≥2 replicas behind a load balancer).
+  *Met 2026-10-29 on both drain paths with `wfl rolling-restart` (0 of 7 501 requests lost each; the
+  SIGTERM-only control lost 20). Evidence and limits: `Roadmap_Beta7.md` `[OPS-02]`.*
 - Standard gates: `composer mago` zero output, `composer tests` ≥95 % coverage, `wfl igor` 0 KO.
