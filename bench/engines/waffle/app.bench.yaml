@@ -31,6 +31,13 @@ waffle:
     # unlisted Host is the middleware doing its job.)
     - engine-a-mem
     - localhost
+  # Mirrors skeleton/config/app.yaml: the readiness probes (OPS-01) and the drain
+  # marker (OPS-02). The benchmarks never read /readyz; scripts/rolling-restart.sh
+  # does, through its load balancer.
+  health:
+    required:
+      - db.pool
+    drain_marker: '/tmp/waffle-draining'
   security:
     level: 10
     csrf:

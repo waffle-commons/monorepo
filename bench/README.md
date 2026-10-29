@@ -209,6 +209,26 @@ Pool gauges / worker memory for BENCH-04 come from `/waffle-metrics`, which is
 (`docker exec engine-a php -r '...localhost/waffle-metrics...'`), not through the
 published port.
 
+## Rolling-restart check (OPS acceptance)
+
+`wfl rolling-restart` (`scripts/rolling-restart.sh`) checks the beta7 OPS criterion "a rolling restart
+under k6 load loses zero in-flight requests". `docker-compose.rolling.yml` puts two replicas of Engine A,
+running the skeleton's Caddyfile as shipped, behind a Caddy load balancer (`engines/lb/Caddyfile`). It polls
+each replica's `/readyz` every second and never retries, as a Kubernetes Service would not. k6 runs natively
+at a constant rate (`k6/scenarios/rolling-restart.js`, the five workloads in turn) while each replica in
+turn is drained, sent SIGTERM, restarted and waited for:
+
+```bash
+wfl rolling-restart --build        # --path=marker (default): the Kubernetes preStop path, drain marker + 5 s sleep
+wfl rolling-restart --path=delay   # no preStop hook: CADDY_SHUTDOWN_DELAY=5s, as the skeleton's prod compose
+wfl rolling-restart --path=none    # the control: SIGTERM alone must lose requests, or the check proves nothing
+```
+
+PASS means every request answered 2xx, each replica exited 0 and came back ready while k6 was running, and
+both replicas served traffic. Each run writes `results/rolling-restart-<path>-<run id>/`: the events with
+their times, the k6 summary, each failed request, the replicas' and the load balancer's logs, and the
+environment. It is a correctness check on one machine, never a capacity figure.
+
 ## Where results land
 
 - `results/` — raw k6 JSON + RSS CSVs, **gitignored**. Each run's files carry its id, the UTC start

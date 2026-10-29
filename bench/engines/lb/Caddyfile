@@ -1,0 +1,26 @@
+# Load balancer of the rolling-restart check (bench/docker-compose.rolling.yml).
+# It stands in for a Kubernetes Service: a replica whose /readyz stops answering
+# 2xx leaves the rotation, and no request is retried on another replica, so k6
+# sees every request a drain drops.
+{
+	auto_https off
+	admin off
+}
+
+:8093 {
+	reverse_proxy app-1:80 app-2:80 {
+		lb_policy round_robin
+		# One GET /readyz per second per replica: one failure takes it out of the
+		# rotation, one success brings it back.
+		health_uri /readyz
+		health_interval 1s
+		health_timeout 900ms
+		health_fails 1
+		health_passes 1
+		# lb_try_duration stays at its default of 0: no retry on another replica.
+		# The replicas trust Host "engine-a" (bench/engines/waffle/app.bench.yaml).
+		header_up Host engine-a
+		# Which replica answered, for the per-replica split in k6.
+		header_down X-Upstream {http.reverse_proxy.upstream.host}
+	}
+}

@@ -165,6 +165,7 @@ ${C_DIM}DIAGNOSTICS / AGENT HELPERS${C_RST}
   ci:check              report CI / Dependabot / toolchain drift of every component against component-template
   boot-smoke <app>      boot a template app's kernel without HTTP (runs its Boot/Smoke test)
   drain-check [image]   SIGTERM the skeleton Caddyfile on a FrankenPHP image: in-flight drain, /readyz 503 during shutdown_delay (re-run on every FrankenPHP bump)
+  rolling-restart [--path=marker|delay|none] [--rate=N] [--build]  restart 2 production replicas behind a /readyz load balancer under k6: zero lost requests (OPS acceptance)
   wf-report <file>      summarize a workflow/agent JSON output file (per-item findings/created/updated)
   ai:check [--no-claude]  lint the Claude Code layer: skills, agents, plugins, references (+ claude plugin validate/test)
   ai:settings [--write] [--telemetry] [--sandbox]  merge the hardened Claude Code settings (dry run by default)
@@ -1129,6 +1130,7 @@ main() {
     ci:check)      cmd_ci_check      "$@" ;;
     boot-smoke)    cmd_boot_smoke    "$@" ;;
     drain-check)   cmd_script drain-check.sh     "$@" ;;
+    rolling-restart) cmd_script rolling-restart.sh "$@" ;;
     wf-report)     cmd_wf_report     "$@" ;;
     logs)
       local logsub="${1:-}"; shift || true
