@@ -55,9 +55,10 @@ best under the same 1 G", not a strawman.
   400s every k6 request), switches cache to the in-memory `array` adapter (no
   Redis in the rig; comparable to Symfony's in-process compiled caches), pgsql →
   `bench-postgres`.
-- `Caddyfile` over `/etc/caddy/Caddyfile` — identical to skeleton's except it
-  interpolates `{$FRANKENPHP_CONFIG}`; the stock skeleton Caddyfile ignores that
-  env var, so the 4-worker pin would otherwise silently not apply.
+- `Caddyfile` over `/etc/caddy/Caddyfile` — the skeleton's own
+  (`skeleton/docker/frankenphp/Caddyfile`), which interpolates `{$FRANKENPHP_CONFIG}`
+  (the 4-worker pin) and carries the OPS-02 drain block. The bench copy it replaced
+  predated that interpolation and was removed on 2026-10-29.
 - `jit-bench.ini` into `conf.d/` — the JIT parity values above.
 
 ## Engine D — Engine A's per-request work in Symfony (CARRY-02)

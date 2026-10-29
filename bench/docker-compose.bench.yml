@@ -77,11 +77,11 @@ services:
         source: ./engines/waffle/app.bench.yaml
         target: /app/config/app.yaml
         read_only: true
-      # Bench Caddyfile: identical to the skeleton one EXCEPT it interpolates
-      # {$FRANKENPHP_CONFIG} — the stock skeleton Caddyfile ignores that env
-      # var, so the 4-worker pin below would otherwise be a no-op.
+      # The skeleton's Caddyfile as shipped: it interpolates
+      # {$FRANKENPHP_CONFIG} (the 4-worker pin below) and carries the OPS-02
+      # drain block, which acts only at shutdown.
       - type: bind
-        source: ./engines/waffle/Caddyfile
+        source: ../skeleton/docker/frankenphp/Caddyfile
         target: /etc/caddy/Caddyfile
         read_only: true
     environment:

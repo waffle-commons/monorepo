@@ -25,12 +25,6 @@ services:
     stop_grace_period: 35s
     environment:
       CADDY_SHUTDOWN_DELAY: "${CADDY_SHUTDOWN_DELAY:-0s}"
-    volumes:
-      # The skeleton's Caddyfile, drain block included, over the bench copy.
-      - type: bind
-        source: ../skeleton/docker/frankenphp/Caddyfile
-        target: /etc/caddy/Caddyfile
-        read_only: true
     depends_on:
       bench-postgres:
         condition: service_healthy
