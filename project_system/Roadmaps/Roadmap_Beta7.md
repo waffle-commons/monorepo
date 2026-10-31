@@ -12,7 +12,7 @@ aliases: []
 ---
 # 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta7
 
-> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. Open before the tag: the two `[API-01]` follow-ups (built this week), the `[CARRY-02]` re-measurement (the night of 2026-10-31) and two `[NET-01]` spec points (the maintainer's call)
+> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. Open before the tag: the `[CARRY-02]` re-measurement (the night of 2026-10-31); the two `[API-01]` follow-ups were built and the two `[NET-01]` spec points settled the same day
 > 
 > **Target Release:** **November 2026** — tag targeted for 5 November (re-dated 2026-10-21 from October 2026; the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
@@ -245,6 +245,8 @@ _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams
         
     - *Status 2026-10-31 — acceptance evidence:* the Redis store (`data`'s `RedisLimiterStateStorage`) refills and takes in one Lua script on the Redis clock. `RedisLimiterConcurrencyTest` (data `ea371a3`) starts 8 PHP processes, each on its own connection, that wait for one shared instant and make 800 calls on a 50-token bucket: exactly 50 are allowed, in 4 runs out of 4. The same harness on a deliberately non-atomic read-then-write store admitted 299, 225 and 243, so the test catches a racy store (archive: `project_system/Audits/Beta7/net-limiter-concurrency/`). Two spec points are not built; recording them as scope changes or building them is the maintainer's call: the in-memory store "documented as single-worker only" (the contract has one implementation, Redis), and a key per API token (an API key is limited through the subject of the identity it authenticates).
         
+    - *Decision 2026-10-31 (the maintainer):* the in-memory store ships as `testing`'s `InMemoryLimiterStateStorage` (testing `6920331`): the Redis store's arithmetic on an injected clock, a single-process test double and never a production store, since worker memory would break the stateless mandate. API keys stay limited through the subject of the identity they authenticate; no per-token key is added.
+        
 
 ### `[NET-02]` HTTP Client Resilience Policies
 
@@ -384,6 +386,8 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
         
     - *Decision 2026-10-31:* the two spec points the acceptance check found unbuilt, the dev-only route serving the spec with Swagger UI and the `#[OA\*]` override attributes, are built before the tag (the maintainer, keeping the 2026-10-21 full scope). The attributes land in `contracts` first, since they freeze at beta8.
         
+    - *Status 2026-10-31 — done:* contracts `3f59e0f` (`OpenApi\Attribute\Operation`, `Response`, `Property`); openapi `ed1a705` and `437dca7` (`AttributeReader`, `Exception\InvalidAttributeException`, and `Middleware\ApiDocsMiddleware`: `GET /_docs` serves Swagger UI 5.33.3 from jsDelivr pinned by SRI under its own CSP, `GET /_docs/openapi.json` the live document); skeleton `a51fa21` and workspace `59ed360` mount it in debug mode only, and the skeleton's `bin/waffle` gains `openapi:generate` (openapi in `require-dev`). The documented fixture document and the real documents of both apps (16 and 17 paths) validate against the official OpenAPI 3.1 schema. `wfl dod` PASS on contracts (100 %), openapi (99.06 %), skeleton (96.95 %) and workspace.
+        
 
 ### `[API-02]` DTO Serializer & Content Negotiation (NEW COMPONENT `waffle-commons/serializer`)
 
@@ -479,9 +483,9 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
 - **All items:** `composer mago && composer tests` green, $\geq 95\%$ coverage, zero Mago baselines, `wfl igor` 0 KO; contracts-first sequencing; new submodules (`queue`, `openapi`, `serializer`, `testing`) scaffolded from `component-template`.
 
 *Acceptance check 2026-10-31* (two read-only `acceptance-verifier` runs with targeted tests in `waffle-dev`; gate figures from the 2026-10-29 `wfl pre-release --all` READY run, plus `wfl dod` PASS that day on `skeleton`, `workspace` and `data` after their changes):
-- **NET:** pass. The concurrency criterion was unverified until `RedisLimiterConcurrencyTest` that day (see `[NET-01]`). The breaker opens and half-opens per its thresholds in `RedisCircuitStateStorageTest` (real Redis) and `CircuitBreakerClientTest`, and `TimeoutPolicy` refuses any value below 1 ms or above its ceilings. The two `[NET-01]` spec points stay open.
+- **NET:** pass. The concurrency criterion was unverified until `RedisLimiterConcurrencyTest` that day (see `[NET-01]`). The breaker opens and half-opens per its thresholds in `RedisCircuitStateStorageTest` (real Redis) and `CircuitBreakerClientTest`, and `TimeoutPolicy` refuses any value below 1 ms or above its ceilings. The two `[NET-01]` spec points were settled the same day (see `[NET-01]`).
 - **QUEUE:** pass (see the statuses under AXE 2).
 - **OPS:** pass. The rolling-restart archive matches the figures under `[OPS-02]`; `/readyz` flips on a failed or unregistered critical probe and on the drain marker; the migration round trip passed again on PostgreSQL, MySQL and MariaDB. Unmeasured: the "constant-time, allocation-light" handlers.
-- **API:** pass on both criteria; the two `[API-01]` spec points are being built (decision under `[API-01]`).
+- **API:** pass on both criteria; the two `[API-01]` spec points were built the same day (see `[API-01]`).
 - **All items:** pass. No Mago baseline in any repository; each contract landed before its consumers; the four new components were configured from `component-template`.
 - Recorded, not blocking: several live runs exist only as roadmap text (the 2026-10-21 breaker run and its `/waffle-metrics` counts, `wfl drain-check`, the gateway lab, the 2026-10-10 queue runs); the skeleton's `ProbeEndpointsTest` accepts either readiness verdict; `RetryPolicy` bounds its back-off cap and budget from below only, so a ceiling is a beta8 question.
