@@ -41,6 +41,8 @@ wfl dod <slug>
 - Tests and coverage are **N/A only while `src/` holds no PHP file**; the first class switches the full
   bar on (PHPUnit green, ≥ 95 %). The canonical CI applies the same rule (`hashFiles('src/**/*.php')`).
 - `composer igor` → 0 KO with the pinned auditor (`.igor-version`; a stale binary fails the gate).
+- Then commit the scaffold **on its own, before any code** (`chore: configure the component from
+  component-template`, with its `composer.lock`): §4 puts exactly this commit on `main`.
 
 ## 3. Wire the umbrella (file edits; commits are the maintainer's)
 - **Gitlink (Gap 2):** `.gitmodules` entry **and** a committed gitlink — `git ls-files -s <slug>` must show
@@ -57,7 +59,19 @@ wfl dod <slug>
 - Repository settings: **merge commits only** (squash and rebase off — the release wave requires every
   pinned gitlink to be an ancestor of `main`), delete branch on merge, a real description.
 - Rulesets: `wfl rulesets:check <slug>` (the maintainer runs `rulesets:sync`).
-- Packagist: register `waffle-commons/<slug>` **before its first tag**.
+- Packagist: register `waffle-commons/<slug>` **before its first tag**, as soon as the scaffold commit
+  (§2) is on `main`; there is no need to wait for the release merge. Packagist reads the package name
+  from the default branch at submission, and a repository created from the GitHub template still says
+  `waffle-commons/{COMPONENT_NAME}` there: the submission fails, and so does Dependabot's composer job.
+  1. Fast-forward `main` to the scaffold commit, never a force push. Check first that it is a
+     fast-forward (`git -C <slug> merge-base --is-ancestor origin/main <sha>`) and holds no PHP file
+     under `src/`, then `git -C <slug> push origin <sha>:refs/heads/main`. The org-admin bypass takes it
+     past the `main` ruleset (GitHub prints "Bypassed rule violations").
+  2. Submit `https://github.com/waffle-commons/<slug>`; `https://repo.packagist.org/p2/waffle-commons/<slug>.json`
+     answers 200 once it is registered.
+
+  It is safe before the release date: no code and no tag, so Packagist lists only `dev-main`; `main`
+  stays an ancestor of the release branch, so the wave's merge still applies cleanly and no gitlink moves.
 - Dependabot PRs opened against the raw template are superseded once the configured files land.
 
 ## 5. Build it contracts-first
@@ -70,10 +84,12 @@ permits it explicitly in its own `mago.toml` guard.
 DoD in scaffold mode. Their first class switches tests and coverage on. Each joins `RELEASE_INCLUDE`
 only once it ships code, and each gets its first stable-channel publication at RC1 (`[RC-06]`).
 Their perimeter decisions (`[CARRY-04]`) were made on 2026-10-07: see `contracts-first` and
-`Roadmap_Beta7.md`.
+`Roadmap_Beta7.md`. On 2026-10-31 their `main` was fast-forwarded to the scaffold commits (§4) so that
+they could be registered on Packagist ahead of the 5 November wave.
 
 ## 6. Verify and report
 - `wfl ci:check` → no drift (canonical CI byte-identical, Dependabot, toolchain, description, filter).
 - `wfl sync:status` → the new repo sits on the release branch, gitlink `match`.
 - Report the repository, package name, namespace, perimeter, the gate results, and the list of
-  maintainer actions still pending (gitlink commit, settings, Packagist, `RELEASE_INCLUDE`).
+  maintainer actions still pending (gitlink commit, settings, scaffold commit on `main`, Packagist,
+  `RELEASE_INCLUDE`).
