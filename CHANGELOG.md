@@ -9,6 +9,106 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.0-beta7] — 2026-11
+
+**Theme: the production surface (Roadmap_Beta7).**
+
+Four new components and the operational features an API needs in production: background
+jobs, OpenAPI generation, DTO serialization, an in-process testing bridge, rate limiting,
+outbound resilience, orchestrator probes, a graceful drain and reversible migrations. Every
+roadmap item was accepted on evidence (tests, command output, archived runs) in the
+acceptance check of 2026-10-31.
+
+### New components
+
+- **`queue`:** a Redis Streams queue with bounded retries, a back-off that doubles per failed
+  delivery, and a dead-letter store that keeps the full envelope. `console` gains `queue:work`:
+  it resets the container after each message, exits to be restarted at a message count or a
+  memory ceiling, and on SIGTERM finishes the message in flight. Mail is a contract only
+  (`MailerInterface`): a mail is a queue message.
+- **`openapi`:** `openapi:generate` builds an OpenAPI 3.1 document from `#[Route]` and typed
+  DTOs, validated against the official schema in its tests. Optional `#[Operation]`,
+  `#[Response]` and `#[Property]` overrides, and a debug-only `/_docs` (Swagger UI pinned by
+  SRI, under its own CSP).
+- **`serializer`:** per-DTO normalizers compiled by `serializer:compile` and loaded without
+  reflection on the `WAFFLE_AOT=1` path, with an interpreted fallback whose output must match
+  byte for byte; JSON content negotiation (406 when nothing acceptable).
+- **`testing`** (`require-dev`): `WaffleTestCase` boots the app's kernel in-process and sends
+  PSR-7 requests through the real pipeline, with doubles for the clock (PSR-20), the queue, the
+  mailer, the HTTP client and the rate-limiter store.
+
+### Traffic protection & outbound resilience
+
+- **Rate limiter** (`security`): a token bucket per authenticated subject, else per client IP
+  resolved behind trusted proxies (new `TrustedProxyClientIpResolver` in `http`), with
+  `RateLimit-*` headers and `429` + `Retry-After`. Its Redis store (`data`) refills and takes in
+  one Lua script: 8 processes on one 50-token bucket admit exactly 50 of 800 calls. A Redis
+  outage fails open by default, with a warning and a metric; `closed` is configurable.
+- **Resilient client** (`http-client`): timeout policies that refuse any value below 1 ms or
+  above their ceilings, bounded retries with back-off that never replay a non-idempotent method
+  unless opted in, and a circuit breaker whose state lives in Redis (`data`); its transitions
+  are published as a contracts event (`CircuitStateChanged`) and counted on `/waffle-metrics`.
+- **Fixed** (`http-client`): since beta5 every transport failure read as a request error, so it
+  was never retried nor counted; an unsized body went out chunked next to the caller's
+  `Content-Length`, and nginx answered 400 to every proxied POST and PUT (found by the EcoShield
+  gateway).
+
+### Kubernetes operability
+
+- **Probes:** `/healthz` (liveness, never a dependency) and `/readyz` (the components' health
+  checks, fail-closed: database pool, cache, queue), mounted before tracing and the trusted-host
+  check. Each check has its own timeout (database connect 2 s, Redis read 1 s), so a database
+  that never answers yields not-ready in 2 s instead of hanging past 15 s.
+- **Graceful drain:** `/readyz` flips through a `preStop` drain marker, or during Caddy's
+  `shutdown_delay`; a rolling restart of two replicas under k6 lost 0 of 7 501 requests on
+  each path.
+- **Migrations:** `db:rollback`, `db:status` and `make:migration` next to `db:migrate`, with a
+  live round trip on PostgreSQL, MySQL, MariaDB and SQLite. **Fixed:** every DDL migration
+  failed on MySQL and MariaDB.
+
+### Runtime & developer experience
+
+- Dev-only profiler headers (`X-Waffle-Time`, `X-Waffle-Memory`, `X-Waffle-Queries`,
+  `Server-Timing`) in `telemetry`.
+- The PDO pool skips its liveness ping within a freshness window (`DB_PING_FRESHNESS_MS`,
+  500 ms in the skeleton): transactions per pooled read 4.21 → 2.12 on the bench rig.
+- The compiled container builds its inlined services through `Container::memoise()`, so every
+  path shares one instance and `reset()` resets it once; `contracts` names the route-parameters
+  attribute `Constant::ATTR_PARAMS`.
+- `error-handler` logs by rendered status (5xx at `critical` with the trace, 4xx at `notice`
+  without it); `GlobalsFactory` no longer warns when workers race to create the upload root.
+- `ResettableInterface` stays optional: state kept on purpose is declared with
+  `#[WorkerSafe(reason: …)]` (RFC-001 §5).
+- PHP 8.5.12 on FrankenPHP 1.13.2, the security releases for PHP2Shell (CVE-2026-109618,
+  CVE-2026-109619); `pcntl` in the images; mago 1.50, psalm 6.19, igor-php 0.9.7.
+
+### Templates (`skeleton`, `workspace`)
+
+- **Fixed:** the stock production image answered 500 to every request (its Caddyfile ignored
+  `FRANKENPHP_CONFIG`); OPcache preload logged 70 "unlinked class" warnings; the default Redis
+  cache had no server in dev, so the kernel never booted; a tmpfs `mode: 1777` in
+  `docker-compose.prod.yml` read as decimal left the upload root unwritable, so the app could
+  not boot; `bin/waffle` resolved the controllers path from the working directory, so
+  `security:audit` run from `/` audited nothing.
+- The skeleton wires the rate limiter, the resilient clients, the probes, the migration commands
+  and, in debug mode only, the API docs and the profiler headers. The workspace wires the
+  resilient clients, the migration commands, `queue:work` and the debug-only API docs.
+
+### Documentation
+
+New how-to guides in `documentation/`: rate-limit requests, make outbound calls resilient, and
+run on Kubernetes; the migrations guide covers rollback and status. `Waffle_Evolutions.md` is
+refreshed for this release.
+
+### Benchmark
+
+The rig was hardened before any new public number: a run can no longer overwrite a series,
+every run records its host, soak slopes carry their 95 % bound, Engine C runs Symfony's native
+FrankenPHP worker runner (its 500-request default had invalidated the beta6 soak comparison),
+and a new Engine D adds Engine A's per-request security work to the Symfony app. The images are
+pinned by digest. The beta6 numbers in `bench/BENCH-GATE-RESULT.md` were measured on FrankenPHP
+1.12.2; the re-measurement on 1.13.2 starts a new series.
+
 ### Developer tooling (umbrella only — no framework change)
 
 - **One-command setup:** `wfl init` takes a fresh clone to a working checkout (submodules, Docker,
@@ -27,6 +127,19 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 - **Removed:** opencode and AntigravityCLI support (`.opencode/`, `.antigravitycli/`, `.agents/`,
   `opencode.json`, the filesystem MCP launcher), the opencode-era `km-*` commands, and the no-op
   Project Graphify git hooks.
+- **Strictness & supply chain:** per-component coverage floors that only ratchet up
+  (`wfl coverage:ratchet`), mutation testing against floors (`wfl mutation`, Infection pinned),
+  CycloneDX SBOMs (`wfl sbom`), Docker images pinned by digest (`wfl images:pin`), an install
+  check with the network off (`wfl offline`), and backups (`wfl backup`).
+- **CI:** one canonical component workflow, with any drift reported by `wfl ci:check`; every
+  component workflow starts Redis, so the Redis-backed suites no longer skip on GitHub; the
+  workspace job runs PHPUnit; the igor pin is enforced in CI.
+- **Checks:** `wfl mcp:check` opens a real session with each MCP server; `wfl sync:status`
+  reports branches, ahead/behind and gitlinks, read-only; `wfl drain-check` and
+  `wfl rolling-restart` prove the graceful drain.
+- **Release safety:** the `waffle-cockpit` guard refuses a release-tag push unless it is the
+  version the maintainer set (`releaseTag`), and refuses forced pushes, squash or rebase merges,
+  and ref deletions in any spelling but `--delete`.
 
 ## [0.1.0-beta6] — 2026-09
 
