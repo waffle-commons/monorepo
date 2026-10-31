@@ -102,6 +102,18 @@ jobs:
         component: ${{ fromJSON(needs.detect-changes.outputs.components) }}
     env:
       COMPONENT: ${{ matrix.component }}
+    # The data and queue suites talk to a real Redis (WAFFLE_TEST_REDIS_HOST); without one they skip.
+    # Same image and pin as the workspace job below.
+    services:
+      waffle-redis:
+        image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 15
 
     steps:
       - name: Checkout umbrella (no submodules)
@@ -196,6 +208,7 @@ jobs:
         working-directory: ${{ matrix.component }}
         env:
           XDEBUG_MODE: coverage
+          WAFFLE_TEST_REDIS_HOST: 127.0.0.1
         run: vendor/bin/phpunit --coverage-clover ./var/data/phpunit-coverage/clover.xml
 
       - name: Upload coverage to Codecov
