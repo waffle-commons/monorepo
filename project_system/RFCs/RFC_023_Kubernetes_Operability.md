@@ -76,6 +76,17 @@ private view only.
   Each check has its own timeout, shorter than the probe's `timeoutSeconds`, so a hung dependency yields
   not-ready instead of a hung probe. Pool-backed checks **lease** a connection (heal-on-lease already
   pings) instead of opening one. No result is cached in worker memory.
+  *Implemented 2026-10-31:* a check's timeout is the timeout of the connection it leases.
+  - The skeleton and workspace PDO pools pass `PDO::ATTR_TIMEOUT` (`waffle.database.connect_timeout`, 2 s by
+    default) for PostgreSQL, MySQL and MariaDB.
+  - Their phpredis pools connect and read within 1 s; the queue worker's pool keeps PHP's delay for its blocking
+    reads.
+  - The Kubernetes how-to gives the readiness probe `timeoutSeconds: 3`.
+  - Measured: a lease against a database that never answers failed after 2 s, where it hung past 15 s before.
+  - The handler cost was measured the same day: `/healthz` takes about 5 µs whatever the probe count, `/readyz`
+    about 6 µs plus 1.1 µs per probe, and nothing is retained (`project_system/Audits/Beta7/probe-cost/`).
+  - Not covered: the PSR-16 cache's Predis client keeps Predis's own defaults (a 5 s connect timeout), so the
+    cache check can outlast a 3 s probe.
 
 ### 3.3 Probes shipped by components
 
