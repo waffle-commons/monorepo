@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-10-21
+date_updated: 2026-10-31
 type: project
 status: in-progress
 tags:
@@ -12,7 +12,7 @@ aliases: []
 ---
 # 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta7
 
-> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026
+> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. Open before the tag: the two `[API-01]` follow-ups (built this week), the `[CARRY-02]` re-measurement (the night of 2026-10-31) and two `[NET-01]` spec points (the maintainer's call)
 > 
 > **Target Release:** **November 2026** — tag targeted for 5 November (re-dated 2026-10-21 from October 2026; the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
@@ -105,6 +105,10 @@ aliases: []
       (`[CARRY-01]`'s subject).
     - Open: the re-measurement on the new rig (FrankenPHP 1.13.2): BENCH-02 for A, C and D, BENCH-03 for
       C and D, and BENCH-05 for all four legs.
+    - *Scheduled 2026-10-31:* the re-measurement runs on the night of 2026-10-31 on an idle laptop (the
+      maintainer's decision), and its results are analysed and recorded before the tag. The bench images
+      were pinned by digest that day (umbrella `ef92b0a`): k6 2.3.0, the same build as the earlier runs,
+      and Engine B on `php:8.5.12-fpm`, the PHP of engines A, C and D, instead of the floating `php:8.5-fpm`.
 - **`[CARRY-03]` "Keeps state on purpose" design note** (API Platform Conference feedback, 2026-09-17):
   runtime reset is already opt-in (`Container::reset()` resets only Resettable services); the strictness
   lives in the dev-mode `ComplianceScanner` and the igor gate, with `#[WorkerSafe]` as the only escape
@@ -239,6 +243,8 @@ _An API ecosystem that cannot defend its inbound edge or survive flaky upstreams
         
     - **Statelessness compliance:** limiter state lives exclusively in the storage backend, never in worker memory; `wfl igor` must stay 0 KO.
         
+    - *Status 2026-10-31 — acceptance evidence:* the Redis store (`data`'s `RedisLimiterStateStorage`) refills and takes in one Lua script on the Redis clock. `RedisLimiterConcurrencyTest` (data `ea371a3`) starts 8 PHP processes, each on its own connection, that wait for one shared instant and make 800 calls on a 50-token bucket: exactly 50 are allowed, in 4 runs out of 4. The same harness on a deliberately non-atomic read-then-write store admitted 299, 225 and 243, so the test catches a racy store (archive: `project_system/Audits/Beta7/net-limiter-concurrency/`). Two spec points are not built; recording them as scope changes or building them is the maintainer's call: the in-memory store "documented as single-worker only" (the contract has one implementation, Redis), and a key per API token (an API key is limited through the subject of the identity it authenticates).
+        
 
 ### `[NET-02]` HTTP Client Resilience Policies
 
@@ -286,6 +292,8 @@ _Beta5 `[ASYNC-01]` is finish-request deferral and explicitly **not** background
         
     - Messages are strictly-typed, serializable DTOs (no closures, no object graphs); envelope carries id, attempts, available-at, and trace context (W3C propagation from beta5 `[OBS-01]`).
         
+    - *Status 2026-10-31 — done:* `Waffle\Commons\Contracts\Queue\` holds the four interfaces and the `Envelope` (id, attempts, available-at, W3C trace context), committed before their consumers (contracts `2681186`, 2026-10-09). `queue`'s `EnvelopeCodec` decodes through the serializer and a class allowlist built from the handlers, never `unserialize()`. The dispatcher records the current trace context, and each message continues the trace that dispatched it.
+        
 
 ### `[QUEUE-02]` Redis Streams Driver + Console Worker
 
@@ -297,6 +305,8 @@ _Beta5 `[ASYNC-01]` is finish-request deferral and explicitly **not** background
         
     - Worker is itself a long-running FrankenPHP-style process: must pass the Igor statelessness audit between messages.
         
+    - *Status 2026-10-31 — done:* `queue` ships the Redis Streams queue and its dead-letter store, and `console` ships `queue:work` on contracts only, wired in the workspace `bin/waffle`. Retries are bounded, with a back-off that doubles per attempt; the last failure goes to the dead letter with its full envelope; the container is reset after each message; SIGTERM or SIGINT lets the message in flight finish, then the worker exits 0. Evidence: `RedisStreamsQueueTest::testAMessageSurvivesAWorkerCrash` and `RedisFailedMessageStoreTest` against real Redis (the crash is simulated in one process: a receive without an ack, reclaimed by another consumer), and `QueueWorkCommandTest` with real signals (`posix_kill`) and a scripted consumer. Not archived: the 2026-10-10 end-to-end runs with real processes (SIGKILL reclaim, SIGTERM drain, dead letter). The component CI workflow (the template's) starts no Redis service, so on GitHub the Redis-backed tests of `queue` and `data` are skipped; the local gate runs them against `waffle-redis`.
+        
 
 ### `[QUEUE-03]` Mailer Scoping Decision
 
@@ -305,6 +315,8 @@ _Beta5 `[ASYNC-01]` is finish-request deferral and explicitly **not** background
     - Ship `Waffle\Commons\Contracts\Mailer\MailerInterface` + message DTO **contract only**; transactional mail is dispatched as a queue message.
         
     - SMTP/API transport adapters are explicitly **post-v1** (non-goal in the master roadmap); userland may bind any PSR-compatible mailer to the interface meanwhile.
+        
+    - *Status 2026-10-31 — done:* `Waffle\Commons\Contracts\Mailer\MailerInterface` and the `Email` message, a `MessageInterface` so that a mail is dispatched as a queue message, are contract only. The two implementations are a demo and a double: the workspace's `LogMailer` behind its `EmailHandler`, and `testing`'s `MailerSpy`.
         
 
 ## ☸️ AXE 3: KUBERNETES OPERABILITY
@@ -368,6 +380,10 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
         
     - Optional `#[OA\*]`-style attributes for response/description overrides; absence of attributes still yields a valid (if terse) spec.
         
+    - *Status 2026-10-31:* `openapi:generate` (`GenerateCommand`, registered in the workspace `bin/waffle`) builds the document from `RouterInterface::getRoutes()` and the `utils` DTO shape reader, so the spec matches what the serializer accepts and emits. `OpenApiGeneratorTest` validates the output against the official OpenAPI 3.1 JSON Schema, stored verbatim with its hash and checked with opis's compliant validator, and checks that the schema rejects invalid documents; a document without routes is empty but valid. `wfl dod openapi` PASS (98.70 %).
+        
+    - *Decision 2026-10-31:* the two spec points the acceptance check found unbuilt, the dev-only route serving the spec with Swagger UI and the `#[OA\*]` override attributes, are built before the tag (the maintainer, keeping the 2026-10-21 full scope). The attributes land in `contracts` first, since they freeze at beta8.
+        
 
 ### `[API-02]` DTO Serializer & Content Negotiation (NEW COMPONENT `waffle-commons/serializer`)
 
@@ -380,6 +396,8 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
     - `Accept`-header content negotiation middleware (JSON committed; others post-v1).
         
     - `data/`'s Hydrator remains DB-only; this component owns the HTTP boundary.
+        
+    - *Status 2026-10-31 — done:* compiled per-DTO normalizers (`serializer:compile`, pinned by golden files) load on the `WAFFLE_AOT=1` fast path with no reflection; without the flag the interpreted normalizer reflects, the same fallback as AOT. `ContentNegotiationMiddleware` negotiates JSON on `Accept`. `RoundTripTest` runs 16 shapes through both normalizers (hooks and asymmetric visibility, a computed property, nested DTOs, a tree through itself and through a list, every list element kind, a null list, defaults, nulls), and the compiled output must match the interpreted one byte for byte. `data`'s Hydrator is used only inside `data/`. `wfl dod serializer` PASS (98.93 %).
         
 
 ## 🧪 AXE 5: TESTABILITY (NEW COMPONENT `waffle-commons/testing`)
@@ -394,6 +412,8 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
         
     - Dev-only component (`require-dev` in userland); EcoShield-Gateway and Academy labs are the first consumers.
         
+    - *Status 2026-10-31 — done:* `WaffleTestCase` gets the app's kernel from `createKernel()`, swaps its doubles in between `boot()` and `configure()`, and sends PSR-7 requests through the real pipeline; the workspace's `KernelBridgeTest` runs it on the real `AppKernelFactory`. The doubles: `FrozenClock` (`advance()`), `InMemoryQueue` (`dispatched()`), `MailerSpy` (`sent()`) and `ReplayClient`, which records the requests it gets and replays queued answers (it does not record real upstream responses). Only `WaffleTestCase` imports PHPUnit, held there by the component's guard rule (CARRY-04). The README installs it with `composer require --dev`. `wfl dod testing` PASS (100 %). The first consumers named above adopt it once it is on Packagist.
+        
 
 ### `[DXP-01]` Dev Profiler Headers (stretch — in scope, 2026-10-21)
 
@@ -407,6 +427,10 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
   the headers first in the stack. No contracts change. `X-Waffle-Queries` cannot see raw PDO on a pooled
   connection (the demo controllers report 0). Gates: `wfl dod telemetry` and `wfl dod skeleton` PASS; not yet seen
   on a running dev app.
+- *Seen live 2026-10-31:* the skeleton, served by FrankenPHP 1.13.2 in worker mode with `APP_DEBUG=true`, answered
+  `GET /` 200 with `X-Waffle-Time`, `X-Waffle-Memory`, `X-Waffle-Queries: 0` and `Server-Timing`; a 400 from the
+  trusted-host check carried them too, since the middleware comes first; with `APP_DEBUG=false` the same request
+  carried none (archive: `project_system/Audits/Beta7/dxp-01-live/`).
         
 
 ## 🛡️ AXE 6: ECOSHIELD-GATEWAY ALPHA (DOGFOODING — stretch, in scope 2026-10-21)
@@ -453,3 +477,11 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
 - **OPS:** `/readyz` flips on dependency failure and on SIGTERM; rolling-restart under k6 load loses zero in-flight requests; `db:migrate` + `db:rollback` round-trip live on PostgreSQL, SQLite, MySQL and MariaDB, with SQL-generation tests for SQL Server and Oracle (*scope change 2026-10-17*, see `[OPS-03]`).
 - **API:** generated `openapi.json` validates against the OpenAPI 3.1 schema; serializer round-trips every DTO shape in the test matrix (hooks, asymmetric visibility, nested DTOs, arrays).
 - **All items:** `composer mago && composer tests` green, $\geq 95\%$ coverage, zero Mago baselines, `wfl igor` 0 KO; contracts-first sequencing; new submodules (`queue`, `openapi`, `serializer`, `testing`) scaffolded from `component-template`.
+
+*Acceptance check 2026-10-31* (two read-only `acceptance-verifier` runs with targeted tests in `waffle-dev`; gate figures from the 2026-10-29 `wfl pre-release --all` READY run, plus `wfl dod` PASS that day on `skeleton`, `workspace` and `data` after their changes):
+- **NET:** pass. The concurrency criterion was unverified until `RedisLimiterConcurrencyTest` that day (see `[NET-01]`). The breaker opens and half-opens per its thresholds in `RedisCircuitStateStorageTest` (real Redis) and `CircuitBreakerClientTest`, and `TimeoutPolicy` refuses any value below 1 ms or above its ceilings. The two `[NET-01]` spec points stay open.
+- **QUEUE:** pass (see the statuses under AXE 2).
+- **OPS:** pass. The rolling-restart archive matches the figures under `[OPS-02]`; `/readyz` flips on a failed or unregistered critical probe and on the drain marker; the migration round trip passed again on PostgreSQL, MySQL and MariaDB. Unmeasured: the "constant-time, allocation-light" handlers.
+- **API:** pass on both criteria; the two `[API-01]` spec points are being built (decision under `[API-01]`).
+- **All items:** pass. No Mago baseline in any repository; each contract landed before its consumers; the four new components were configured from `component-template`.
+- Recorded, not blocking: several live runs exist only as roadmap text (the 2026-10-21 breaker run and its `/waffle-metrics` counts, `wfl drain-check`, the gateway lab, the 2026-10-10 queue runs); the skeleton's `ProbeEndpointsTest` accepts either readiness verdict; `RetryPolicy` bounds its back-off cap and budget from below only, so a ceiling is a beta8 question.
