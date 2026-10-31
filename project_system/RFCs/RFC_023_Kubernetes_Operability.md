@@ -85,8 +85,8 @@ private view only.
   - Measured: a lease against a database that never answers failed after 2 s, where it hung past 15 s before.
   - The handler cost was measured the same day: `/healthz` takes about 5 µs whatever the probe count, `/readyz`
     about 6 µs plus 1.1 µs per probe, and nothing is retained (`project_system/Audits/Beta7/probe-cost/`).
-  - Not covered: the PSR-16 cache's Predis client keeps Predis's own defaults (a 5 s connect timeout), so the
-    cache check can outlast a 3 s probe.
+  - The PSR-16 cache's Predis client connects and reads within 1 s too, unless its DSN sets its own timeouts
+    (cache `d217546`; Predis alone waited 5 s to connect and 60 s to read).
 
 ### 3.3 Probes shipped by components
 
