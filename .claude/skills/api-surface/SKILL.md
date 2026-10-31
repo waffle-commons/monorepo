@@ -1,6 +1,6 @@
 ---
 name: api-surface
-description: "OpenAPI generation + DTO serializer and content negotiation (beta7 API-01/02; scaffolded, no src yet)"
+description: "OpenAPI 3.1 generation + compiled DTO serializer and JSON content negotiation (beta7 API-01/02, RFC-016)"
 when_to_use: >-
   OpenAPI or Swagger, openapi:generate from #[Route] + DTOs, generating the API spec, serializing or
   hydrating a DTO, compiled normalizers, Accept / content negotiation, the openapi and serializer

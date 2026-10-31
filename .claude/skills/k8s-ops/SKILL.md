@@ -1,6 +1,6 @@
 ---
 name: k8s-ops
-description: "Kubernetes operability: /healthz + /readyz, graceful drain, db:migrate workflow (beta7 OPS, not built yet)"
+description: "Kubernetes operability: /healthz + /readyz probes, graceful drain, db:migrate/rollback/status (beta7 OPS, RFC-023)"
 when_to_use: >-
   Health or readiness probes, /healthz, /readyz, HealthCheckInterface, graceful shutdown, SIGTERM,
   draining, rolling restarts, migrations and rollback on db:migrate, [OPS-01..03], RFC-023, RFC-014.

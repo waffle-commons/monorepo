@@ -1,6 +1,6 @@
 ---
 name: resilience-net
-description: "Rate limiter, client timeout/retry policies, circuit breaker in shared storage (beta7 NET, not built yet)"
+description: "Rate limiter, client timeout/retry policies, circuit breaker, state shared in Redis (beta7 NET, RFC-024)"
 when_to_use: >-
   Rate limiting or throttling, 429 / Retry-After, outbound timeouts, retry with backoff, circuit
   breaker, [NET-01..03], RFC-017 section 3.1, RFC-024, where limiter and breaker state lives.

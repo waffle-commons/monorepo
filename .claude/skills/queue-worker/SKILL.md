@@ -1,6 +1,6 @@
 ---
 name: queue-worker
-description: "Background jobs in queue: contracts, Redis Streams driver, queue:work (beta7 QUEUE; scaffolded, no src)"
+description: "Background jobs in queue: contracts, Redis Streams driver, dead letters, queue:work + SIGTERM drain (beta7 QUEUE)"
 when_to_use: >-
   Queue, job or worker, dispatching a background task, dead-letter and retry, queue:work, SIGTERM
   drain, sending mail asynchronously (mailer contract), [QUEUE-01..03].

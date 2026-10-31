@@ -1,6 +1,6 @@
 ---
 name: testing-bridge
-description: "WaffleTestCase in-process kernel + test doubles in testing (beta7 TEST-01; scaffolded, no src)"
+description: "WaffleTestCase in-process kernel + test doubles (clock, queue, mailer, HTTP, limiter) in testing (beta7 TEST-01)"
 when_to_use: >-
   WaffleTestCase, booting the kernel in a test, simulating a PSR-7 request through the real
   pipeline, in-memory queue / mailer / HTTP test doubles, freezing the clock, [TEST-01], RFC-018
