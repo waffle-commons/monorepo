@@ -30,11 +30,14 @@
 ARG FRANKEN_VERSION='1.13.2'
 ARG PHP_VERSION='8'
 ARG OS='trixie'
+# The base image's digest, the skeleton's: change it WITH FRANKEN_VERSION, since
+# Docker resolves `tag@digest` by the digest alone (scripts/images-pin.py --verify).
+ARG FRANKEN_DIGEST='@sha256:8a7a935deb33959200628497b8201423c8b777d513a62ac1b69a91c624afdb3d'
 
 # -----------------------------------------------------------------------------
 # Stage 1: Base — mirrors skeleton/docker/Dockerfile's `base` stage exactly.
 # -----------------------------------------------------------------------------
-FROM dunglas/frankenphp:${FRANKEN_VERSION}-php${PHP_VERSION}-${OS} AS base
+FROM dunglas/frankenphp:${FRANKEN_VERSION}-php${PHP_VERSION}-${OS}${FRANKEN_DIGEST} AS base
 
 ENV APP_ENV=prod \
     SERVER_NAME=":80" \

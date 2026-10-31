@@ -12,7 +12,7 @@
 #   docker build -f engines/symfony-worker/Dockerfile -t bench-engine-c .
 # Prerequisite: scripts/bootstrap-symfony.sh has generated engines/symfony-app/.
 # =============================================================================
-FROM dunglas/frankenphp:1.13.2-php8-trixie
+FROM dunglas/frankenphp:1.13.2-php8-trixie@sha256:8a7a935deb33959200628497b8201423c8b777d513a62ac1b69a91c624afdb3d
 
 # `intl` deliberately omitted — see the rationale in engines/symfony-fpm/Dockerfile:
 # unused by every bench workload, slowest build step, not on any hot path. Engine B

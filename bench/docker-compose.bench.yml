@@ -293,7 +293,7 @@ services:
   # what scripts/run-bench.sh does between runs).
   # ---------------------------------------------------------------------------
   bench-postgres:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     container_name: bench-postgres
     environment:
       POSTGRES_DB: "waffle"
@@ -320,7 +320,7 @@ services:
   #   docker compose -f docker-compose.bench.yml run --rm k6 run /scripts/scenarios/<x>.js
   # ---------------------------------------------------------------------------
   k6:
-    image: grafana/k6:latest
+    image: grafana/k6:2.3.0@sha256:2dd4756ec6e14e62778916e1eb850108e4b499304c02df56760fa0bdb0fba0b8
     container_name: bench-k6
     profiles:
       - tools

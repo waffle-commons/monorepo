@@ -7,7 +7,9 @@ with composer.json and .github/workflows/main.yml, template itself excluded) thi
   workflow    .github/workflows/main.yml equals the template's, ignoring comment lines and
               the per-component `extensions:` / `ini-values:` lines of setup-php
   dependabot  .github/dependabot.yml is byte-identical to the template's
-  toolchain   require-dev constraints of the shared toolchain equal the template's
+  toolchain   require-dev constraints of the shared toolchain equal the template's (a package
+              the component ships code against, such as testing's PHPUnit, sits in require
+              with the same constraint)
   description composer.json description is real prose, not a template placeholder
   php-version mago.toml php-version equals the template's
 
@@ -88,9 +90,11 @@ for c in libraries:
         problems.append((c, "dependabot", "differs from the template"))
     composer = json.loads(read(f"{c}/composer.json"))
     dev = composer.get("require-dev", {})
+    runtime = composer.get("require", {})
     for pkg in TOOLCHAIN:
-        if dev.get(pkg) != tpl_dev.get(pkg):
-            problems.append((c, "toolchain", f"{pkg} is {dev.get(pkg)!r}, template has {tpl_dev.get(pkg)!r}"))
+        declared = dev.get(pkg, runtime.get(pkg))
+        if declared != tpl_dev.get(pkg):
+            problems.append((c, "toolchain", f"{pkg} is {declared!r}, template has {tpl_dev.get(pkg)!r}"))
     desc = composer.get("description", "")
     if not desc or PLACEHOLDER_DESC.search(desc):
         problems.append((c, "description", f"placeholder description: {desc!r}"))

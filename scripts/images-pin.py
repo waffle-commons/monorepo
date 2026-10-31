@@ -5,8 +5,9 @@ A tag such as `redis:7-alpine` or `composer:latest` moves: the next pull may
 bring a different image, so a build is neither reproducible nor offline-safe.
 A digest (`redis:7-alpine@sha256:…`) names one image for good while the tag
 stays readable. This script finds the `FROM` lines of every Dockerfile and the
-`image:` lines of every compose file in the template apps, and reports each
-reference that has no digest; `--write` pins it to the digest of the image
+`image:` lines of every compose file in the template apps and the bench rig
+(files git ignores, such as a generated app's own compose file, are left out),
+and reports each reference that has no digest; `--write` pins it to the digest of the image
 this machine already pulled (`docker image inspect`), so what is pinned is what
 was tested. `--pull` fetches an image that is not here yet.
 
@@ -20,8 +21,8 @@ and `--write` re-pins a stale digest where it is written: the `FROM` or `image:`
 line, or the `ARG` line that carries it.
 
 Skipped, and said so: images built locally (`waffle-commons:workspace`,
-`waffle-app:dev`), build stages (`FROM base AS dev`) and build arguments
-without a default.
+`waffle-app:dev`, `waffle-bench-engine-a`), build stages (`FROM base AS dev`)
+and build arguments without a default.
 
 Usage:   scripts/images-pin.py [--write] [--pull] [--verify] [file…]
 Exit:    0 when every pinnable reference has a digest (or was pinned), and with
@@ -37,13 +38,19 @@ import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-SCAN_DIRS = ("workspace", "skeleton", "academy")
-LOCAL_IMAGES = re.compile(r"^(waffle-[\w-]*|waffle-commons):")
+SCAN_DIRS = ("workspace", "skeleton", "academy", "bench")
+LOCAL_IMAGES = re.compile(r"^(waffle-[\w-]*|waffle-commons)(?::|$)")
 FROM = re.compile(r"^(\s*FROM\s+(?:--platform=\S+\s+)?)(\S+)(.*)$", re.IGNORECASE)
 IMAGE = re.compile(r"^(\s*image:\s*)(['\"]?)([^'\"\s#]+)\2(.*)$")
 ARG = re.compile(r"^\s*ARG\s+(\w+)(?:=(['\"]?)(.*?)\2)?\s*$", re.IGNORECASE)
 VARIABLE = re.compile(r"\$\{(\w+)(?::-([^}]*))?\}|\$(\w+)")
 DIGEST = re.compile(r"sha256:[0-9a-f]{64}")
+
+
+def ignored(path: pathlib.Path) -> bool:
+    """A file git ignores is not built from: the bench's generated Symfony apps carry Flex's own compose files."""
+    run = subprocess.run(["git", "-C", str(path.parent), "check-ignore", "-q", path.name], capture_output=True)
+    return run.returncode == 0
 
 
 def files() -> list[pathlib.Path]:
@@ -55,7 +62,8 @@ def files() -> list[pathlib.Path]:
             if parts & {"vendor", "node_modules", ".git", "var"} or not path.is_file():
                 continue
             if path.name.startswith("Dockerfile") or re.fullmatch(r"(docker-)?compose(\.[\w-]+)?\.ya?ml", path.name):
-                found.append(path)
+                if not ignored(path):
+                    found.append(path)
     return sorted(found)
 
 
