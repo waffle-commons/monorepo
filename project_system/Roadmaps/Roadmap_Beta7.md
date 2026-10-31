@@ -43,6 +43,9 @@ aliases: []
   - *Status 2026-10-29:* committed, and all four ship code, so they joined `RELEASE_INCLUDE` (27 paths).
     Still open, the maintainer's: Packagist (each package answers 404) and the repository settings
     (squash and rebase merges still allowed, delete-branch-on-merge off), both before the wave.
+  - *Status 2026-10-31:* the repository settings are applied on the maintainer's request: merge commits only (squash
+    and rebase off) and delete-branch-on-merge on, as on `contracts`. One difference with `contracts` is left as is:
+    `allow_update_branch` is off. Still open before the wave: Packagist (each package still answers 404).
 - **Toolchain baseline for the release** (the whole Dependabot backlog, applied in lockstep): mago 1.50,
   psalm 6.19, igor-php **0.9.7** (pinned by `.igor-version`, enforced in CI and in `wfl dod`), GitHub
   Actions checkout v7 / cache v6 / codecov v7 / paths-filter v4, TruffleHog pinned to a release instead
