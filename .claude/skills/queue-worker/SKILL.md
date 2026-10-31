@@ -6,10 +6,14 @@ when_to_use: >-
   drain, sending mail asynchronously (mailer contract), [QUEUE-01..03].
 ---
 
-> **Status (2026-09-30):** `queue` (`Waffle\Commons\Queue`) is scaffolded from `component-template`
-> and passes its DoD in scaffold mode. There is no PHP in `src/` yet; tests and coverage switch on
-> with the first class. Scope is deliberately minimal — contracts, one solid driver and a worker, **not**
-> a Messenger clone. RFC-015 holds the boundary with the beta5 deferral.
+> **Status (2026-10-31): built and accepted (beta7 `[QUEUE-01..03]`).** The contracts are in
+> `Contracts\Queue\` and `Contracts\Mailer\`. `queue` (`Waffle\Commons\Queue`) ships
+> `RedisStreams\RedisStreamsQueue`, `RedisStreams\RedisFailedMessageStore`, `Envelope\EnvelopeCodec` and the
+> `/readyz` probe `Health\StreamsHealthCheck`; `console` ships `queue:work` (`Queue\WorkerOptions`), wired in
+> the workspace `bin/waffle`. Evidence: `Roadmap_Beta7.md` AXE 2 (crash reclaim and dead letter against real
+> Redis, SIGTERM drain with real signals, a live `queue:work` run archived; component CI starts Redis since
+> umbrella `cd3b79e`). Scope stays deliberately minimal — contracts, one solid driver and a worker, **not** a
+> Messenger clone. RFC-015 holds the boundary with the beta5 deferral.
 
 ## What I do
 I design real background job processing. It is distinct from beta5 finish-request deferral
@@ -32,6 +36,8 @@ asynchronously", beta7 QUEUE.
 - **Payload safety:** encode as JSON, and decode only into an **allow-listed** message class, through
   its constructor and property hooks so validation runs. **Never `unserialize()` a payload** — a queue is
   an input channel (A08), and it is on the beta8 audit list.
+- **Built:** `EnvelopeCodec` decodes through the serializer and a class allowlist built from the handlers.
+  The dispatcher records the current trace context, so each message continues the trace that dispatched it.
 
 ### `[QUEUE-02]` Redis Streams driver + worker
 One reference driver on Redis Streams; additional drivers are post-v1.
@@ -52,6 +58,11 @@ One reference driver on Redis Streams; additional drivers are post-v1.
     of `$kernel->reset()` in `WaffleRuntime`;
   - recycle the process on a max-messages or memory ceiling;
   - `wfl igor` 0 KO on every class it runs.
+- **Worker options (`Queue\WorkerOptions`):** the queue; how many messages to settle and the memory
+  ceiling (the worker then exits to be restarted); how many deliveries may fail before the dead letter; the
+  back-off before the second delivery, doubling at each further failure; and the read wait.
+- **The worker's Redis pool has no read timeout.** Its reads block by design (the read wait), so the 1 s
+  read timeout of the HTTP pools (RFC-023 §3.2, `[[k8s-ops]]`) must never apply to it.
 - **Do not copy the one-shot commands' `#[WorkerSafe]` reason.** "CLI-only: constructed per
   `bin/waffle` invocation" is **false** for `queue:work`, where one invocation handles thousands of
   messages.
@@ -59,7 +70,8 @@ One reference driver on Redis Streams; additional drivers are post-v1.
 ### `[QUEUE-03]` Mailer scoping
 `Waffle\Commons\Contracts\Mailer\MailerInterface` plus a message DTO — a **contract only**.
 Transactional mail is dispatched as a queue message. SMTP and API transports are post-v1 (a non-goal
-in the master roadmap).
+in the master roadmap). **Built:** the `Email` message is a `MessageInterface`; the only implementations are
+the workspace's demo `LogMailer` (behind its `EmailHandler`) and `testing`'s `MailerSpy`.
 
 ## Gate
 - A message survives a worker crash: kill the worker mid-message, and the pending entry is reclaimed
@@ -71,3 +83,6 @@ in the master roadmap).
 - `[TEST-01]`'s `InMemoryQueue` double implements the same contracts.
 - DoD: `wfl dod queue`, `wfl dod console` and `wfl dod contracts` (mago zero output, tests ≥95 %, igor
   0 KO). Verify with `acceptance-verifier` (scope `QUEUE`).
+- **Met on 2026-10-31:** `RedisStreamsQueueTest::testAMessageSurvivesAWorkerCrash` and
+  `RedisFailedMessageStoreTest` (real Redis), `QueueWorkCommandTest` (real signals through `posix_kill`), and
+  the archived live run.

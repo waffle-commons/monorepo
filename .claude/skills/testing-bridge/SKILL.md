@@ -7,9 +7,15 @@ when_to_use: >-
   section 3.3.
 ---
 
-> **Status (2026-09-30):** `testing` (`Waffle\Commons\Testing`) is scaffolded and its DoD is green in
-> scaffold mode; there is no `src/` yet. Committed tier. Userland installs it as `require-dev`. Its first
-> consumers are EcoShield Gateway and the Academy labs.
+> **Status (2026-10-31): built and accepted (beta7 `[TEST-01]`).** `testing` (`Waffle\Commons\Testing`):
+> `PHPUnit\WaffleTestCase` gets the app's kernel from `createKernel()`, swaps the doubles in between `boot()`
+> and `configure()`, and sends PSR-7 requests through the real pipeline (`Kernel\KernelClient`,
+> `Kernel\TestResponse`). Doubles: `Clock\FrozenClock` (`advance()`), `Queue\InMemoryQueue` (`dispatched()`),
+> `Queue\InMemoryFailedMessageStore`, `Mailer\MailerSpy` (`sent()`), `Http\ReplayClient` (records the requests
+> it gets and replays queued answers; it never records a real upstream) and
+> `RateLimit\InMemoryLimiterStateStorage`. The workspace's `KernelBridgeTest` runs it on the real
+> `AppKernelFactory`. Userland installs it as `require-dev`; EcoShield Gateway and the Academy labs adopt it
+> once it is on Packagist.
 
 ## What I do
 I design the kernel testing bridge that lets app developers test against the real pipeline without a
@@ -29,9 +35,10 @@ The record is in `Roadmap_Beta7.md`.
   reaches what the container resolves (controllers and their dependencies), not a collaborator that the
   app factory builds up front.
 - **Requests:** the bridge builds them with the PSR-17 `ServerRequestFactoryInterface` from the container,
-  never with `http`'s concrete classes. The app factory registers it; the template apps do not yet.
+  never with `http`'s concrete classes. The app factory registers it, as the skeleton's `AppKernelFactory`
+  does.
 - **Clock: PSR-20.** contracts requires `psr/clock`. The frozen, advanceable clock lives here; the system
-  clock lives in `utils` (not built yet).
+  clock is `utils`' `Clock\SystemClock`.
 - **PHPUnit at runtime.** `testing` requires `phpunit/phpunit` ^12.5. Its `mago.toml` guard permits
   `PHPUnit\**` in one sub-namespace only (the `WaffleTestCase` layer), so the kernel client and the
   doubles stay free of PHPUnit.
@@ -55,3 +62,5 @@ The record is in `Roadmap_Beta7.md`.
 - The doubles record their effects and let tests assert them.
 - A test can send the same request twice and observe no leaked state.
 - DoD: `wfl dod testing` (plus contracts). Verify with `acceptance-verifier` (scope `TEST`).
+- **Met on 2026-10-31:** `wfl dod testing` PASS (100 %); the workspace's `KernelBridgeTest` drives the real
+  `AppKernelFactory`.

@@ -7,11 +7,14 @@ when_to_use: >-
   components, [API-01]/[API-02], RFC-016.
 ---
 
-> **Status (2026-09-30):** `openapi` (`Waffle\Commons\OpenApi`) and `serializer`
-> (`Waffle\Commons\Serializer`) are scaffolded and pass their DoD in scaffold mode; neither has `src/`
-> yet. **Tier: High, not Committed.** Under the beta7 capacity guard, API and TEST fold into the beta8
-> window unless `[API-01]`, `[API-02]` and `[TEST-01]` have code landed and green on their own gates by
-> mid-October (`[[roadmap-steward]]`).
+> **Status (2026-10-31): built and accepted (beta7 `[API-01]`, `[API-02]`).** The mid-October checkpoint was
+> met on 2026-10-17, so API stayed in beta7. `openapi` (`Waffle\Commons\OpenApi`): `openapi:generate`
+> (`GenerateCommand`), the `#[Operation]`, `#[Response]` and `#[Property]` overrides
+> (`Contracts\OpenApi\Attribute\`, read by `AttributeReader`) and the debug-only
+> `Middleware\ApiDocsMiddleware`. `serializer` (`Waffle\Commons\Serializer`): per-DTO normalizers compiled by
+> `serializer:compile` (pinned by golden files) and loaded on the `WAFFLE_AOT=1` fast path, the interpreted
+> fallback, and `ContentNegotiationMiddleware` (JSON; nothing acceptable → `NotAcceptableException`, 406).
+> Evidence: `Roadmap_Beta7.md` AXE 4.
 
 ## What I do
 I design the API-surface tooling that turns typed routes and DTOs into a spec, and that owns the HTTP
@@ -46,10 +49,12 @@ DTOs, with zero manual YAML.
 
 - A build-time `openapi:generate` command, sharing the AOT metadata phase (`[[aot-compilation]]`) where
   possible.
-- Optional `#[OA\*]`-style overrides. Without any attribute the spec is still valid, only terse.
-- The dev-only spec and Swagger UI route is **fail-closed in production** (404 outside dev, the
-  `/waffle-metrics` pattern). It ships no third-party CDN script without an explicit CSP decision. It is
-  on the beta8 audit list.
+- Optional overrides: `#[Operation]`, `#[Response]` and `#[Property]`, in contracts so that they freeze at
+  beta8. Without any attribute the spec is still valid, only terse.
+- The dev-only spec and Swagger UI route is **fail-closed in production**. **Built 2026-10-31:** `GET /_docs`
+  serves Swagger UI 5.33.3 from jsDelivr, pinned by SRI, under its own CSP; `GET /_docs/openapi.json` serves
+  the live document. The apps mount it in debug mode only, which production refuses. A Swagger UI bump
+  changes the SRI hashes. It is on the beta8 audit list.
 
 ### `[API-02]` Serializer
 A scoped DTO ↔ JSON normalizer — request hydration and response serialization — that honours property
@@ -66,9 +71,11 @@ hooks and asymmetric visibility. It is **not** a general-purpose serializer.
   existing error-handler rendering, and `[FRZ-03]` reviews them.
 
 ## Gate
-- `openapi.json` **validates against the OAS 3.1 schema** in a test. Pick a JSON Schema 2020-12 validator
-  as a `require-dev` dependency; the perimeter is unaffected.
+- `openapi.json` **validates against the OAS 3.1 schema** in a test. **Met:** `OpenApiGeneratorTest` checks it
+  against the official schema, stored verbatim with its hash, with opis's validator (`require-dev`); the
+  documents generated from both template apps validate too.
 - The serializer round-trips every DTO shape in the matrix — hooks, asymmetric visibility, nested DTOs,
-  arrays — and rejects the invalid cases.
+  arrays — and rejects the invalid cases. **Met:** `RoundTripTest` runs 16 shapes through both normalizers
+  and requires byte-identical output.
 - DoD: `wfl dod openapi` and `wfl dod serializer`, plus contracts and utils if touched. Verify with
   `acceptance-verifier` (scope `API`).
