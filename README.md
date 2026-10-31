@@ -15,7 +15,7 @@
 
 ---
 
-> **Release:** `0.1.0-beta6` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
+> **Release:** `0.1.0-beta7` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
 > **Status:** beta software — production use requires an independent security audit.
 
 ## 🧠 Mission
@@ -26,7 +26,7 @@ Waffle exists to prove that PHP can ship a framework which is simultaneously:
 - **Secure** — fail-closed ABAC, stateless HMAC CSRF bound to a per-browser anonymous SID, SSRF allowlist on the outbound client, hardened HTTP headers by default.
 - **Fast** — FrankenPHP-first; every component is stateless across requests so the resident worker can hold the assembled kernel in memory between calls.
 
-The monorepo is the umbrella that holds 21 independent framework components (plus four landing in beta7), a project skeleton, a contributor workspace, a hands-on onboarding academy, a component scaffold template, the framework's user-facing documentation, and the project's official governance & roadmap ([`project_system/`](project_system/)). Each component is its own Git repository, released independently on Packagist; this umbrella is purely a development and integration convenience.
+The monorepo is the umbrella that holds 25 independent framework components, a project skeleton, a contributor workspace, a hands-on onboarding academy, a component scaffold template, the framework's user-facing documentation, and the project's official governance & roadmap ([`project_system/`](project_system/)). Each component is its own Git repository, released independently on Packagist; this umbrella is purely a development and integration convenience.
 
 ## 📦 What's inside
 
