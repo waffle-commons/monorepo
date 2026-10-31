@@ -2,13 +2,17 @@
 # bench/scripts/run-carry02.sh — the CARRY-02 re-measurement on the hardened rig, chained for one
 # unattended night (Roadmap_Beta7 [CARRY-02], scheduled 2026-10-31).
 #
-#   usage: run-carry02.sh [--stop-others] [--dry-run]
+#   usage: run-carry02.sh [--stop-others] [--dry-run] [--only=PHASE[,PHASE...]]
 #
 # Order, about 7 h 30 on an idle machine:
 #   1. preflight: one smoke run per engine (engine-b is built on first use) and check-features.sh
-#   2. BENCH-02: engines A, C, D × json, dbread, dbwrite; 50/100/200/400/800 rps × 2 min per step
-#   3. BENCH-05: engine-a-mem, engine-b-dyn, engine-c-mem, engine-d-mem; 8..128 VUs × 2 min per step
-#   4. BENCH-03: engine-c then engine-d, 150 rps × 2 h each
+#   2. bench02 — BENCH-02: engines A, C, D × json, dbread, dbwrite; 50/100/200/400/800 rps × 2 min per step
+#      (about 1 h 40)
+#   3. bench05 — BENCH-05: engine-a-mem, engine-b-dyn, engine-c-mem, engine-d-mem; 8..128 VUs × 2 min per step
+#   4. bench03 — BENCH-03: engine-c then engine-d, 150 rps × 2 h each
+#
+# --only runs the named phases only, still in this order: --only=bench02 re-runs BENCH-02 alone (added
+# 2026-11-01, when the first run's BENCH-02 tails were disturbed by other work on the laptop).
 #
 # Every run is run-bench.sh's own (run-unique id, host record, never overwrites a series): this script
 # only sequences them and keeps going when one fails. The full output goes to
@@ -25,13 +29,32 @@ BENCH_DIR="$(dirname "$SCRIPT_DIR")"
 RUN="$SCRIPT_DIR/run-bench.sh"
 STOP_OTHERS=0
 DRY_RUN=0
+ONLY=""
 for arg in "$@"; do
   case "$arg" in
     --stop-others) STOP_OTHERS=1 ;;
     --dry-run) DRY_RUN=1 ;;
-    *) echo "usage: $0 [--stop-others] [--dry-run]" >&2; exit 2 ;;
+    --only=*) ONLY=",${arg#--only=}," ;;
+    *) echo "usage: $0 [--stop-others] [--dry-run] [--only=PHASE[,PHASE...]]" >&2; exit 2 ;;
   esac
 done
+
+# --only: a comma list of phases; an unknown name is refused before anything starts.
+PHASES="${ONLY#,}"
+PHASES="${PHASES%,}"
+if [[ -n "$ONLY" ]]; then
+  for phase in ${PHASES//,/ }; do
+    case "$phase" in
+      preflight | bench02 | bench05 | bench03) ;;
+      *) echo "error: unknown phase \"$phase\" (preflight, bench02, bench05, bench03)" >&2; exit 2 ;;
+    esac
+  done
+fi
+
+# wanted <phase>: whether the run includes that phase (all of them without --only).
+wanted() {
+  [[ -z "$ONLY" || "$ONLY" == *",$1,"* ]]
+}
 
 # The whole chain runs under caffeinate (idle, display and system sleep held off), entered once.
 if [[ $DRY_RUN -eq 0 && -z "${CARRY02_AWAKE:-}" ]] && command -v caffeinate >/dev/null 2>&1; then
@@ -89,25 +112,33 @@ run() {
   printf '%-34s %s → %s UTC  exit %d\n' "$label" "$start" "$(date -u +%H:%M:%S)" "$code" | tee -a "$SUMMARY"
 }
 
-[[ $DRY_RUN -eq 1 ]] || echo "CARRY-02 chain $STAMP: log $LOG, summary $SUMMARY" | tee -a "$SUMMARY"
+[[ $DRY_RUN -eq 1 ]] || echo "CARRY-02 chain $STAMP${PHASES:+ (only $PHASES)}: log $LOG, summary $SUMMARY" | tee -a "$SUMMARY"
 
-for engine in engine-a engine-b engine-c engine-d; do
-  run "smoke $engine" "$RUN" "$engine" smoke
-done
-run "check-features" "$SCRIPT_DIR/check-features.sh"
-
-for engine in engine-a engine-c engine-d; do
-  for workload in json dbread dbwrite; do
-    run "BENCH-02 $engine $workload" env RATES=50,100,200,400,800 STEP_DURATION=2m "$RUN" "$engine" constant "$workload"
+if wanted preflight; then
+  for engine in engine-a engine-b engine-c engine-d; do
+    run "smoke $engine" "$RUN" "$engine" smoke
   done
-done
+  run "check-features" "$SCRIPT_DIR/check-features.sh"
+fi
 
-for engine in engine-a-mem engine-b-dyn engine-c-mem engine-d-mem; do
-  run "BENCH-05 $engine" env VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m "$RUN" "$engine" memscale
-done
+if wanted bench02; then
+  for engine in engine-a engine-c engine-d; do
+    for workload in json dbread dbwrite; do
+      run "BENCH-02 $engine $workload" env RATES=50,100,200,400,800 STEP_DURATION=2m "$RUN" "$engine" constant "$workload"
+    done
+  done
+fi
 
-for engine in engine-c engine-d; do
-  run "BENCH-03 $engine" env RATE=150 DURATION=2h "$RUN" "$engine" soak
-done
+if wanted bench05; then
+  for engine in engine-a-mem engine-b-dyn engine-c-mem engine-d-mem; do
+    run "BENCH-05 $engine" env VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m "$RUN" "$engine" memscale
+  done
+fi
+
+if wanted bench03; then
+  for engine in engine-c engine-d; do
+    run "BENCH-03 $engine" env RATE=150 DURATION=2h "$RUN" "$engine" soak
+  done
+fi
 
 [[ $DRY_RUN -eq 1 ]] || echo "CARRY-02 chain done $(date -u +%H:%M:%S) UTC" | tee -a "$SUMMARY"
