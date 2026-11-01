@@ -12,7 +12,7 @@ aliases: []
 ---
 # 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta7
 
-> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. Open before the tag: the `[CARRY-02]` full re-run on an untouched laptop (the runs of 2026-10-31 and 2026-11-01 are kept as invalidated series: the laptop was in use during both); the two `[API-01]` follow-ups were built and the two `[NET-01]` spec points settled the same day
+> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. `[CARRY-02]` re-measured on 2026-11-01: the clean full run is recorded (the two earlier runs are kept as invalidated series); open before the tag: what `bench/BENCH-GATE-RESULT.md` publishes, the maintainer's call; the two `[API-01]` follow-ups were built and the two `[NET-01]` spec points settled the same day
 > 
 > **Target Release:** **November 2026** — tag targeted for 5 November (re-dated 2026-10-21 from October 2026; the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
@@ -149,6 +149,32 @@ aliases: []
         full chain again (`run-carry02.sh --stop-others`, about 7 h 30) on a laptop left untouched — no media, lid
         open, the pending macOS update postponed — checked against the power log for the whole window before the
         analysis; then the maintainer decides what `bench/BENCH-GATE-RESULT.md` publishes.
+    - *Status 2026-11-01 — the clean run, recorded:* `carry02-20261101T015247Z`, 01:52–08:19 UTC, the full chain,
+      20 runs, all exit 0. Archive: `project_system/Audits/Beta7/bench/carry02-20261101T015247Z/`, with the power
+      log of the window (`pmset-window.log`).
+      - **Idle check (`pmset -g log`):** no user input (only the periodic 15-minute summaries), no media playback,
+        no lid close, no sleep, no update. Background only: two short system sounds (03:06 and 04:40 UTC, during
+        D's json run and C's soak) and three Contacts syncs. One sync ran 02:18:11–02:19:47 UTC, over 95 s of A's
+        dbread step at 800 rps: that step (p99 61.3 ms, p99.9 149.4) is flagged and not published.
+      - **BENCH-02** (A / C / D, constant arrival rate, 2 min per step; every rate held, 0 errors):
+        - json — parity: p50 2.1 / 2.2 / 2.3 ms at 50 rps, 0.8 / 0.8 / 0.9 at 800; p99 1.7 / 1.8 / 2.0 at 800.
+        - database — A is slower: dbread p50 3.4 / 2.9 / 3.0 ms at 50 rps and 1.4 / 1.1 / 1.2 at 400; dbwrite 3.8 /
+          3.2 / 3.4 at 50 rps and 1.8 / 1.3 / 1.5 at 800; A's p99 up to 0.8 ms above D's. Cause not investigated.
+        - memory — A's RSS is 7.7–10 MB below D's at every rate (dbwrite at 800 rps: 123.0 against 131.8 MB).
+      - **BENCH-05** (dbread, 8 → 128 VUs): slope per concurrent request A +0.118, B (FPM) +1.478, C +0.113, D
+        +0.121 MiB — FPM's memory grows 12.5× faster than Waffle's; B/A 0.87× at 8, 1.04× at 16, 2.81× at 128;
+        crossover at about 14 concurrent requests. Under this closed-loop saturation on 2 CPUs the throughput is A
+        1 676, C 2 029, D 1 825 req/s (B 118.5, 1.16 % errors): A is 8 % below D, consistent with its slower
+        database path, while using less memory (85.4 against 92.0 MiB at 128 VUs). The first run's ranking, with A
+        highest, came from the disturbed laptop and does not hold.
+      - **BENCH-03** (150 rps × 2 h, about 270 000 requests per worker, no recycle, 6 s sampling with no gap): C
+        +0.15 ± 0.11 MB/h with ΔM −1.0 MB, D −1.00 ± 0.12 MB/h with ΔM −3.7 MB: PASS — flat within the instrument
+        over 2 h, not a multi-hour claim. p99 3.2 and 3.5 ms, 0 errors.
+      - Limits: one laptop (i7-9750H), the k6 generator on the same host, 2 CPUs per engine: relative comparisons,
+        not capacity figures. The two earlier runs stay archived as invalidated series.
+      - Open: what `bench/BENCH-GATE-RESULT.md` publishes (the maintainer's decision; a draft section is in the
+        archive as `BENCH-GATE-RESULT-beta7-draft.md`); optionally a re-run of A's dbread (about 11 min) to replace
+        the flagged step; the database-path gap between A and D, a beta8 performance question.
 - **`[CARRY-03]` "Keeps state on purpose" design note** (API Platform Conference feedback, 2026-09-17):
   runtime reset is already opt-in (`Container::reset()` resets only Resettable services); the strictness
   lives in the dev-mode `ComplianceScanner` and the igor gate, with `#[WorkerSafe]` as the only escape
