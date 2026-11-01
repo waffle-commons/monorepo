@@ -12,7 +12,7 @@ aliases: []
 ---
 # 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta7
 
-> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. Open before the tag: the `[CARRY-02]` BENCH-02 re-run (the run of the night of 2026-10-31 recorded BENCH-03 and BENCH-05; its BENCH-02 tails were disturbed by work on the same laptop); the two `[API-01]` follow-ups were built and the two `[NET-01]` spec points settled the same day
+> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. Open before the tag: the `[CARRY-02]` full re-run on an untouched laptop (the runs of 2026-10-31 and 2026-11-01 are kept as invalidated series: the laptop was in use during both); the two `[API-01]` follow-ups were built and the two `[NET-01]` spec points settled the same day
 > 
 > **Target Release:** **November 2026** — tag targeted for 5 November (re-dated 2026-10-21 from October 2026; the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
@@ -112,18 +112,18 @@ aliases: []
       maintainer's decision), and its results are analysed and recorded before the tag. The bench images
       were pinned by digest that day (umbrella `ef92b0a`): k6 2.3.0, the same build as the earlier runs,
       and Engine B on `php:8.5.12-fpm`, the PHP of engines A, C and D, instead of the floating `php:8.5-fpm`.
-    - *Status 2026-11-01 — run; BENCH-03 and BENCH-05 recorded, BENCH-02 to re-run on an idle laptop:*
+    - *Status 2026-11-01 — first run; superseded the same day (see below), not publishable as a whole:*
       - Run `carry02-20261031T164459Z` (16:45–23:11 UTC, `bench/scripts/run-carry02.sh --stop-others`): 20 runs,
         all exit 0, no failed request except Engine B's memscale (1.4 %, a saturated FPM). Host: i7-9750H, a
         12 vCPU / 13.6 GiB Docker VM; every engine at 2 CPUs and 1 GiB (6 GiB for BENCH-05); FrankenPHP 1.13.2 /
         PHP 8.5.12 with 4 workers in A, C and D, `MAX_REQUESTS` / `FRANKENPHP_LOOP_MAX` 1 000 000; k6 2.3.0 on the
         host. Archive (local): `project_system/Audits/Beta7/bench/carry02-20261031T164459Z/` — raw k6 JSON, RSS
         CSVs, host records and `REPORT.md`.
-      - **BENCH-03 (idle machine):** C and D at 150 rps for 2 h, 1 080 001 requests each, about 270 000 per
+      - **BENCH-03 (machine thought idle — it was not, see below):** C and D at 150 rps for 2 h, 1 080 001 requests each, about 270 000 per
         worker (no recycle possible), RSS sampled every 6 s with no gap. Slope over the settled window: C
         −0.46 ± 0.11 MB/h, D −0.74 ± 0.14 MB/h (n = 1 057; 95 % bound, understated by autocorrelation); ΔM −2.2 and
         −3.5 MB: PASS. No growth above those rates over 2 h — not a multi-hour claim. p99 4.1 and 4.6 ms, 0 errors.
-      - **BENCH-05 (idle machine), RSS by concurrency** (dbread, 8 → 128 VUs, 2 min each): A 70.3 → 86.1 MiB,
+      - **BENCH-05 (machine thought idle — it was not), RSS by concurrency** (dbread, 8 → 128 VUs, 2 min each): A 70.3 → 86.1 MiB,
         B (FPM, dynamic pool) 60.9 → 245.1, C 76.2 → 92.4, D 78.3 → 94.6. Slope per concurrent request: A
         +0.124, B +1.514, C +0.128, D +0.139 MiB. B/A: 0.87× at 8, 1.06× at 16, 2.85× at 128; the fitted lines
         cross at about 14 concurrent requests. FPM's memory grows 12.2× faster than Waffle's (beta6: 10.5×, 2.37×
@@ -137,9 +137,18 @@ aliases: []
         p99 of 9.6 ms (A) and 12.4 ms (C) during the activity and 3.2 ms (D) once the machine was idle, although
         D does strictly more work than C; A's p99.9 at 200 rps (dbread 22.1 ms, dbwrite 18.0 ms) fell in the
         same window. The series is kept, invalidated for its tails.
-      - Open: re-run BENCH-02 (A, C, D × json, dbread, dbwrite; about 1 h 40) on an idle laptop, then decide
-        with the maintainer what `bench/BENCH-GATE-RESULT.md` publishes — a FrankenPHP 1.13.2 series next to
-        beta6's, which stays as it was.
+      - *Re-run of BENCH-02 alone, 2026-11-01 00:05–01:42 UTC* (`run-carry02.sh --only=bench02`, umbrella
+        `a68727a`; archive `project_system/Audits/Beta7/bench/carry02-20261101T000522Z/`): it confirms that the
+        first run's BENCH-02 tails came from the work on the laptop (dbread at 800 rps: p99 3.9 / 3.1 / 3.2 ms for
+        A / C / D, against 9.6 / 12.4 / 3.2), but the laptop was in use again: the power log shows audio over
+        engine C's json run (00:45–00:47 UTC) and a video over engine D's (01:17–01:20 UTC: p99 120.7 ms at
+        400 rps).
+      - *Superseded 2026-11-01:* the power log (`pmset -g log`) also shows video playback through the first run's
+        BENCH-05 and soaks, and a lid close with a brief sleep at 18:52 UTC (during `engine-c-mem`). Neither run
+        was on an idle machine: both are kept as invalidated series and nothing from them is published. Open: the
+        full chain again (`run-carry02.sh --stop-others`, about 7 h 30) on a laptop left untouched — no media, lid
+        open, the pending macOS update postponed — checked against the power log for the whole window before the
+        analysis; then the maintainer decides what `bench/BENCH-GATE-RESULT.md` publishes.
 - **`[CARRY-03]` "Keeps state on purpose" design note** (API Platform Conference feedback, 2026-09-17):
   runtime reset is already opt-in (`Container::reset()` resets only Resettable services); the strictness
   lives in the dev-mode `ComplianceScanner` and the igor gate, with `#[WorkerSafe]` as the only escape
