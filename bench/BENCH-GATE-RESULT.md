@@ -1,4 +1,224 @@
-# BENCH-GATE-RESULT — Beta6 AXE 5 (tri-engine k6 benchmark)
+# BENCH-GATE-RESULT — tri-engine k6 benchmark
+
+> Two series live in this file. The **Beta7 re-measurement** (November 2026, FrankenPHP 1.13.2, `[CARRY-02]`) is
+> the current one and comes first. The **Beta6 record** (August–September 2026, FrankenPHP 1.12.2) follows as it
+> was written: its figures ran a skeleton image that did not preload 70 framework classes (`[CARRY-08]`), on a rig
+> whose Engine C recycled its workers every 500 requests, so they are not quoted as current.
+
+# Beta7 re-measurement — FrankenPHP 1.13.2 (`[CARRY-02]`, November 2026)
+
+A **new series**, not a correction of the beta6 sections below: those were measured on FrankenPHP 1.12.2, with a
+skeleton image that did not preload 70 framework classes (`[CARRY-08]`), on a rig without an equal-features
+Symfony engine. Run `carry02-20261101T015247Z` (2026-11-01, 01:52–08:19 UTC) is the full chain on the hardened
+rig (`[CARRY-02]`: run-unique series, a host record per run, soak slopes with their 95 % bound, Engine C on
+Symfony's native worker runner, Engine D added), on a laptop checked idle against its power log for the whole
+window.
+
+**Environment.** Intel i7-9750H (6 cores / 12 threads, 16 GB), Docker Desktop 29.9.2 (12 vCPU / 13.6 GiB VM).
+Every engine at 2 CPUs and 1 GiB (6 GiB for BENCH-05). A (Waffle skeleton, production image), C (Symfony) and D
+(Symfony with A's per-request work: trusted hosts, CORS, firewall, per-action authorisation, stateless CSRF,
+headers, one transaction per unsafe request) on FrankenPHP 1.13.2 / PHP 8.5.12 with 4 workers and
+`MAX_REQUESTS` / `FRANKENPHP_LOOP_MAX` 1 000 000; B (the same Symfony app) on `php:8.5.12-fpm` + nginx. k6 2.3.0
+on the host. Images pinned by digest (umbrella `ef92b0a`). Memory figures are MiB throughout (`report.sh` prints
+them as "MB" but divides by 1 024²). Raw data, in a local archive (k6 summaries, RSS series, host records, the
+power log): `project_system/Audits/Beta7/bench/carry02-20261101T015247Z/`. The processed tables are reproduced
+below, under *Report*.
+
+## `[BENCH-02]` Constant arrival rate — median / p99 latency, ms
+
+Every engine held every rate with 0 errors. Two minutes per step, so a p99 rests on the slowest 1 % of 6 000 to
+96 000 requests; p99.9 values are in the *Report* below and are indicative only.
+
+| Rate | json A / C / D | dbread A / C / D | dbwrite A / C / D |
+|---:|---|---|---|
+| 50 | 2.1/2.9 · 2.2/2.9 · 2.3/3.1 | 3.4/4.7 · 2.9/3.9 · 3.0/4.0 | 3.8/5.3 · 3.2/4.2 · 3.4/4.5 |
+| 100 | 2.1/2.7 · 2.1/2.7 · 2.2/2.8 | 3.1/4.2 · 2.7/3.4 · 2.8/3.6 | 3.4/4.6 · 3.0/3.9 · 3.1/4.0 |
+| 200 | 1.5/2.2 · 1.5/2.2 · 1.5/2.3 | 2.2/3.2 · 1.9/2.7 · 2.0/3.3 | 2.2/3.4 · 2.1/3.1 · 2.2/3.1 |
+| 400 | 0.9/1.6 · 0.9/1.6 · 0.9/1.7 | 1.4/3.0 · 1.1/2.4 · 1.2/2.5 | 1.5/3.6 · 1.3/2.6 · 1.3/2.8 |
+| 800 | 0.8/1.7 · 0.8/1.8 · 0.9/2.0 | *flagged* · 1.2/3.0 · 1.4/3.5 | 1.8/4.1 · 1.3/3.2 · 1.5/3.6 |
+
+*Flagged:* A's dbread step at 800 rps overlapped a macOS Contacts sync (02:18:11–02:19:47 UTC, 95 s of the 120 s
+step; p99 61.3 ms). It is not published.
+
+- **JSON: parity.** Waffle answers like a bare Symfony app on the same runtime, and at least as fast as Symfony
+  doing the same per-request work.
+- **Database: Waffle is slower.** Against D (the same work), by 0.3–0.4 ms at the median at 50–100 rps and by
+  0–0.3 ms at 200–800 rps, with a p99 up to 0.8 ms above D's. The cause is not investigated yet (beta8).
+- **Memory:** A's RSS is 7.7–10 MiB below D's at every rate.
+
+## `[BENCH-05]` Memory vs concurrency — RSS by concurrency, MiB
+
+Closed model, `constant-vus` 8 → 128, 2 min each, workload `dbread`; CPU pinned at 2, memory at 6 GiB, FPM on
+`pm = dynamic`.
+
+| Concurrency | A — Waffle | B — Symfony FPM | C — Symfony worker | D — Symfony worker, A's features | B/A |
+|---:|---:|---:|---:|---:|---:|
+| 8 | 70.4 | 61.3 | 78.2 | 78.2 | **0.87×** |
+| 16 | 72.8 | 75.5 | 78.3 | 78.5 | 1.04× |
+| 32 | 76.0 | 101.2 | 81.6 | 81.1 | 1.33× |
+| 64 | 78.9 | 146.4 | 86.3 | 87.4 | 1.86× |
+| 128 | 85.4 | 240.3 | 91.3 | 92.0 | **2.81×** |
+| **Slope per concurrent request** | **+0.118** | **+1.478** | +0.113 | +0.121 | |
+
+**FPM's memory grows 12.5× faster per concurrent request than Waffle's** (beta6: 10.5×). Below about 14 concurrent
+requests FPM uses less memory; the fitted lines cross at ≈14; at 128 it uses 2.81× as much. The worker runtimes
+(A, C, D) all grow at about the same rate: the slope is the runtime's, not the framework's.
+
+Throughput under this saturation (secondary): A 1 676, C 2 029, D 1 825 req/s; B 118.5 req/s with 1.16 % errors.
+At equal features, A is 8 % below D — consistent with its slower database path — while using 5–8.5 MiB less
+memory at every step.
+
+## `[BENCH-03]` Soak — 150 rps × 2 h (C and D)
+
+| Engine | Requests (per worker) | Slope, settled window | ΔM | p99 | Errors | Verdict |
+|---|---:|---:|---:|---:|---:|---|
+| C | 1 080 001 (≈270 000) | +0.15 ± 0.11 MiB/h (n = 1 057) | −1.0 MiB | 3.2 ms | 0 | PASS |
+| D | 1 080 001 (≈270 000) | −1.00 ± 0.12 MiB/h (n = 1 056) | −3.7 MiB | 3.5 ms | 0 | PASS |
+
+No recycle was possible (loop limit 1 000 000); RSS was sampled every 6 s with no gap. The bounds are understated
+by autocorrelation, and 2 h is not a multi-hour claim: flat within the instrument over the window, nothing more.
+These soaks validate the corrected Symfony engines; Waffle's own endurance claim waits for beta8's 72-hour soak.
+
+## What this run does not establish
+
+- **Capacity.** One laptop, the load generator on the same host, 2 CPUs per engine: every figure is a relative
+  comparison on this rig.
+- **Multi-hour stability.** The soaks are 2 h.
+- **Why Waffle's database path is slower than D's.** A beta8 performance question.
+
+## How to quote it
+
+- Memory: "FPM's memory grows about 12× faster per concurrent request than Waffle's on FrankenPHP; FPM uses less
+  below ~14 concurrent requests and 2.8× more at 128" — with this method, never a bare "N× less RAM".
+- Latency: "parity with Symfony on the same runtime for JSON responses; a few tenths of a millisecond slower on
+  database-backed requests", with the rate and the rig.
+
+## Invalidated series (kept, not published)
+
+- `carry02-20261031T164459Z` — the first full run: documentation work on the laptop during BENCH-02, video playback
+  during BENCH-05 and the soaks, a lid close with a brief sleep at 18:52 UTC.
+- `carry02-20261101T000522Z` — the BENCH-02 re-run: audio and a video over C's and D's json runs.
+
+## Report — `bench/scripts/report.sh` output for run `carry02-20261101T015247Z`
+
+The generated tables, unedited. The `engine-a` dbread row at 800 rps is the flagged step (a macOS Contacts sync)
+and is not published; "MB" in these tables means MiB.
+
+
+### Latency / throughput / RSS — per engine x workload x rate
+
+| run | engine | scenario | workload | target rps | achieved req/s | p50 ms | p95 ms | p99 ms | p99.9 ms | err % | RSS mean MB | RSS peak MB |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 20261101T015311Z | engine-a | smoke | all | - | 218.0 | 2.7 | 3.9 | 4.7 | 6.6 | 0.000 | 70.2 | 70.3 |
+| 20261101T015424Z | engine-b | smoke | all | - | 165.9 | 3.9 | 22.3 | 25.4 | 30.5 | 0.000 | 67.8 | 68.0 |
+| 20261101T015530Z | engine-c | smoke | all | - | 219.6 | 2.4 | 3.8 | 4.7 | 7.2 | 0.000 | 76.3 | 76.7 |
+| 20261101T015636Z | engine-d | smoke | all | - | 217.2 | 2.7 | 4.0 | 4.8 | 7.0 | 0.000 | 75.8 | 76.1 |
+| 20261101T015819Z | engine-a | constant | json | 50 | 50.0 | 2.1 | 2.6 | 2.9 | 4.5 | 0.000 | 71.9 | 72.8 |
+| 20261101T015819Z | engine-a | constant | json | 100 | 100.0 | 2.1 | 2.4 | 2.7 | 3.9 | 0.000 | 75.5 | 77.1 |
+| 20261101T015819Z | engine-a | constant | json | 200 | 200.0 | 1.5 | 1.9 | 2.2 | 3.4 | 0.000 | 83.6 | 84.3 |
+| 20261101T015819Z | engine-a | constant | json | 400 | 400.0 | 0.9 | 1.2 | 1.6 | 3.8 | 0.000 | 99.8 | 100.7 |
+| 20261101T015819Z | engine-a | constant | json | 800 | 800.0 | 0.8 | 1.1 | 1.7 | 7.6 | 0.000 | 122.1 | 123.5 |
+| 20261101T020905Z | engine-a | constant | dbread | 50 | 50.0 | 3.4 | 4.0 | 4.7 | 7.8 | 0.000 | 72.1 | 72.9 |
+| 20261101T020905Z | engine-a | constant | dbread | 100 | 100.0 | 3.1 | 3.7 | 4.2 | 7.7 | 0.000 | 74.9 | 75.4 |
+| 20261101T020905Z | engine-a | constant | dbread | 200 | 200.0 | 2.2 | 2.7 | 3.2 | 8.0 | 0.000 | 83.8 | 84.6 |
+| 20261101T020905Z | engine-a | constant | dbread | 400 | 400.0 | 1.4 | 1.9 | 3.0 | 10.0 | 0.000 | 99.8 | 100.6 |
+| 20261101T020905Z | engine-a | constant | dbread | 800 | 800.0 | 2.5 | 5.2 | 61.3 | 149.4 | 0.000 | 122.1 | 123.4 |
+| 20261101T021947Z | engine-a | constant | dbwrite | 50 | 50.0 | 3.8 | 4.6 | 5.3 | 9.1 | 0.000 | 72.1 | 72.8 |
+| 20261101T021947Z | engine-a | constant | dbwrite | 100 | 100.0 | 3.4 | 4.0 | 4.6 | 7.3 | 0.000 | 75.4 | 75.8 |
+| 20261101T021947Z | engine-a | constant | dbwrite | 200 | 200.0 | 2.2 | 2.9 | 3.4 | 8.9 | 0.000 | 84.5 | 85.2 |
+| 20261101T021947Z | engine-a | constant | dbwrite | 400 | 400.0 | 1.5 | 2.4 | 3.6 | 9.6 | 0.000 | 100.3 | 101.1 |
+| 20261101T021947Z | engine-a | constant | dbwrite | 800 | 800.0 | 1.8 | 2.8 | 4.1 | 12.6 | 0.000 | 123.0 | 124.1 |
+| 20261101T023030Z | engine-c | constant | json | 50 | 50.0 | 2.2 | 2.6 | 2.9 | 3.8 | 0.000 | 73.6 | 74.4 |
+| 20261101T023030Z | engine-c | constant | json | 100 | 100.0 | 2.1 | 2.4 | 2.7 | 3.9 | 0.000 | 76.7 | 77.2 |
+| 20261101T023030Z | engine-c | constant | json | 200 | 200.0 | 1.5 | 1.9 | 2.2 | 3.7 | 0.000 | 85.6 | 86.0 |
+| 20261101T023030Z | engine-c | constant | json | 400 | 400.0 | 0.9 | 1.3 | 1.6 | 3.9 | 0.000 | 101.6 | 102.1 |
+| 20261101T023030Z | engine-c | constant | json | 800 | 800.0 | 0.8 | 1.2 | 1.8 | 7.5 | 0.000 | 124.1 | 124.8 |
+| 20261101T024112Z | engine-c | constant | dbread | 50 | 50.0 | 2.9 | 3.4 | 3.9 | 5.4 | 0.000 | 76.2 | 76.6 |
+| 20261101T024112Z | engine-c | constant | dbread | 100 | 100.0 | 2.7 | 3.1 | 3.4 | 5.9 | 0.000 | 81.5 | 82.1 |
+| 20261101T024112Z | engine-c | constant | dbread | 200 | 200.0 | 1.9 | 2.4 | 2.7 | 5.7 | 0.000 | 90.4 | 91.1 |
+| 20261101T024112Z | engine-c | constant | dbread | 400 | 400.0 | 1.1 | 1.6 | 2.4 | 6.7 | 0.000 | 106.5 | 107.2 |
+| 20261101T024112Z | engine-c | constant | dbread | 800 | 800.0 | 1.2 | 1.9 | 3.0 | 12.5 | 0.000 | 127.5 | 128.6 |
+| 20261101T025149Z | engine-c | constant | dbwrite | 50 | 50.0 | 3.2 | 3.8 | 4.2 | 7.3 | 0.000 | 78.1 | 78.7 |
+| 20261101T025149Z | engine-c | constant | dbwrite | 100 | 100.0 | 3.0 | 3.5 | 3.9 | 6.6 | 0.000 | 82.4 | 82.9 |
+| 20261101T025149Z | engine-c | constant | dbwrite | 200 | 200.0 | 2.1 | 2.6 | 3.1 | 6.4 | 0.000 | 91.6 | 92.2 |
+| 20261101T025149Z | engine-c | constant | dbwrite | 400 | 400.0 | 1.3 | 1.7 | 2.6 | 8.2 | 0.000 | 107.4 | 108.4 |
+| 20261101T025149Z | engine-c | constant | dbwrite | 800 | 800.0 | 1.3 | 2.1 | 3.2 | 11.8 | 0.000 | 130.0 | 130.9 |
+| 20261101T030231Z | engine-d | constant | json | 50 | 50.0 | 2.3 | 2.8 | 3.1 | 4.0 | 0.000 | 81.9 | 82.3 |
+| 20261101T030231Z | engine-d | constant | json | 100 | 100.0 | 2.2 | 2.6 | 2.8 | 4.2 | 0.000 | 86.5 | 87.2 |
+| 20261101T030231Z | engine-d | constant | json | 200 | 200.0 | 1.5 | 2.0 | 2.3 | 3.8 | 0.000 | 95.7 | 96.5 |
+| 20261101T030231Z | engine-d | constant | json | 400 | 400.0 | 0.9 | 1.2 | 1.7 | 4.8 | 0.000 | 111.3 | 112.1 |
+| 20261101T030231Z | engine-d | constant | json | 800 | 800.0 | 0.9 | 1.3 | 2.0 | 8.1 | 0.000 | 132.1 | 132.9 |
+| 20261101T031314Z | engine-d | constant | dbread | 50 | 50.0 | 3.0 | 3.5 | 4.0 | 5.9 | 0.000 | 79.8 | 80.3 |
+| 20261101T031314Z | engine-d | constant | dbread | 100 | 100.0 | 2.8 | 3.3 | 3.6 | 5.4 | 0.000 | 84.6 | 85.1 |
+| 20261101T031314Z | engine-d | constant | dbread | 200 | 200.0 | 2.0 | 2.6 | 3.3 | 6.4 | 0.000 | 91.8 | 92.2 |
+| 20261101T031314Z | engine-d | constant | dbread | 400 | 400.0 | 1.2 | 1.7 | 2.5 | 7.3 | 0.000 | 109.4 | 110.3 |
+| 20261101T031314Z | engine-d | constant | dbread | 800 | 800.0 | 1.4 | 2.3 | 3.5 | 13.2 | 0.000 | 129.8 | 130.8 |
+| 20261101T032356Z | engine-d | constant | dbwrite | 50 | 50.0 | 3.4 | 4.0 | 4.5 | 7.9 | 0.000 | 80.8 | 82.2 |
+| 20261101T032356Z | engine-d | constant | dbwrite | 100 | 100.0 | 3.1 | 3.7 | 4.0 | 6.1 | 0.000 | 84.4 | 84.9 |
+| 20261101T032356Z | engine-d | constant | dbwrite | 200 | 200.0 | 2.2 | 2.8 | 3.1 | 6.5 | 0.000 | 93.4 | 94.0 |
+| 20261101T032356Z | engine-d | constant | dbwrite | 400 | 400.0 | 1.3 | 1.9 | 2.8 | 8.3 | 0.000 | 109.5 | 110.5 |
+| 20261101T032356Z | engine-d | constant | dbwrite | 800 | 800.0 | 1.5 | 2.4 | 3.6 | 11.5 | 0.000 | 131.8 | 132.8 |
+| 20261101T033439Z | engine-a-mem | memscale | dbread | - | 1675.8 | 17.5 | 83.1 | 88.1 | 103.1 | 0.000 | 76.7 | 85.9 |
+| 20261101T034521Z | engine-b-dyn | memscale | dbread | - | 118.5 | 274.9 | 1304.2 | 1702.1 | 2143.3 | 1.164 | 125.6 | 261.5 |
+| 20261101T035558Z | engine-c-mem | memscale | dbread | - | 2029.3 | 17.3 | 71.7 | 77.7 | 92.5 | 0.000 | 83.2 | 92.1 |
+| 20261101T040641Z | engine-d-mem | memscale | dbread | - | 1824.8 | 17.2 | 80.6 | 86.3 | 100.8 | 0.000 | 83.5 | 92.4 |
+| 20261101T041722Z | engine-c | soak | all | 150 | 150.0 | 1.8 | 2.9 | 3.2 | 4.6 | 0.000 | 79.5 | 81.6 |
+| 20261101T061804Z | engine-d | soak | all | 150 | 150.0 | 2.0 | 3.2 | 3.5 | 5.1 | 0.000 | 84.2 | 87.1 |
+
+> constant-load RSS columns are sliced per rate step from the sampler
+> timeline; other scenarios show whole-run RSS.
+
+### Runs and hosts (CARRY-02: the hardware travels with every run)
+
+| run | engine | host CPU | cores | RAM GB | Docker VM CPUs / RAM GB | engine CPUs / RAM GB | umbrella commit |
+|---|---|---|---:|---:|---:|---:|---|
+| 20261101T015311Z | engine-a | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T015424Z | engine-b | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T015530Z | engine-c | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T015636Z | engine-d | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T015819Z | engine-a | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T020905Z | engine-a | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T021947Z | engine-a | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T023030Z | engine-c | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T024112Z | engine-c | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T025149Z | engine-c | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T030231Z | engine-d | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T031314Z | engine-d | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T032356Z | engine-d | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T033439Z | engine-a-mem | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 6.00 | 8a77f30788 |
+| 20261101T034521Z | engine-b-dyn | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 6.00 | 8a77f30788 |
+| 20261101T035558Z | engine-c-mem | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 6.00 | 8a77f30788 |
+| 20261101T040641Z | engine-d-mem | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 6.00 | 8a77f30788 |
+| 20261101T041722Z | engine-c | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+| 20261101T061804Z | engine-d | Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz | 12 | 16.0 | 12 / 13.6 | 2.00 / 1.00 | 8a77f30788 |
+
+### RSS ratio at pinned, bounded concurrency — NOT the 5-10x claim
+
+> **Do not quote these as the RAM factor.** BENCH-02 pre-forks FPM at a fixed 16
+> children and caps every engine at 1 GiB, which flattens FPM's memory curve before
+> the first sample. These ratios describe this rig, not the runtimes. The 5-10x claim
+> is tested by BENCH-05 (`run-bench.sh engine-b-dyn memscale`), which pins only CPU,
+> lets memory grow, and switches FPM to a dynamic pool.
+
+| scenario | workload | metric | engine-b / engine-a | engine-b / engine-c |
+|---|---|---|---:|---:|
+| smoke | all | RSS mean | 0.97 | 0.89 |
+| smoke | all | RSS peak | 0.97 | 0.89 |
+
+### BENCH-03 soak dM (leak verdict, PASS if |dM| <= max(1%, 5 MB))
+
+| run | engine | span | first-window mean MB | last-window mean MB | dM MB | tolerance MB | slope MB/h ± 95 % (n) | verdict |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| 20261101T041722Z | engine-c | 120min | 79.4 | 78.4 | -1.03 | 5.00 | +0.15 ± 0.11 (n=1057) | PASS (bounds leak rate at ~2 MB/h — window is 120min, not multi-hour) |
+| 20261101T061804Z | engine-d | 119min | 84.6 | 80.8 | -3.74 | 5.00 | -1.00 ± 0.12 (n=1056) | PASS (bounds leak rate at ~3 MB/h — window is 119min, not multi-hour) |
+
+> dM windows adapt to the sampled span: settle for 20% (max 10min), then compare that window against the final one (30% of span, max 10min). Engine-a must have run with MAX_REQUESTS=1000000 (Trap 3) or worker recycling masks a leak. `docker stats` quantises to ~0.1 MiB, so treat sub-MB deltas as flat, not as precision.
+
+> The slope is the least-squares fit of RSS over the settled window (everything after the settle), with its 95 % bound (Student t). RSS samples are autocorrelated, so the bound understates the true uncertainty: a leak claim needs the whole interval above zero, and a flat run is "no leak above this rate", not "no leak" (AGENTS.md §7).
+
+---
+
+# Beta6 AXE 5 (tri-engine k6 benchmark) — as recorded, August–September 2026
 
 - **Date:** 2026-08-02 / 2026-08-03 (full-length soaks) · Engine C corrections recorded 2026-09-23
 - **Subject:** `waffle-commons/skeleton` @ `pre-release/0.1.0-beta6`, FrankenPHP 1.12.2 / PHP 8.5
