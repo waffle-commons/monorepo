@@ -41,6 +41,9 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCAN_DIRS = ("workspace", "skeleton", "academy", "bench")
 LOCAL_IMAGES = re.compile(r"^(waffle-[\w-]*|waffle-commons)(?::|$)")
 FROM = re.compile(r"^(\s*FROM\s+(?:--platform=\S+\s+)?)(\S+)(.*)$", re.IGNORECASE)
+# `COPY --from=<image>` pulls an image too (`composer:latest` slipped through twice this way); a build
+# stage name or a stage index after `--from=` names no image and is skipped below.
+COPY_FROM = re.compile(r"^(\s*COPY\s+(?:--(?!from=)\S+\s+)*--from=)(\S+)(.*)$", re.IGNORECASE)
 IMAGE = re.compile(r"^(\s*image:\s*)(['\"]?)([^'\"\s#]+)\2(.*)$")
 ARG = re.compile(r"^\s*ARG\s+(\w+)(?:=(['\"]?)(.*?)\2)?\s*$", re.IGNORECASE)
 VARIABLE = re.compile(r"\$\{(\w+)(?::-([^}]*))?\}|\$(\w+)")
@@ -143,14 +146,16 @@ def main() -> int:
                     defaults[arg.group(1)] = arg.group(3)
                     arg_lines[arg.group(1)] = i
                 continue
-            match = FROM.match(line) if dockerfile else IMAGE.match(line)
+            from_line = FROM.match(line) if dockerfile else None
+            copy_line = COPY_FROM.match(line) if dockerfile and from_line is None else None
+            match = (from_line or copy_line) if dockerfile else IMAGE.match(line)
             if match is None:
                 continue
             ref = match.group(2) if dockerfile else match.group(3)
             if not dockerfile and ref.startswith("!"):
                 # A YAML tag (`image: !reset null`) removes the image in an override; it names none.
                 continue
-            if dockerfile:
+            if from_line is not None:
                 seen_from = True
                 stage = re.search(r"\bAS\s+(\S+)", match.group(3), re.IGNORECASE)
                 if stage:
@@ -190,7 +195,7 @@ def main() -> int:
                 changed = True
                 print(f"  ↓ {where}  {image}@{here[0]}" + (f" (ARG {holder}, line {carrier + 1})" if holder else ""))
                 continue
-            if ref.lower() in stages or ref == "scratch":
+            if ref.lower() in stages or ref == "scratch" or ref.isdigit():
                 continue
             if from_arguments:
                 print(f"  ✗ {where}  {ref}: built from arguments with no digest (pin through an ARG …_DIGEST)")
