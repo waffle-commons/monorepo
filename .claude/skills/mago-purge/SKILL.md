@@ -38,7 +38,7 @@ PHP 8.5 constructs.
 - **`mago.toml` template skew:** the beta3 scaffold's `property-type`/`return-type` linter rules break
   mago 1.29.0 parsing — delete them (the analyzer already enforces typing). Mago "errors" in
   `skeleton`/vendored components are usually dependency lag — fix by bumping deps, **never** baseline.
-- **mago 1.50 (the beta7 toolchain):**
+- **Since mago 1.50:**
   - The template apps' guard runs `mode = "perimeter"` (`skeleton/mago.toml`, `workspace/mago.toml`),
     which removed 1.50's structural WARN.
   - The composer package downloads its binary on first use, and that progress bar is not a finding:

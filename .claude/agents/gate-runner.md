@@ -21,7 +21,7 @@ docker exec -i -w /waffle-commons/{component} waffle-dev composer igor    # work
 
 ## The bar (all must hold)
 - **`mago` = ZERO output.** Not just "no errors" — **any** warning, info, or help/notice line is a
-  failure. Report the exact lines. (mago 1.50's first-run binary download is not a finding; `wfl dod`
+  failure. Report the exact lines. (mago's first-run binary download is not a finding; `wfl dod`
   warms it.)
 - **`tests`** pass with **≥95% coverage**; report coverage and any failing test names. Passing means a clean
   `OK (…)` verdict: `OK, but …` (PHPUnit issues, skipped, incomplete or risky tests) is a FAIL even

@@ -80,7 +80,7 @@ acceptance check of 2026-10-31.
 - `ResettableInterface` stays optional: state kept on purpose is declared with
   `#[WorkerSafe(reason: …)]` (RFC-001 §5).
 - PHP 8.5.12 on FrankenPHP 1.13.2, the security releases for PHP2Shell (CVE-2026-109618,
-  CVE-2026-109619); `pcntl` in the images; mago 1.50, psalm 6.19, igor-php 0.9.7.
+  CVE-2026-109619); `pcntl` in the images; mago 1.59, psalm 6.20, igor-php 0.10.1, PHPUnit 12.5.42.
 
 ### Templates (`skeleton`, `workspace`)
 

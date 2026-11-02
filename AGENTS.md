@@ -104,7 +104,7 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 (`composer igor` per component) audits this and is part of the definition of done:
 
 - **One auditor version everywhere.** `vendor/bin/igor-php` is a bootstrapper that downloads
-  `releases/latest` unless told otherwise, so the version lives in `.igor-version` (currently 0.9.7):
+  `releases/latest` unless told otherwise, so the version lives in `.igor-version`:
   `igor.sh`, `wfl dod` and every CI workflow seed it and fail when the resolved binary differs.
   `wfl ci:check` catches a CI pin that drifts from the file.
 - **0 KO required.** igor grades each stateful class **KO** / **WARN** / OK — **only KO fails the
