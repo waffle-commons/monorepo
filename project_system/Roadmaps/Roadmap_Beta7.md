@@ -46,6 +46,11 @@ aliases: []
   - *Status 2026-10-31:* the repository settings are applied on the maintainer's request: merge commits only (squash
     and rebase off), delete-branch-on-merge on and `allow_update_branch` on: the merge settings now equal `contracts`'.
     Still open before the wave: Packagist (each package still answers 404).
+  - *Status 2026-10-31, evening — done:* each repository's `main` still held the template's placeholder
+    `composer.json`, which Packagist rejects. On the maintainer's request it was fast-forwarded to the scaffold commit
+    (queue `1e3f1ab`, openapi `27ccf1e`, serializer `c22e519`, testing `77f8bf8`: no code, no tag; CI green), and the
+    maintainer registered the four packages the same evening. Each answers 200 with `dev-main` (checked 2026-11-02);
+    the first version, `0.1.0-beta7`, arrives with the wave. The method is now in the `component-scaffold` skill.
 - **Toolchain baseline for the release** (the whole Dependabot backlog, applied in lockstep): mago 1.50,
   psalm 6.19, igor-php **0.9.7** (pinned by `.igor-version`, enforced in CI and in `wfl dod`), GitHub
   Actions checkout v7 / cache v6 / codecov v7 / paths-filter v4, TruffleHog pinned to a release instead
