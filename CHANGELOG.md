@@ -136,8 +136,8 @@ figures. `bench/scripts/run-carry02.sh` chains the campaign, and `--only` re-run
   Project Graphify git hooks.
 - **Strictness & supply chain:** per-component coverage floors that only ratchet up
   (`wfl coverage:ratchet`), mutation testing against floors (`wfl mutation`, Infection pinned),
-  CycloneDX SBOMs (`wfl sbom`), Docker images pinned by digest (`wfl images:pin`), an install
-  check with the network off (`wfl offline`), and backups (`wfl backup`).
+  CycloneDX SBOMs (`wfl sbom`), Docker images pinned by digest (`wfl images:pin`, `COPY --from=<image>`
+  included), an install check with the network off (`wfl offline`), and backups (`wfl backup`).
 - **CI:** one canonical component workflow, with any drift reported by `wfl ci:check`; every
   component workflow starts Redis, so the Redis-backed suites no longer skip on GitHub; the
   workspace job runs PHPUnit; the igor pin is enforced in CI.
