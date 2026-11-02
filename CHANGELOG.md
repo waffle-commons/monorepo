@@ -106,8 +106,15 @@ The rig was hardened before any new public number: a run can no longer overwrite
 every run records its host, soak slopes carry their 95 % bound, Engine C runs Symfony's native
 FrankenPHP worker runner (its 500-request default had invalidated the beta6 soak comparison),
 and a new Engine D adds Engine A's per-request security work to the Symfony app. The images are
-pinned by digest. The beta6 numbers in `bench/BENCH-GATE-RESULT.md` were measured on FrankenPHP
-1.12.2; the re-measurement on 1.13.2 starts a new series.
+pinned by digest. The re-measurement on FrankenPHP 1.13.2 now leads `bench/BENCH-GATE-RESULT.md`,
+where the beta6 numbers stay, marked as not current. It is a full campaign on a laptop checked
+idle against its power log; two earlier runs are kept as invalidated series, because the laptop
+was in use while they ran. JSON responses are at parity with Symfony on the same runtime.
+Database-backed requests are 0.3–0.4 ms slower at the median than Symfony doing the same
+per-request work, with 7.7–10 MiB less memory (the gap is a beta8 question). PHP-FPM's memory grows
+12.5× faster per concurrent request than Waffle's, crossing near 14 concurrent requests and
+reaching 2.8× at 128. The two-hour soaks are flat. One laptop: relative comparisons, not capacity
+figures. `bench/scripts/run-carry02.sh` chains the campaign, and `--only` re-runs chosen phases.
 
 ### Developer tooling (umbrella only — no framework change)
 

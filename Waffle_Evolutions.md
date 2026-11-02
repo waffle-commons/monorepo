@@ -3,7 +3,7 @@ title: "Waffle Evolutions — Is waffle-commons the Future of PHP?"
 type: article
 author: Leslie Petrimaux
 date: 2026-05-29
-date_updated: 2026-10-31
+date_updated: 2026-11-02
 status: beta
 tags:
   - php
@@ -476,11 +476,13 @@ The window now has an end date: the beta8 tag (December 2026) is the freeze. Bef
 
 ### 5.8 What a laptop can and cannot measure
 
-Waffle's performance case rests on a reproducible K6 rig (`bench/`) that isolates one variable per comparison: the Waffle skeleton's production image in FrankenPHP worker mode (Engine A), an idiomatic Symfony API on PHP-FPM behind nginx (B), the same Symfony app in FrankenPHP worker mode (C), and that app doing Engine A's per-request security work (D). A against C isolates the framework (though A also runs its secured pipeline), B against C the runtime, and A against D the framework at equal features. Published numbers live in `bench/BENCH-GATE-RESULT.md`, each with its method; the Beta-6 results there were measured on FrankenPHP 1.12.2, and the rig now pins 1.13.2, so the next run starts a new series.
+Waffle's performance case rests on a reproducible K6 rig (`bench/`) that isolates one variable per comparison: the Waffle skeleton's production image in FrankenPHP worker mode (Engine A), an idiomatic Symfony API on PHP-FPM behind nginx (B), the same Symfony app in FrankenPHP worker mode (C), and that app doing Engine A's per-request security work (D). A against C isolates the framework (though A also runs its secured pipeline), B against C the runtime, and A against D the framework at equal features. Published numbers live in `bench/BENCH-GATE-RESULT.md`, each with its method: the Beta-7 series there (FrankenPHP 1.13.2) is the current one, and the Beta-6 record (FrankenPHP 1.12.2) is kept below it, marked as not current.
 
 The rig has corrected itself more than once, which is the point of publishing the method with the numbers. Beta-7 hardened it before any new public number: a run can no longer overwrite a series, every run records its host, soak slopes come with their 95 % bound, and Engine C now runs Symfony's native FrankenPHP worker runner with its loop limit raised, because the 500-request default had recycled the workers and invalidated the Beta-6 soak comparison. The rig also found a real cost in Waffle: the pool's liveness ping doubled the database round trips. A freshness window halved the transactions per pooled read (4.21 → 2.12) and moved the `dbread` saturation knee from 1 200 to 1 500 requests per second on the same rig; the Beta-6 knee itself (400 requests per second) no longer reproduces even with the old code, a reminder that a number belongs to its rig.
 
-The project's rule (`AGENTS.md` §7) is blunt: *"A laptop cannot measure capacity or hold a multi-day soak. Say so instead of publishing."* The rig runs on one laptop, so it publishes relative comparisons, latency with its rate and concurrency, and memory slopes — not capacity figures. The Beta-7 re-measurement on the hardened rig runs before the tag; the 72-hour soak of beta8 and the four-week EcoShield soak of RC1 are the sustained runs that will turn the runtime claims into durable evidence.
+The Beta-7 re-measurement (November 2026, the full campaign on a laptop checked idle against its power log) is published there, and it is not all flattering. JSON responses are at parity with Symfony on the same runtime: a median of 0.8–0.9 ms at 800 requests per second for all three worker engines. Database-backed requests are a few tenths of a millisecond slower in Waffle than in Symfony doing the same per-request work — 0.3–0.4 ms at the median at 50–100 requests per second — while Waffle's process uses 7.7–10 MiB less memory; the cause of that gap is a beta8 question. The memory finding holds and sharpens: PHP-FPM's memory grows 12.5× faster per concurrent request than Waffle's (+1.478 against +0.118 MiB), FPM uses less memory below about 14 concurrent requests and 2.8× more at 128 — and the three worker engines grow at nearly the same rate, so that advantage belongs to the resident runtime, not to the framework. Getting there took three runs: the first two are kept as invalidated series, because the laptop was in use while they ran — documentation work, a video, a lid closed for a few seconds — and its power log showed it.
+
+The project's rule (`AGENTS.md` §7) is blunt: *"A laptop cannot measure capacity or hold a multi-day soak. Say so instead of publishing."* The rig runs on one laptop, so it publishes relative comparisons, latency with its rate and concurrency, and memory slopes — not capacity figures. Its two-hour soaks show no drift within what the instrument resolves, which is not a multi-hour claim: the 72-hour soak of beta8 and the four-week EcoShield soak of RC1 are the sustained runs that will turn the runtime claims into durable evidence.
 
 ***
 
@@ -553,7 +555,7 @@ The Beta-7 refresh (31 October 2026, on the pre-release tree ahead of the `0.1.0
 - `project_system/Roadmaps/Roadmap_Beta7.md` — every item's recorded status and evidence, and the acceptance check of 31 October 2026 — and `project_system/Logs/Releases/Log_Beta6.md`
 - `project_system/RFCs/RFC_023_Kubernetes_Operability.md`
 - `skeleton/src/Factory/AppKernelFactory.php` (the Beta-7 middleware order)
-- `bench/README.md` (the engine matrix and its comparisons)
+- `bench/README.md` (the engine matrix and its comparisons) and `bench/BENCH-GATE-RESULT.md` (the Beta-7 series, published on 2 November 2026)
 - `README.md` (umbrella)
 
-Quotes from the Beta-5 reading are verbatim from the files listed for it, at the `0.1.0-beta5` release; the Beta-7 facts and quotes come from the files above as they stood on 31 October 2026.
+Quotes from the Beta-5 reading are verbatim from the files listed for it, at the `0.1.0-beta5` release; the Beta-7 facts and quotes come from the files above as they stood on 31 October 2026, and the benchmark figures from the Beta-7 series published on 2 November 2026.
