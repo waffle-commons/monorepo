@@ -114,8 +114,9 @@ carry-over, all before the beta8 API freeze.
   engines C and D, 2 h each.
 - `[GATE-02]` → the gateway's 0.2.0 on the released beta7, then the FinOps benchmark `[GATE-03]`.
 - `[CARRY-05]` upstream: the igor-php detector fix, then the pin moves and 27 annotations collapse.
-- Toolchain bumps proposed by Dependabot (mago 1.58.2, igor-php 0.10.1, psalm 6.20.1), decided before
-  the freeze, and the `mixed` still in `contracts`, for the BC review.
+- The toolchain majors (PHPUnit 13.4, Predis 3.7), decided before the freeze; the minor/patch refresh
+  (mago 1.59, igor-php 0.10.1, psalm 6.20) shipped in beta7 on 2026-11-02. The `mixed` still in
+  `contracts`, for the BC review.
 
 ## 7. Verdict
 

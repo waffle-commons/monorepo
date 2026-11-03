@@ -60,6 +60,14 @@ The 0.9 line (pinned since beta7 kickoff: 0.9.7) added detectors; the first swee
 | "Usage of PHP Superglobal" | only `GlobalsFactory` (the sanctioned boundary) may read them at call time; a front controller must use the env registry instead — **fix it, don't annotate** | **method** |
 | "Property 'x' is mutated but not reset in reset()" | write-through on a `readonly` dependency | **property** |
 
+**igor 0.10 (pinned in beta7 since 2026-11-02, see `.igor-version`)** keeps the 0.9 families and widens
+the process-state rule: a call during a request to `chdir`, `umask`, `mb_internal_encoding`,
+`mb_regex_encoding`, `bcscale`, `set_error_handler`, `set_exception_handler`, `register_shutdown_function`,
+`gc_disable`, `header`, `http_response_code` or `session_*` is a finding (zero-argument getter calls are
+not). These poison the process for every later request: move the call to boot or remove it — fix it,
+don't annotate. The `[CARRY-05]` fork fix is not in 0.10.1, so injected-dependency findings still need
+the method-level attribute.
+
 The `reason` must state *why* nothing survives the request — "per request" alone is not a reason.
 Verify every claim you write (e.g. "ended in finally") against the code before annotating.
 

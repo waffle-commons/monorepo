@@ -59,6 +59,14 @@ aliases: []
   stays out of this release unless an item needs it. **`pcntl`** joined the development image, the
   skeleton `base` stage and the bench engine on 2026-09-30: the SIGTERM drain of `queue:work`
   (`[QUEUE-02]`, `[OPS-02]`) depends on it.
+  - *Toolchain refresh 2026-11-02 (maintainer: every Composer dependency to its latest minor/patch, mago and
+    igor shipped in beta7):* mago **^1.59**, igor-php **0.10.1** (`.igor-version` and every CI pin), psalm
+    ^6.20, php-mock-phpunit ^2.16, PHPUnit 12.5.42, TruffleHog v3.99.7; every third-party lock entry
+    refreshed, `waffle-commons/*` entries left for the release-day relock. academy `labs` and `sandbox` moved
+    to `prefer-stable` (stable PHPUnit and mago instead of dev branches). Mago 1.59 fixes landed in `config`
+    and `routing` tests, `RouteParser` and telemetry's `ArrayCache` double. Gates: 27 projects `wfl dod`
+    PASS and `psalm --taint-analysis` clean; academy labs `composer verify` (answer key) OK, 54 tests.
+    Majors stay out: PHPUnit 13.4 and Predis 3.7 go to beta8.
 - **RFC homes (2026-09-30):** `[OPS-01]`/`[OPS-02]` are specified in **RFC-023** (Kubernetes Operability) and
   `[NET-02]`/`[NET-03]` in **RFC-024** (Outbound Resilience); `[OPS-03]` stays in RFC-014 and `[NET-01]` in
   RFC-017 §3.1. Each RFC lists the design questions to settle before its code lands.
@@ -244,6 +252,12 @@ aliases: []
     - Open: pushing the branch and opening the PR are the maintainer's. Once a release carries the fix and
       the pin moves, the 27 method-level annotations become one per dependency. Upstream is at 0.10.1;
       whether to bump from 0.9.7 before the freeze is a separate decision.
+  - *Decision 2026-11-02 — beta7 ships with igor-php 0.10.1:* the maintainer asked for the auditor bump in
+    this release. 0.10.1 does **not** carry the fork fix (`3655cbd` is not an ancestor of `v0.10.1`), so the
+    27 method-level annotations stay; the upstream PR is still the maintainer's. 0.10.0 widened the
+    process-state rule (upstream #85: `chdir`, `umask`, `mb_internal_encoding`, `bcscale`,
+    `set_error_handler`, `register_shutdown_function`, `gc_disable`, `header`, `http_response_code`,
+    `session_*` called during a request); `wfl igor` with 0.10.1 still reports 0 KO on every target.
 - **`[CARRY-06]` Small follow-ups** (Retro_Beta6 §6): `Constant::ATTR_PARAMS` promotion, AOT compiled-memo
   runtime write-through, a PHPUnit step in the workspace CI job.
   - *Status 2026-10-22 — done:*

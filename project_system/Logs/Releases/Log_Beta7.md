@@ -128,11 +128,11 @@ published run overlapped a macOS Contacts sync and is flagged.
 
 ## 3. Quality gates
 
-Final pre-wave run, 2026-11-02:
+Final pre-wave run, 2026-11-03 (after the dependency refresh of 2026-11-02):
 
-- `wfl pre-release --all`: **READY** for all 27 repositories in `RELEASE_INCLUDE`. 26 DoD PASS (Mago zero
-  output, a clean PHPUnit verdict, coverage at or above 95 % and each component's floor, `wfl igor` 0 KO
-  with auditor 0.9.7, `composer audit` without advisories); `documentation` has no `composer.json`, so
+- `wfl pre-release --all`: **READY** for all 27 repositories in `RELEASE_INCLUDE`. 26 DoD PASS (Mago 1.59 zero
+  output, a clean PHPUnit 12.5.42 verdict, coverage at or above 95 % and each component's floor, `wfl igor` 0 KO
+  with auditor 0.10.1, `composer audit` without advisories; `psalm --taint-analysis` 6.20 clean on 27 projects); `documentation` has no `composer.json`, so
   only its paperwork applies. Every README is stamped `0.1.0-beta7`, every CHANGELOG has its entry,
   and a CycloneDX SBOM was written for each package.
 - Line coverage: 100 % on `async`, `contracts`, `error-handler`, `event-dispatcher`, `pipeline`,
@@ -141,22 +141,23 @@ Final pre-wave run, 2026-11-02:
   `testing` 100 %.
 - Acceptance check of 2026-10-31 (two `acceptance-verifier` runs, targeted tests in `waffle-dev`): NET,
   QUEUE, OPS, API and "all items" pass on evidence.
-- `wfl ci:check`: no drift across the 25 library components (igor pin 0.9.7).
+- `wfl ci:check`: no drift across the 25 library components (igor pin 0.10.1).
 - `wfl rulesets:check`: 30 repositories aligned, 0 drifted.
-- `wfl ai:check`: clean.
+- `wfl ai:check`: clean (2026-11-03). `wfl igor`: 28 targets, 0 KO.
 
 ## 4. Known gaps carried forward
 
 - **Database path:** 0.3–0.4 ms slower at the median than Symfony doing the same work (beta8
   performance question).
 - **`RetryPolicy`** bounds its back-off cap and budget from below only; a ceiling is a beta8 question.
-- **`[CARRY-05]`:** the igor-php detector fix needs its upstream PR; once a release carries it and the pin
-  moves, the 27 method-level annotations become one per dependency.
+- **`[CARRY-05]`:** the igor-php detector fix needs its upstream PR (0.10.1, the auditor beta7 ships with,
+  does not carry it); once a release carries it and the pin moves, the 27 method-level annotations become
+  one per dependency.
 - **`[GATE-02]`:** the gateway's alpha (0.2.0) moves from the local beta7 tree to the released packages
   after the wave: drop the local framework copies, `composer update 'waffle-commons/*'`, rerun the
   gates and the lab on the production image.
-- **Toolchain bumps not taken before the tag:** Dependabot proposes mago 1.58.2, igor-php 0.10.1, psalm
-  6.20.1 and php-mock-phpunit 2.16.0 on `contracts` (igor stays pinned at 0.9.7 by `.igor-version`).
+- **Toolchain majors not taken:** PHPUnit 13.4 and Predis 3.7 (beta8). The minor/patch refresh of
+  2026-11-02 shipped: mago 1.59, igor-php 0.10.1, psalm 6.20, php-mock-phpunit 2.16, PHPUnit 12.5.42.
 - **`contracts` still carries `mixed`** (`Reactive\MutationRecord::$value`, the `MatchedRoute` and
   `Route` docblocks): for the beta8 BC review.
 
