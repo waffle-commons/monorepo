@@ -159,6 +159,13 @@ def checked_out(path):
     return first not in SUBMODULES or (os.path.isdir(first) and len(os.listdir(first)) > 0)
 
 
+def git_ignored(path):
+    # A gitignored path (`bench/results/`, `.claude/settings.local.json`) exists only where someone created it:
+    # a fresh clone or CI never has it, so checking it would pass on one machine and fail on the next.
+    return subprocess.run(['git', 'check-ignore', '-q', '--', path], check=False,
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+
+
 def check_refs(path, text):
     for sub in set(re.findall(r'\bwfl ([a-z][a-z:-]*)', text)):
         if sub not in WFL and not (sub.endswith(':') and any(w.startswith(sub) for w in WFL)):
@@ -170,7 +177,7 @@ def check_refs(path, text):
         p = ref[2:] if ref.startswith('./') else ref
         if any(c in p for c in '*<>{}…') or p in EXTERNAL_PATHS or p.startswith(EXTERNAL_PREFIXES):
             continue
-        if checked_out(p) and not os.path.exists(p.rstrip('/')):
+        if checked_out(p) and not os.path.exists(p.rstrip('/')) and not git_ignored(p):
             err(path, f'`{ref}` does not exist')
     # [[x]] is a cross-reference only inside skills and agents; docs use it for Obsidian syntax.
     wiki = set(re.findall(r'\[\[([a-z][a-z0-9-]+)\]\]', text)) if path.startswith('.claude/') else set()
