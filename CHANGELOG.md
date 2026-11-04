@@ -164,7 +164,8 @@ figures. `bench/scripts/run-carry02.sh` chains the campaign, and `--only` re-run
 - **CI:** one canonical component workflow, with any drift reported by `wfl ci:check`; every
   component workflow starts Redis, so the Redis-backed suites no longer skip on GitHub; the
   workspace job runs PHPUnit and checks out the components named by the path repositories in
-  `workspace/composer.json` (a hand-kept list had missed openapi, queue and serializer), and its
+  `workspace/composer.json` (a hand-kept list had missed openapi, queue and serializer), starts
+  PostgreSQL as well as Redis (every POST through the kernel leases a connection), and its
   production-boot test brings its own secrets (it passed only against a local `.env`); the igor
   pin is enforced in CI. `wfl ai:check` skips the paths git ignores (`bench/results/`,
   `.claude/settings.local.json`): they exist only on the machine that created them, so CI failed

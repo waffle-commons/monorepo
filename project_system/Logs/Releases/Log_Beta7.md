@@ -152,8 +152,9 @@ morning read the same, `skeleton` at 97.00 %):
   unchanged (`cache` 95.57 %, `data` 95.90 %, `config` 96.00 %); `routing` reads 96.40 % with its new
   cache-outage tests, `skeleton` 97.05 % with `SecretFactory`. The skeleton's Mago gate now covers its entry
   points and runs `mago guard`. The workspace, outside the wave, passes its DoD (69 tests, its coverage
-  reported, not gated). On GitHub its umbrella job now reaches PHPUnit and passes 67 of 69: the two
-  `KernelBridgeTest` POSTs need a database, which the job does not start (open).
+  reported, not gated). On GitHub its umbrella job, which stopped at `composer install` until that day,
+  passes all 69 tests (run 41818619947), now that it starts PostgreSQL: every POST through the kernel
+  leases a connection.
 - The skeleton's public path, tested from a `git archive` of its branch (what Packagist serves, with
   `export-ignore` applied): `create-project` generates `APP_SECRET` and `WAFFLE_AUTH_SECRET` and versions its
   lock, a committed project clones and installs without a warning, and the project boots in production on
@@ -198,8 +199,6 @@ Previous run, 2026-11-03 (after the dependency refresh of 2026-11-02):
   - Mago does not cover the workspace's entry points (`bin/waffle`, `public/index.php`,
     `config/preload.php`), as it did not the skeleton's until that day.
   - The skeleton has no job in the umbrella CI matrix: its gates are local (`wfl dod skeleton`).
-  - The umbrella CI's workspace job starts no database, so the two `KernelBridgeTest` POSTs to
-    `/register` answer 500 there (`TransactionIsolationMiddleware` leases a connection). Open.
   - `config/preload.php` picks the framework's classes by a `/waffle-commons/` substring, which a
     project's own path can contain; harmless in the image, where the project lives in `/app`.
   - The two tutorials, written for `0.1.0-beta6`, install that release and await their beta7 refresh
