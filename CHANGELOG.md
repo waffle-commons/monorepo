@@ -103,8 +103,17 @@ acceptance check of 2026-10-31.
   - `create-project.sh` creates a project with Docker only.
   - A generated project can be committed and cloned: `scripts/` and its lock were ignored, and the
     lock's hash went stale.
-  - `WAFFLE_CSRF_SECRET` and `WAFFLE_AUTH_SECRET` are generated with `APP_SECRET`, and the
-    production compose requires them.
+  - `APP_SECRET` and `WAFFLE_AUTH_SECRET` are generated, and the production compose requires them.
+  - `bin/waffle db:migrate`, `db:status` and `db:rollback` never reached the database: the CLI
+    built its configuration without the environment registry, so every `%env(...)%` was `null`
+    (and `cache:clear` tried `localhost`). It now reads `.env` and the process environment.
+  - Mago checks the entry points too (`scripts/`, `public/`, `config/`, `bin/waffle`), and the
+    skeleton's `composer mago` runs `mago guard`.
+- **`APP_SECRET` is the root secret.** In the skeleton and the workspace, the CSRF key derives from
+  it (HKDF-SHA256, `SecretFactory::csrf()`) unless `WAFFLE_CSRF_SECRET` is set, so every worker and
+  every replica signs with the same key. Production still refuses to boot without a valid key;
+  `WAFFLE_AUTH_SECRET` stays explicit, since other services share it. `wfl csrf-init` signs with
+  the same key.
 
 ### Documentation
 
@@ -155,7 +164,8 @@ figures. `bench/scripts/run-carry02.sh` chains the campaign, and `--only` re-run
 - **CI:** one canonical component workflow, with any drift reported by `wfl ci:check`; every
   component workflow starts Redis, so the Redis-backed suites no longer skip on GitHub; the
   workspace job runs PHPUnit and checks out the components named by the path repositories in
-  `workspace/composer.json` (a hand-kept list had missed openapi, queue and serializer); the igor
+  `workspace/composer.json` (a hand-kept list had missed openapi, queue and serializer), and its
+  production-boot test brings its own secrets (it passed only against a local `.env`); the igor
   pin is enforced in CI. `wfl ai:check` skips the paths git ignores (`bench/results/`,
   `.claude/settings.local.json`): they exist only on the machine that created them, so CI failed
   where a local run passed.

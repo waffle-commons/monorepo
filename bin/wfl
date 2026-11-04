@@ -514,48 +514,67 @@ cmd_cache_clear() {
   ok "cache cleared (var/cache/psr16)"
 }
 
+# Value of KEY from the environment, else from the first of the umbrella .env and
+# workspace/.env that names it (empty when none does).
+_env_value() {
+  local key="$1" file
+  if [ -n "${!key:-}" ]; then
+    printf '%s' "${!key}"
+    return 0
+  fi
+  for file in "$REPO_ROOT/.env" "$REPO_ROOT/workspace/.env"; do
+    if [ -f "$file" ] && grep -q "^$key=" "$file"; then
+      grep "^$key=" "$file" | head -n 1 | cut -d'=' -f2- || true
+      return 0
+    fi
+  done
+}
+
 cmd_csrf_init() {
   local token_id="${1:-_default}"
-  local secret=""
+  local secret app_secret
+  secret="$(_env_value WAFFLE_CSRF_SECRET)"
+  app_secret="$(_env_value APP_SECRET)"
 
-  # Try to read WAFFLE_CSRF_SECRET from environment or .env files
-  if [ -n "${WAFFLE_CSRF_SECRET:-}" ]; then
-    secret="$WAFFLE_CSRF_SECRET"
-  elif [ -f "$REPO_ROOT/.env" ] && grep -q '^WAFFLE_CSRF_SECRET=' "$REPO_ROOT/.env"; then
-    secret="$(grep '^WAFFLE_CSRF_SECRET=' "$REPO_ROOT/.env" | cut -d'=' -f2- || true)"
-  elif [ -f "$REPO_ROOT/workspace/.env" ] && grep -q '^WAFFLE_CSRF_SECRET=' "$REPO_ROOT/workspace/.env"; then
-    secret="$(grep '^WAFFLE_CSRF_SECRET=' "$REPO_ROOT/workspace/.env" | cut -d'=' -f2- || true)"
-  fi
-
-  # Run PHP execution
+  # Same key as the app (SecretFactory::csrf()): WAFFLE_CSRF_SECRET when it has 32
+  # bytes or more, else HKDF-SHA256 over APP_SECRET, else a fresh random secret.
   local php_code
   php_code="
-\$secret = getenv('WAFFLE_CSRF_SECRET');
-if (!\$secret) {
+\$read = static function (string \$key): string {
+    \$value = (string) getenv(\$key);
+    if (\$value !== '') {
+        return \$value;
+    }
     \$envFiles = [
         getenv('REPO_ROOT') . '/workspace/.env',
         getenv('REPO_ROOT') . '/.env',
         '/waffle-commons/workspace/.env',
-        '/waffle-commons/.env'
+        '/waffle-commons/.env',
     ];
     foreach (\$envFiles as \$envFile) {
-        if (\$envFile && file_exists(\$envFile)) {
-            \$lines = file(\$envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
-            foreach (\$lines as \$line) {
-                if (str_starts_with(trim(\$line), 'WAFFLE_CSRF_SECRET=')) {
-                    \$parts = explode('=', \$line, 2);
-                    \$secret = trim(\$parts[1], \" \t\n\r\0\x0B'\\\"\");
-                    break 2;
-                }
+        if (!is_file(\$envFile)) {
+            continue;
+        }
+        foreach (file(\$envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as \$line) {
+            if (str_starts_with(trim(\$line), \$key . '=')) {
+                return trim(trim(explode('=', \$line, 2)[1]), chr(34) . chr(39));
             }
         }
     }
-}
+    return '';
+};
 
-\$isGenerated = false;
-if (!\$secret || strlen(\$secret) < 32) {
-    \$secret = bin2hex(random_bytes(32));
-    \$isGenerated = true;
+\$secret = \$read('WAFFLE_CSRF_SECRET');
+\$source = 'WAFFLE_CSRF_SECRET';
+if (strlen(\$secret) < 32) {
+    \$root = \$read('APP_SECRET');
+    if (strlen(\$root) >= 32) {
+        \$secret = hash_hkdf('sha256', \$root, 32, 'waffle-commons/csrf/v1');
+        \$source = 'APP_SECRET';
+    } else {
+        \$secret = bin2hex(random_bytes(32));
+        \$source = 'GENERATED';
+    }
 }
 
 \$rawSid = random_bytes(32);
@@ -567,8 +586,8 @@ if (!\$secret || strlen(\$secret) < 32) {
 \$hmac = hash_hmac('sha256', \$nonce . \$timestampBytes . \$tokenId . 'anon:' . \$sid, \$secret, true);
 \$token = rtrim(strtr(base64_encode(\$nonce . \$timestampBytes . \$hmac), '+/', '-_'), '=');
 
-echo 'SECRET:' . \$secret . \"\n\";
-echo 'GENERATED:' . (\$isGenerated ? 'true' : 'false') . \"\n\";
+echo 'SECRET:' . (\$source === 'APP_SECRET' ? bin2hex(\$secret) : \$secret) . \"\n\";
+echo 'SOURCE:' . \$source . \"\n\";
 echo 'SID:' . \$sid . \"\n\";
 echo 'TOKEN:' . \$token . \"\n\";
 echo 'ID:' . \$tokenId . \"\n\";
@@ -577,13 +596,13 @@ echo 'ID:' . \$tokenId . \"\n\";
   local php_out=""
   local container_state; container_state="$(_container_state)"
   if [ "$container_state" = "running" ]; then
-    php_out="$(docker exec -e REPO_ROOT="$REPO_ROOT" -e WAFFLE_CSRF_SECRET="$secret" -e TOKEN_ID="$token_id" "$CONTAINER" php -r "$php_code" 2>/dev/null || true)"
+    php_out="$(docker exec -e REPO_ROOT="$REPO_ROOT" -e WAFFLE_CSRF_SECRET="$secret" -e APP_SECRET="$app_secret" -e TOKEN_ID="$token_id" "$CONTAINER" php -r "$php_code" 2>/dev/null || true)"
   fi
 
   # Fallback to local host php if docker exec is empty or not running
   if [ -z "$php_out" ]; then
     if command -v php >/dev/null 2>&1; then
-      php_out="$(REPO_ROOT="$REPO_ROOT" WAFFLE_CSRF_SECRET="$secret" TOKEN_ID="$token_id" php -r "$php_code" 2>/dev/null || true)"
+      php_out="$(REPO_ROOT="$REPO_ROOT" WAFFLE_CSRF_SECRET="$secret" APP_SECRET="$app_secret" TOKEN_ID="$token_id" php -r "$php_code" 2>/dev/null || true)"
     fi
   fi
 
@@ -592,11 +611,11 @@ echo 'ID:' . \$tokenId . \"\n\";
   fi
 
   # Parse output variables
-  local out_secret="" out_gen="" out_sid="" out_token="" out_id=""
+  local out_secret="" out_source="" out_sid="" out_token="" out_id=""
   while IFS= read -r line; do
     case "$line" in
       SECRET:*)    out_secret="${line#SECRET:}" ;;
-      GENERATED:*) out_gen="${line#GENERATED:}" ;;
+      SOURCE:*)    out_source="${line#SOURCE:}" ;;
       SID:*)       out_sid="${line#SID:}" ;;
       TOKEN:*)     out_token="${line#TOKEN:}" ;;
       ID:*)        out_id="${line#ID:}" ;;
@@ -606,14 +625,21 @@ echo 'ID:' . \$tokenId . \"\n\";
   # Display beautifully
   info "Generating CSRF test credentials..."
   echo ""
-  if [ "$out_gen" = "true" ]; then
-    warn "WAFFLE_CSRF_SECRET was not found in environment or .env file."
-    info "Generated a fresh secret for this session (add this to your .env file):"
-    printf "  %s%s%s\n\n" "$C_YEL" "$out_secret" "$C_RST"
-  else
-    ok "Using existing WAFFLE_CSRF_SECRET loaded from environment/.env"
-    printf "  %s%s%s\n\n" "$C_DIM" "$out_secret" "$C_RST"
-  fi
+  case "$out_source" in
+    GENERATED)
+      warn "Neither WAFFLE_CSRF_SECRET nor APP_SECRET (32 bytes or more) was found in the environment or .env."
+      info "Generated a fresh secret for this session (add it to your .env as APP_SECRET or WAFFLE_CSRF_SECRET):"
+      printf "  %s%s%s\n\n" "$C_YEL" "$out_secret" "$C_RST"
+      ;;
+    APP_SECRET)
+      ok "Using the CSRF key derived from APP_SECRET (HKDF-SHA256, as the app does), in hex:"
+      printf "  %s%s%s\n\n" "$C_DIM" "$out_secret" "$C_RST"
+      ;;
+    *)
+      ok "Using existing WAFFLE_CSRF_SECRET loaded from environment/.env"
+      printf "  %s%s%s\n\n" "$C_DIM" "$out_secret" "$C_RST"
+      ;;
+  esac
 
   ok "CSRF credentials generated successfully (Token ID: '$out_id')"
   echo "------------------------------------------------------------"

@@ -86,8 +86,14 @@ aliases: []
 - **The public face (pre-tag audit, 2026-11-04):** the documented `composer create-project` command,
   which failed for everyone, names the version; `create-project.sh` creates a project with Docker only
   (decided that day); a generated project can be committed and cloned (`scripts/` and its lock were
-  ignored, and the lock's hash went stale); `WAFFLE_CSRF_SECRET` and `WAFFLE_AUTH_SECRET` are generated
-  with `APP_SECRET`, and the production compose requires them.
+  ignored, and the lock's hash went stale); `APP_SECRET` and `WAFFLE_AUTH_SECRET` are generated, and the
+  production compose requires them; `bin/waffle db:migrate`, `db:status` and `db:rollback` reach the
+  database (the CLI's configuration had no environment registry, so they never could); Mago checks the
+  entry points too, `mago guard` included.
+- **`APP_SECRET` is the root secret (decided 2026-11-04):** in the skeleton and the workspace, the CSRF
+  key derives from it (HKDF-SHA256) unless `WAFFLE_CSRF_SECRET` is set, so every worker and replica
+  signs with the same key; production refuses to boot without a valid key, and `WAFFLE_AUTH_SECRET`
+  stays explicit because other services share it.
 
 ### Documentation
 
@@ -138,16 +144,20 @@ published run overlapped a macOS Contacts sync and is flagged.
 
 ## 3. Quality gates
 
-Final pre-wave run, 2026-11-04 (after the pre-tag audit):
+Final pre-wave run, 2026-11-04 (after the pre-tag audit and the two decisions of that day; a first run that
+morning read the same, `skeleton` at 97.00 %):
 
 - `wfl pre-release --all`: **READY** for all 27 repositories in `RELEASE_INCLUDE`. 26 DoD PASS, `wfl igor` 0 KO
   ×26, `composer audit` clean ×26, 26 SBOMs; `documentation` passes its paperwork. The lowest coverage is
   unchanged (`cache` 95.57 %, `data` 95.90 %, `config` 96.00 %); `routing` reads 96.40 % with its new
-  cache-outage tests, `skeleton` 97.00 %.
+  cache-outage tests, `skeleton` 97.05 % with `SecretFactory`. The skeleton's Mago gate now covers its entry
+  points and runs `mago guard`. The workspace, outside the wave, passes its DoD (69 tests, its coverage
+  reported, not gated) and, under CI conditions, its whole suite.
 - The skeleton's public path, tested from a `git archive` of its branch (what Packagist serves, with
-  `export-ignore` applied): `create-project` generates three secrets and versions its lock, and a committed
-  project clones and installs without a warning. The Docker-only `create-project.sh` creates a project from
-  Packagist on macOS's bash 3.2, and is shellcheck clean.
+  `export-ignore` applied): `create-project` generates `APP_SECRET` and `WAFFLE_AUTH_SECRET` and versions its
+  lock, a committed project clones and installs without a warning, and the project boots in production on
+  its generated `.env` alone. The Docker-only `create-project.sh` creates a project from Packagist on macOS's
+  bash 3.2, and is shellcheck clean.
 - `wfl ai:check` clean (135 cockpit tests); `wfl ci:check` no drift; 422 relative links in `documentation/`,
   0 broken.
 
@@ -184,11 +194,13 @@ Previous run, 2026-11-03 (after the dependency refresh of 2026-11-02):
 - **`contracts` still carries `mixed`** (`Reactive\MutationRecord::$value`, the `MatchedRoute` and
   `Route` docblocks): for the beta8 BC review.
 - **Found in the pre-tag audit of 2026-11-04, for beta8:**
-  - Mago does not cover the skeleton's `scripts/`, `bin/` and `public/` (29 findings, mostly the
-    duck-typed Composer event in `Scripts\Setup`).
+  - Mago does not cover the workspace's entry points (`bin/waffle`, `public/index.php`,
+    `config/preload.php`), as it did not the skeleton's until that day.
+  - The skeleton has no job in the umbrella CI matrix: its gates are local (`wfl dod skeleton`).
+  - `config/preload.php` picks the framework's classes by a `/waffle-commons/` substring, which a
+    project's own path can contain; harmless in the image, where the project lives in `/app`.
   - The two tutorials, written for `0.1.0-beta6`, install that release and await their beta7 refresh
     (`[DOC-01]`).
-  - `APP_SECRET` is generated but read by nothing.
   - The beta7 classes that no public signature exposes need their `@internal` decision (`[FRZ-01]`).
   - The skeleton's `.env.example` and `.gitignore` comments and its README are English, although
     AGENTS.md §1 makes the template apps French.
