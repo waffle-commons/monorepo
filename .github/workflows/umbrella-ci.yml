@@ -248,18 +248,26 @@ jobs:
         with:
           fetch-depth: 1
 
-      # workspace/composer.json declares 21 path repositories (../contracts …
-      # ../telemetry-otel), so ALL of them must be checked out or composer
-      # install fails. Never the private 'academy' submodule (the default
-      # GITHUB_TOKEN is repo-scoped and can't clone it). Rewrite the SSH remote
-      # to HTTPS so the runner reads the public repos anonymously.
-      - name: Init workspace + its 21 path-repo components
+      # workspace/composer.json declares one path repository per component it
+      # uses (../contracts …), and composer install fails unless ALL of them are
+      # checked out. The list is read from that file, never kept by hand: a
+      # hand-kept one missed beta7's openapi, queue and serializer. Never the
+      # private 'academy' submodule (the default GITHUB_TOKEN is repo-scoped and
+      # can't clone it). Rewrite the SSH remote to HTTPS so the runner reads the
+      # public repos anonymously.
+      - name: Init workspace + its path-repo components
         run: |
           set -euo pipefail
-          COMPONENTS=(workspace contracts utils config container http http-client routing pipeline
-                      event-dispatcher log error-handler cache security auth console data runtime waffle
-                      async telemetry telemetry-otel)
           git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule sync -- workspace
+          git submodule update --init --depth=1 -- workspace
+          mapfile -t COMPONENTS < <(jq -r '.repositories[] | select(.type == "path") | .url
+            | select(startswith("../")) | ltrimstr("../")' workspace/composer.json)
+          if [ "${#COMPONENTS[@]}" -eq 0 ]; then
+            echo "::error::no ../<component> path repository found in workspace/composer.json"
+            exit 1
+          fi
+          echo "Path repositories (${#COMPONENTS[@]}): ${COMPONENTS[*]}"
           git submodule sync -- "${COMPONENTS[@]}"
           git submodule update --init --depth=1 -- "${COMPONENTS[@]}"
 
@@ -279,7 +287,7 @@ jobs:
           restore-keys: |
             composer-${{ runner.os }}-workspace-
 
-      # --no-check-all: the 21 exact '1.0.0-dev' path-repo pins are intentional
+      # --no-check-all: the exact '1.0.0-dev' path-repo pins are intentional
       # for the demo app; the strict pass still enforces schema + publish rules.
       - name: composer validate (strict)
         working-directory: workspace

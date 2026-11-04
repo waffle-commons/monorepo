@@ -140,7 +140,9 @@ figures. `bench/scripts/run-carry02.sh` chains the campaign, and `--only` re-run
   included), an install check with the network off (`wfl offline`), and backups (`wfl backup`).
 - **CI:** one canonical component workflow, with any drift reported by `wfl ci:check`; every
   component workflow starts Redis, so the Redis-backed suites no longer skip on GitHub; the
-  workspace job runs PHPUnit; the igor pin is enforced in CI.
+  workspace job runs PHPUnit and checks out the components named by the path repositories in
+  `workspace/composer.json` (a hand-kept list had missed openapi, queue and serializer); the igor
+  pin is enforced in CI.
 - **Checks:** `wfl mcp:check` opens a real session with each MCP server; `wfl sync:status`
   reports branches, ahead/behind and gitlinks, read-only; `wfl drain-check` and
   `wfl rolling-restart` prove the graceful drain.
