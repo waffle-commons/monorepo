@@ -85,11 +85,13 @@ New work should **align with the current roadmap and the relevant RFC before it 
 ## 🚀 Quick start — building an app on Waffle
 
 ```bash
-composer create-project waffle-commons/skeleton my-app
+composer create-project waffle-commons/skeleton:0.1.0-beta7 my-app
 cd my-app
 docker compose up -d
 curl -k https://localhost/
 ```
+
+Name the version: until `1.0.0` every release is a beta, and Composer offers only stable releases unless you name one. Without PHP on your machine, the skeleton's [`create-project.sh`](https://github.com/waffle-commons/skeleton#create-a-new-project) does the same with Docker only.
 
 See [`documentation/tutorials/quick-start.md`](documentation/tutorials/quick-start.md) for the full walkthrough.
 

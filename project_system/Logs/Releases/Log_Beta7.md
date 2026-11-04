@@ -53,6 +53,7 @@ aliases: []
 | `/healthz` (liveness, never a dependency) and `/readyz` (the components' health checks, fail-closed), mounted before tracing and the trusted-host check; each check has its own timeout (database connect 2 s, Redis read 1 s) | `/healthz` ≈ 5 µs, `/readyz` ≈ 6 µs + 1.1 µs per probe, nothing retained over 100 000 calls; a database that never answers yields not-ready in 2 s instead of a lease hanging past 15 s | `[OPS-01]` |
 | Graceful drain: `/readyz` flips through a `preStop` drain marker, or during Caddy's `shutdown_delay` | A rolling restart of two replicas under k6 lost 0 of 7 501 requests on each path; `wfl drain-check` 9/9 on FrankenPHP 1.13.2 | `[OPS-02]` |
 | `db:rollback`, `db:status` and `make:migration` next to `db:migrate`. **Fixed:** every DDL migration failed on MySQL and MariaDB | Live round trip on PostgreSQL, MySQL, MariaDB and SQLite; SQL-generation tests for SQL Server and Oracle (scope change 2026-10-17) | `[OPS-03]` |
+| **Fixed (pre-tag audit, 2026-11-04):** with Redis unreachable, a worker that booted or recycled died on the router's cache read, `/healthz` included; an unreachable cache is now a miss (`routing`) | A fresh beta7 skeleton with no Redis answers `/healthz` `{"status":"ok"}` and `/readyz` `{"status":"unavailable"}`; three tests fail on the previous router | `[OPS-01]` |
 
 ### Developer experience & carry-overs
 
@@ -82,6 +83,11 @@ aliases: []
 - **Security:** PHP 8.5.12 on FrankenPHP 1.13.2, the security releases for PHP2Shell
   (CVE-2026-109618, CVE-2026-109619), base image pinned by digest; Composer pinned by digest in the
   dev and builder stages (it was `composer:latest`).
+- **The public face (pre-tag audit, 2026-11-04):** the documented `composer create-project` command,
+  which failed for everyone, names the version; `create-project.sh` creates a project with Docker only
+  (decided that day); a generated project can be committed and cloned (`scripts/` and its lock were
+  ignored, and the lock's hash went stale); `WAFFLE_CSRF_SECRET` and `WAFFLE_AUTH_SECRET` are generated
+  with `APP_SECRET`, and the production compose requires them.
 
 ### Documentation
 
@@ -89,7 +95,9 @@ A reference page and a how-to guide for each new component (`queue`, `serializer
 `testing`); how-to guides for rate limiting, resilient outbound calls and running on Kubernetes; the
 migrations guide covers rollback and status; `reference/configuration-keys.md` lists every `waffle.*`
 key the skeleton declares; `explanation/performance.md` carries the beta7 series. `Waffle_Evolutions.md`
-is refreshed for this release.
+is refreshed for this release. In the pre-tag audit of 2026-11-04, 12 component READMEs gained their beta7
+features and lost a `#[Rule]` attribute that has never existed, and `reference/utils.md` documents the DTO
+shape reader and the PSR-20 clock.
 
 ### Infrastructure & tooling (umbrella only)
 
@@ -100,7 +108,9 @@ is refreshed for this release.
   CycloneDX SBOMs, images pinned by digest (`wfl images:pin`, `COPY --from=<image>` included since
   2026-11-02), an install check with the network off, backups.
 - CI: one canonical component workflow (`wfl ci:check`); every component workflow starts Redis, so
-  the Redis-backed suites no longer skip on GitHub; the igor pin is enforced in CI.
+  the Redis-backed suites no longer skip on GitHub; the igor pin is enforced in CI. The workspace job reads
+  its components from the workspace's path repositories, and `wfl ai:check` skips gitignored paths
+  (both failed on the pre-release PR of 2026-11-03).
 
 ## 2. Benchmark results (`[CARRY-02]`)
 
@@ -128,7 +138,20 @@ published run overlapped a macOS Contacts sync and is flagged.
 
 ## 3. Quality gates
 
-Final pre-wave run, 2026-11-03 (after the dependency refresh of 2026-11-02):
+Final pre-wave run, 2026-11-04 (after the pre-tag audit):
+
+- `wfl pre-release --all`: **READY** for all 27 repositories in `RELEASE_INCLUDE`. 26 DoD PASS, `wfl igor` 0 KO
+  ×26, `composer audit` clean ×26, 26 SBOMs; `documentation` passes its paperwork. The lowest coverage is
+  unchanged (`cache` 95.57 %, `data` 95.90 %, `config` 96.00 %); `routing` reads 96.40 % with its new
+  cache-outage tests, `skeleton` 97.00 %.
+- The skeleton's public path, tested from a `git archive` of its branch (what Packagist serves, with
+  `export-ignore` applied): `create-project` generates three secrets and versions its lock, and a committed
+  project clones and installs without a warning. The Docker-only `create-project.sh` creates a project from
+  Packagist on macOS's bash 3.2, and is shellcheck clean.
+- `wfl ai:check` clean (135 cockpit tests); `wfl ci:check` no drift; 422 relative links in `documentation/`,
+  0 broken.
+
+Previous run, 2026-11-03 (after the dependency refresh of 2026-11-02):
 
 - `wfl pre-release --all`: **READY** for all 27 repositories in `RELEASE_INCLUDE`. 26 DoD PASS (Mago 1.59 zero
   output, a clean PHPUnit 12.5.42 verdict, coverage at or above 95 % and each component's floor, `wfl igor` 0 KO
@@ -160,6 +183,15 @@ Final pre-wave run, 2026-11-03 (after the dependency refresh of 2026-11-02):
   2026-11-02 shipped: mago 1.59, igor-php 0.10.1, psalm 6.20, php-mock-phpunit 2.16, PHPUnit 12.5.42.
 - **`contracts` still carries `mixed`** (`Reactive\MutationRecord::$value`, the `MatchedRoute` and
   `Route` docblocks): for the beta8 BC review.
+- **Found in the pre-tag audit of 2026-11-04, for beta8:**
+  - Mago does not cover the skeleton's `scripts/`, `bin/` and `public/` (29 findings, mostly the
+    duck-typed Composer event in `Scripts\Setup`).
+  - The two tutorials, written for `0.1.0-beta6`, install that release and await their beta7 refresh
+    (`[DOC-01]`).
+  - `APP_SECRET` is generated but read by nothing.
+  - The beta7 classes that no public signature exposes need their `@internal` decision (`[FRZ-01]`).
+  - The skeleton's `.env.example` and `.gitignore` comments and its README are English, although
+    AGENTS.md §1 makes the template apps French.
 
 ## 5. Release mechanics
 

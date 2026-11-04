@@ -65,6 +65,10 @@ acceptance check of 2026-10-31.
 - **Migrations:** `db:rollback`, `db:status` and `make:migration` next to `db:migrate`, with a
   live round trip on PostgreSQL, MySQL, MariaDB and SQLite. **Fixed:** every DDL migration
   failed on MySQL and MariaDB.
+- **Fixed: a Redis outage no longer stops the workers.** The router read its route cache unguarded
+  at boot, so a worker that started or recycled while Redis was down died, `/healthz` included.
+  `routing` now treats an unreachable cache as a miss: `/healthz` answers, `/readyz` reports the
+  cache down. The bug dates from `0.1.0-beta0`.
 
 ### Runtime & developer experience
 
@@ -93,12 +97,22 @@ acceptance check of 2026-10-31.
 - The skeleton wires the rate limiter, the resilient clients, the probes, the migration commands
   and, in debug mode only, the API docs and the profiler headers. The workspace wires the
   resilient clients, the migration commands, `queue:work` and the debug-only API docs.
+- **The skeleton as a public face:**
+  - The documented `composer create-project waffle-commons/skeleton my-app` failed for everyone,
+    since every release is a beta: the docs name the version.
+  - `create-project.sh` creates a project with Docker only.
+  - A generated project can be committed and cloned: `scripts/` and its lock were ignored, and the
+    lock's hash went stale.
+  - `WAFFLE_CSRF_SECRET` and `WAFFLE_AUTH_SECRET` are generated with `APP_SECRET`, and the
+    production compose requires them.
 
 ### Documentation
 
 New how-to guides in `documentation/`: rate-limit requests, make outbound calls resilient, and
 run on Kubernetes; the migrations guide covers rollback and status. `Waffle_Evolutions.md` is
-refreshed for this release.
+refreshed for this release. Twelve component READMEs document their beta7 features, and three of
+them no longer describe a `#[Rule]` attribute that has never existed; `reference/utils.md`
+documents the DTO shape reader and the PSR-20 clock.
 
 ### Benchmark
 
