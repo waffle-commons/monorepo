@@ -230,8 +230,9 @@ jobs:
     needs: detect-changes
     if: needs.detect-changes.outputs.workspace == 'true'
     runs-on: ubuntu-latest
-    # The factory tests talk to a real Redis, as in the dev stack: same image,
-    # pinned as in workspace/docker-compose.yml.
+    # The factory tests talk to a real Redis, and every POST through the kernel
+    # leases a PostgreSQL connection (TransactionIsolationMiddleware), as in the
+    # dev stack: same images and credentials, pinned as in workspace/docker-compose.yml.
     services:
       waffle-redis:
         image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
@@ -239,6 +240,19 @@ jobs:
           - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 15
+      waffle-postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_DB: waffle
+          POSTGRES_USER: waffle
+          POSTGRES_PASSWORD: waffle
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U waffle -d waffle"
           --health-interval 2s
           --health-timeout 2s
           --health-retries 15
@@ -277,7 +291,7 @@ jobs:
           php-version: '8.5'
           tools: composer:v2
           coverage: none
-          extensions: mbstring, intl, opcache, xml, dom, tokenizer, yaml, redis
+          extensions: mbstring, intl, opcache, xml, dom, tokenizer, yaml, redis, pdo_pgsql
 
       - name: Cache composer
         uses: actions/cache@v6
@@ -313,11 +327,18 @@ jobs:
         working-directory: workspace
         run: vendor/bin/mago guard
 
-      # The tests reach Redis as waffle-redis:6379, its dev-stack name; the
-      # service container listens on the runner's localhost. Coverage is
-      # reported locally (wfl dod), never gated (CARRY-07).
+      # The tests reach Redis as waffle-redis:6379, its dev-stack name, and
+      # PostgreSQL through the DB_* variables a local .env provides; both service
+      # containers listen on the runner's localhost. Coverage is reported locally
+      # (wfl dod), never gated (CARRY-07).
       - name: phpunit (CARRY-06)
         working-directory: workspace
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '5432'
+          DB_NAME: waffle
+          DB_USER: waffle
+          DB_PASSWORD: waffle
         run: |
           echo "127.0.0.1 waffle-redis" | sudo tee -a /etc/hosts
           vendor/bin/phpunit --no-coverage
