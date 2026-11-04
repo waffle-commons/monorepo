@@ -1,7 +1,7 @@
 ---
 title: Retrospective Beta 7
 date_created: 2026-11-02
-date_updated: 2026-11-02
+date_updated: 2026-11-04
 type: project
 status: draft
 tags:
@@ -13,7 +13,7 @@ aliases: []
 ---
 # ⏪ Retrospective: Waffle Beta 7 (The Production Surface)
 
-**Date:** November 2, 2026 (draft, written before the wave) **Author:** Leslie Petrimaux (maintainer)
+**Date:** November 4, 2026 (written before the wave; its outcome is added on release day) **Author:** Leslie Petrimaux (maintainer)
 
 ## 1. The Goal
 
@@ -39,6 +39,12 @@ carry-over, all before the beta8 API freeze.
   the local beta7 tree (its 0.2.0 release follows the wave).
 - **All ten carry-overs**, and a benchmark rig hardened before it produced a single new number.
 - Every roadmap item was accepted **on evidence** on 2026-10-31: tests, command output, archived runs.
+- **The public face, checked before the tag** (2026-11-04). The skeleton's install command names the
+  version, so it works. A Docker-only `create-project.sh` needs no PHP on the host, and a created
+  project can be committed and cloned. `APP_SECRET` is the root secret the CSRF key derives from, and
+  the CLI's migration commands reach the database. Mago checks the entry points, `guard` included.
+  In `routing`, a worker that boots during a Redis outage serves `/healthz`; twelve component READMEs
+  caught up with their beta7 features.
 
 ## 3. What Went Well
 
@@ -62,6 +68,22 @@ carry-over, all before the beta8 API freeze.
   one step that overlapped a Contacts sync is flagged instead of quoted.
 - **The perimeter held.** Every contract landed before its consumers, no repository carries a Mago
   baseline, and `wfl igor` reports 0 KO.
+- **One question found what every gate had passed.** On the eve of the tag, the maintainer asked
+  whether the skeleton could be the public face of the ecosystem. Taking a newcomer's path (install
+  from Packagist, commit, clone, install, migrate) found four defects that every gate had passed:
+  - The README's install command failed for everyone: every release is a beta, and Composer looks for
+    a stable one.
+  - A created project could not be installed from a clone, because `scripts/` was gitignored.
+  - `db:migrate` had never reached a database in a generated project since it shipped in
+    `0.1.0-beta3`: the CLI built its configuration without the environment.
+  - A worker that booted during a Redis outage died, `/healthz` included, since `0.1.0-beta0`.
+- **The last-day fixes were measured like the rest.** Each came with the run that failed before it
+  and passes after:
+  - a throwaway PostgreSQL for the CLI;
+  - a `git archive` of the skeleton for the newcomer's path (what Packagist serves, with
+    `export-ignore` applied);
+  - for the derived CSRF key, a known-answer vector checked against an independent RFC 5869
+    implementation, and two mutants that the new tests kill.
 
 ## 4. What Went Badly (and the lesson)
 
@@ -89,6 +111,27 @@ carry-over, all before the beta8 API freeze.
 - **Live evidence was written down as prose.** The breaker run, `wfl drain-check` and the queue runs
   lived only as roadmap text until the acceptance check asked for them. **Lesson: archive a live run's
   raw output when it runs.**
+- **CI first ran on beta7 two days before the tag.** The umbrella CI ran on the beta7 branch for the
+  first time on 2026-11-03, with the release PRs. It stopped at `composer install`: the workspace
+  job checked out a hand-kept component list that missed `openapi`, `queue` and `serializer`. Each fix
+  then uncovered a failure the previous one had hidden: a production-boot test that passed only
+  against a local `.env`, then two POSTs that lease a database the job never started. The PHPUnit step
+  that `[CARRY-06]` added to that job first ran on GitHub on 2026-11-04. **Lesson: push the release
+  branches as soon as they exist, so CI is a gate from the first week; and accept a CI item on a CI
+  run.**
+- **The newcomer's path had no test.** The four defects of §3 survived several releases because every
+  gate starts from a checked-out component, and none from what Packagist serves. **Lesson: before each
+  tag, create a project from a `git archive` of the skeleton, commit and clone it, install it, boot it
+  in production and run its CLI against a real database.**
+- **Mago did not read the entry points.** `bin/waffle`, `public/index.php`, `config/preload.php` and
+  `scripts/Setup.php` were outside the skeleton's Mago paths, and its `composer mago` did not run
+  `guard`. 32 findings and 129 guard errors waited there, among them a `@var` over a `realpath()` that
+  can return `false`. **Lesson: the analysed paths cover every PHP file a project ships, and
+  `composer mago` runs the same four tools in every repository.**
+- **A claim went one step past its measurement.** The workspace suite was recorded as passing "under
+  CI conditions" when that run had only emptied the secrets. GitHub then showed 67 of 69, for want of
+  a database. It was corrected the same morning, in the PR bodies and in the records. **Lesson: name a
+  simulation by what it changed, not by what it imitates.**
 
 ## 5. Scope Decisions (recorded, not silent)
 
@@ -105,6 +148,17 @@ carry-over, all before the beta8 API freeze.
 - **The database-path gap is published as measured, not explained.** Waffle is 0.3–0.4 ms slower than
   Symfony doing the same per-request work; the cause is a beta8 question, and the number is quoted
   with it.
+- **2026-11-02 — beta7 ships igor-php 0.10.1**, which does not carry the detector fix (its PR is
+  upstream), so the 27 method-level annotations stay.
+- **2026-11-04 — a Docker-only installer ships in beta7.** `create-project.sh` runs Composer in its
+  pinned image as the calling user, so the README's "Docker required, PHP optional" holds.
+- **2026-11-04 — Mago on the skeleton's entry points ships in beta7**, deferred to beta8 earlier the
+  same day.
+- **2026-11-04 — `APP_SECRET` becomes the root secret.** The CSRF key derives from it (HKDF-SHA256)
+  unless `WAFFLE_CSRF_SECRET` is set. `WAFFLE_AUTH_SECRET` stays explicit, since other services share
+  it. This is new behaviour, so it belongs to the build phase, not to the freeze.
+- **2026-11-04 — the workspace CI job starts PostgreSQL**, so its PHPUnit step runs the whole suite:
+  69 tests on GitHub.
 
 ## 6. Carried into Beta 8
 
@@ -117,7 +171,25 @@ carry-over, all before the beta8 API freeze.
 - The toolchain majors (PHPUnit 13.4, Predis 3.7), decided before the freeze; the minor/patch refresh
   (mago 1.59, igor-php 0.10.1, psalm 6.20) shipped in beta7 on 2026-11-02. The `mixed` still in
   `contracts`, for the BC review.
+- What the pre-tag audit left:
+  - Mago on the workspace's entry points.
+  - A skeleton job in the umbrella CI.
+  - The two tutorials, still on `0.1.0-beta6` (`[DOC-01]`).
+  - `@internal` on the beta7 classes that no public signature exposes (`[FRZ-01]`).
+  - French for the skeleton's `.env.example`, `.gitignore` and README (AGENTS.md §1).
+- The development container's FrankenPHP crashes on a watcher reboot (`zend_mm_heap corrupted`,
+  2026-10-10 and again 2026-11-04, when it took a gate run down with it): reproduce it, then report it
+  upstream.
 
 ## 7. Verdict
 
-*Written after the wave.*
+Beta 7 delivered what its roadmap promised, in full and on evidence: four new components, the NET and
+OPS surface, the stretch tier and every carry-over, without taking a day from the freeze. Its weak
+point was not the code but the distance between the gates and the people who will use it. CI first
+ran two days before the tag, and the path a newcomer takes had never been tested. Both were closed
+before the tag: the workspace's CI job runs its whole suite on GitHub, and the skeleton was created,
+committed, cloned and booted from what Packagist serves. Beta 8 starts from a release whose public
+face has been tried, not assumed.
+
+*Release day: the wave's outcome (component tags, Packagist, the umbrella gate after the relock) is
+added after the tag.*
