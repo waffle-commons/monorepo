@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 8)"
 date_created: 2026-06-07
-date_updated: 2026-10-21
+date_updated: 2026-11-05
 type: project
 status: pending
 tags:
@@ -101,6 +101,18 @@ _The three beta5 research spikes get their final verdict. "Go" means landing the
     - Re-run the complete audit (the one that produced the beta4 findings) against the **final** surface: everything beta4 fixed (regression check) plus the new beta5/beta6/beta7 attack surface — `/waffle-metrics`, connection pooling, rate limiter storage, queue payload handling, OpenAPI/Swagger dev routes, health endpoints, WebAuthn (if landed), the gateway proxy path (header smuggling, hop-by-hop handling, request smuggling).
         
     - Every finding is fixed in beta8 or formally risk-accepted with sign-off in the audit report. RC1 inherits zero open criticals.
+
+    - *Decision 2026-11-05, the method:* the `release-audit` skill runs the audit end to end with Claude Code (`/release-audit 0.1.0-beta8`). It replaces the zipped payload sent to Google AI Studio and beta6's rule of "more than one independent engine" (the maintainer: "You will handle everything"). Independence now comes from:
+        - tool evidence read before any code (`wfl audit:evidence`: Mago metrics, Psalm taint, `composer audit`, igor, SEC-03);
+        - one finder per lens: the OWASP Top 10:2025 categories, worker-state leaks, timing-safe comparisons, and the repository's AI layer against OWASP's Top 10 for Agentic Applications 2026;
+        - blind, refute-first verifiers and majority verdicts with a tie-break;
+        - a calibration on known beta6 defects.
+
+      The sweep includes dated threat notes: PHP2Shell (CVE-2026-109618, CVE-2026-109619), CVE-2026-115560 and the Symfony security releases of 2026-11-04.
+
+    - *Sign-off:* the decision on each finding (fix, accept the risk, post-v1) is the maintainer's, recorded in the cockpit's `/audit` pane or with `wfl audit:sign`. Claude never records one.
+        - The run lives in `project_system/Audits/Beta8/release-audit/` (gitignored, local only).
+        - `wfl audit:check 0.1.0-beta8 --gate` is the evidence for exit gate #4, and `wfl pre-release --all` holds the tag on it.
         
 
 ## 📚 AXE 5: DOCUMENTATION & ONBOARDING COMPLETION
@@ -128,7 +140,7 @@ Beta8 tags only when **all** of the following hold; this checklist is re-verifie
 1. Zero open spike decisions; post-v1 backlog updated with every cut.
 2. `contracts/` BC review 100% complete; `BC-POLICY.md` published; zero TODO/FIXME in contracts.
 3. 72h soak: zero memory drift, zero leaked connections/transactions, zero un-injected 5xx.
-4. Security audit: zero open criticals; report archived in `project_system/`.
+4. Security audit: zero open criticals; report archived in `project_system/` (`[AUD-01]`: `wfl audit:check 0.1.0-beta8 --gate` passes).
 5. EcoShield-Gateway benchmark report produced; RAM factor documented.
 6. Docs complete for all components; Academy labs green against beta8.
 7. Standard gates everywhere: `composer mago && composer tests`, $\geq 95\%$ coverage, zero baselines, `wfl igor` 0 KO.
