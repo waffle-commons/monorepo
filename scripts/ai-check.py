@@ -40,7 +40,8 @@ AGENT_KEYS = {
 }
 # Tool policy: what each agent's body promises, enforced by its frontmatter.
 READ_ONLY = {'acceptance-verifier', 'aot-verifier', 'bc-reviewer', 'flake-hunter', 'gate-runner'}
-REPORT_WRITERS = {'benchmark-runner', 'chaos-runner', 'soak-analyst'}
+REPORT_WRITERS = {'benchmark-runner', 'chaos-runner', 'soak-analyst',
+                  'owasp-finder', 'modernization-finder', 'finding-verifier', 'audit-triager'}
 # Skills the vendored plugin must never ship (see its VENDORED.md).
 MP_EXCLUDED = {'implement', 'implement-spec', 'triage', 'wayfinder', 'prototype', 'setup-matt-pocock-skills', 'code-review'}
 # Paths that live outside this checkout on purpose.
