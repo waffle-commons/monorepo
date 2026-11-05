@@ -18,6 +18,12 @@
 # not released and carry no release paperwork, while 'documentation' IS released
 # (docs-only, so paperwork applies but there are no code gates to run).
 #
+# '--all' also holds the release on its audit (the release-audit skill) for beta8
+# and every later minor, major or RC release: `scripts/release-audit.py check
+# <version> --gate` must pass. A patch release (x.y.Z, Z > 0) is exempt.
+# WFL_AUDIT_VERSION=<version> points the gate at the run that covers this release
+# (a Gold that changes no code is covered by its RC's run).
+#
 # Usage:   scripts/pre-release.sh [component|--all]
 #          WFL_RELEASE_VERSION=0.1.0-beta5 scripts/pre-release.sh contracts
 # Exit:    0 if every targeted component is release-ready, 1 otherwise.
@@ -160,6 +166,27 @@ else
     warn "'$TARGET' is not in RELEASE_INCLUDE — the wave never tags it; paperwork findings below are informational"
   fi
   if ! _assess "$TARGET"; then overall=1; not_ready+=("$TARGET"); fi
+fi
+
+# --- Release audit gate (beta8 [AUD-01] onward) ----------------------------------
+# Releases before beta8 predate the gate; patch releases are exempt (the protocol
+# audits each minor or major release, and its RCs).
+_audit_required() {
+  case "$1" in
+    0.1.0-beta[0-7]) return 1 ;;
+    0.1.0-beta*)     return 0 ;;
+  esac
+  [[ "$1" =~ ^[0-9]+\.[0-9]+\.0(-RC[0-9]+)?$ ]]
+}
+if [ "$TARGET" = "--all" ] && _audit_required "$VERSION"; then
+  AUDIT_VERSION="${WFL_AUDIT_VERSION:-$VERSION}"
+  info "release audit gate: ${C_BLD}${AUDIT_VERSION}${C_RST}${C_CYA}"
+  if python3 -I "$REPO_ROOT/scripts/release-audit.py" check "$AUDIT_VERSION" --gate; then
+    ok "  release audit: every finding decided, every fix landed and re-verified"
+  else
+    overall=1; not_ready+=("release-audit")
+    warn "  release audit gate failed for $AUDIT_VERSION (wfl audit:status $AUDIT_VERSION)"
+  fi
 fi
 
 printf '%s%s════════════════════════════════════════%s\n' "$C_BLD" "$C_CYA" "$C_RST"

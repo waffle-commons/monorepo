@@ -30,6 +30,9 @@ December 2026 work.
 - **`[RC-01]` Exit-gate re-verification.** Re-run the 7-point beta8 freeze exit gate
   (`[[api-freeze]]`) on the RC tree. A failure is a freeze regression, and its fix is the only
   permitted change. Collect the evidence with the `acceptance-verifier` agent.
+  - Point 4 has two parts. The beta8 ledger still passes `wfl audit:check 0.1.0-beta8 --gate`. A
+    `[[release-audit]]` run for `1.0.0-RC1` covers the RC delta (a diff-scoped run), and its own
+    `--gate` must pass before the tag.
 - **`[RC-02]` Deprecation removal.** Delete every symbol deprecated in beta8, in both forms
   (`#[\Deprecated]` attribute and `@deprecated` docblock). Skeleton, workspace, Academy and EcoShield must
   compile and pass against the post-removal tree.

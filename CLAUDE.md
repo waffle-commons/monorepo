@@ -37,7 +37,9 @@ messages. Native-first fixes; never a baseline or suppression.
 > `wfl coverage [comp]` (clover %), `wfl flake-hunt <comp> [N]` (isolate a flaky test),
 > `wfl sync:contracts [comp]` / `wfl sync:demos [app]` (vendor-skew fix), `wfl pre-release [comp]`,
 > `wfl new-component <Name> <url>`, `wfl docker:reset`, `wfl mcp:check`, `wfl ai:check` (lints this
-> Claude Code layer). **Diagnostics / agent helpers:** `wfl coverage:gaps <comp>` (files under 95% +
+> Claude Code layer). **Release audit** (the `release-audit` skill drives it): `wfl audit:init|evidence|status`,
+> `wfl audit:claims` (blind verification), `wfl audit:check [--gate]`, `wfl audit:fixed`; `wfl audit:sign`
+> belongs to the maintainer alone. **Diagnostics / agent helpers:** `wfl coverage:gaps <comp>` (files under 95% +
 > uncovered count), `wfl xref <Symbol> [--tests]` (fixed-string symbol search, vendor-excluded,
 > sanity-checked), `wfl changed` (dirty submodules — commit prep), `wfl sync:status [--fetch]`
 > (read-only branch/ahead/behind/gitlink report), `wfl ci:check` (CI, Dependabot and toolchain drift

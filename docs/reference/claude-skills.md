@@ -16,7 +16,7 @@
 - The two repository plugins load from the repository marketplace once the folder is trusted; no
   install step. `/plugin` lists them.
 
-## Skills (34)
+## Skills (35)
 
 ### Core workflow
 
@@ -43,6 +43,7 @@
 
 | Skill | Use when… |
 | :--- | :--- |
+| **release-audit** | The pre-release audit, run end to end by Claude: OWASP Top 10:2025 + W1/W2 + agentic-layer finders, PHP 8.5 modernization, blind refute-first verification, `ledger.json`, a phase-aware MUST/SHOULD/COULD roadmap, the maintainer's sign-off; `wfl audit:*`; beta8 `[AUD-01]`, freeze exit gate #4. |
 | **security-audit** | Statelessness, fail-closed ABAC, SSRF (SEC-02), CSRF, CORS, traversal, `#[PublicAccess]`, SEC-03 compare-audit. |
 | **auth-bridge-audit** | The Universal Authentication Bridge (RFC-021, `auth`): JWT, OAuth2/OIDC, HMAC assertions, API keys. |
 | **webauthn-passkeys** | WebAuthn / passkeys (AUTH-01, `auth`): sole lib adapter, stateless authenticator, configurable UV. |
@@ -97,7 +98,7 @@
 | :--- | :--- |
 | **ecoshield** | The standalone `ecoshield-gateway` repository: alpha, FinOps benchmark, RC soak, French docs. |
 
-## Subagents (18)
+## Subagents (22)
 
 | Agent | Preloads | Tools | Model |
 | :--- | :--- | :--- | :--- |
@@ -109,6 +110,10 @@
 | `benchmark-runner` | benchmark-gate | writes its report, no Edit | session |
 | `chaos-runner` | soak-endurance | writes its report, no Edit | session |
 | `soak-analyst` | soak-endurance | writes its report, no Edit | session |
+| `owasp-finder` | release-audit, security-audit | writes its report, no Edit | session |
+| `modernization-finder` | release-audit | writes its report, no Edit | session |
+| `finding-verifier` | release-audit | writes its report, no Edit | session |
+| `audit-triager` | release-audit, roadmap-steward | writes its report, no Edit | session |
 | `coding-worker` | coding | all | session |
 | `coding-integrator` | coding | all | session |
 | `contracts-sync` | contracts-first | all | sonnet, low effort |
