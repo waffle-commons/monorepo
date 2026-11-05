@@ -9,7 +9,7 @@ aliases: []
 
 # RFC-024: Outbound Resilience (Client Policies & Circuit Breaker)
 
-**Status:** In progress for `0.1.0-beta7` — HTTP client resilience policies (`[NET-02]`) and the circuit breaker (`[NET-03]`). Inbound rate limiting (`[NET-01]`) stays in RFC-017 §3.1 and shares this RFC's state-storage family. **Components:** `waffle-commons/http-client` (policies, retries, breaker), `waffle-commons/contracts` (policy, breaker and state-storage contracts), and `waffle-commons/data`, which implements the shared state storage over its Redis pool (§5.1, decided 2026-10-17) **Author:** DevSecOps Lead **Tags:** http-client, resilience, timeouts, retry, backoff, circuit-breaker
+**Status:** Shipped in `0.1.0-beta7` — HTTP client resilience policies (`[NET-02]`) and the circuit breaker (`[NET-03]`). Inbound rate limiting (`[NET-01]`) stays in RFC-017 §3.1 and shares this RFC's state-storage family. **Components:** `waffle-commons/http-client` (policies, retries, breaker), `waffle-commons/contracts` (policy, breaker and state-storage contracts), and `waffle-commons/data`, which implements the shared state storage over its Redis pool (§5.1, decided 2026-10-17) **Author:** DevSecOps Lead **Tags:** http-client, resilience, timeouts, retry, backoff, circuit-breaker
 
 **Reference RFCs:** RFC-003 (HTTP & Middleware Pipeline), RFC-005 (Logging & Observability), RFC-015 (Asynchronous Execution — concurrent fan-out), RFC-017 (Advanced Security & Edge Protection — rate limiting), RFC-021 (Universal Authentication Bridge — outbound credentials)
 

@@ -1,20 +1,20 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-10-31
+date_updated: 2026-11-05
 type: project
-status: in-progress
+status: shipped
 tags:
   - project
   - roadmap
   - waffle
 aliases: []
 ---
-# 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta7
+# 🧇 WAFFLE-COMMONS — ECOSYSTEM ROADMAP 0.1.0-beta7
 
-> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. `[CARRY-02]` re-measured on 2026-11-01: the clean full run is recorded and, since 2026-11-02, published in `bench/BENCH-GATE-RESULT.md` (the two earlier runs are kept as invalidated series); the two `[API-01]` follow-ups were built and the two `[NET-01]` spec points settled the same day
+> **Status:** Shipped in November 2026 — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. `[CARRY-02]` re-measured on 2026-11-01: the clean full run is recorded and, since 2026-11-02, published in `bench/BENCH-GATE-RESULT.md` (the two earlier runs are kept as invalidated series); the two `[API-01]` follow-ups were built and the two `[NET-01]` spec points settled the same day
 > 
-> **Target Release:** **November 2026** — tag targeted for 5 November (re-dated 2026-10-21 from October 2026; the first release after the API Platform Conference, Lille — September 17–18, 2026)
+> **Released:** **November 2026**, on its target (re-dated 2026-10-21 from October 2026; the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
 > **Core Mandate:** Close every gap between "high-performance framework" and **full production-ready API ecosystem**: traffic protection, outbound resilience, background processing, Kubernetes operability, API tooling, and testability. This is the release where the missing components get built — beta8 then freezes, so anything not landed here is post-v1.
 > 
@@ -557,8 +557,8 @@ _"Production-ready on Docker/K8s" is the founding vision — these are the table
         - The breaker counts every 5xx on one circuit per origin. In front of one monolith that is one circuit for every proxied route; to watch in GATE-03.
         - `RetryPolicy` retries an upstream 429.
         - libcurl still sends `Expect: 100-continue` on chunked uploads.
+      - *Shipped as `0.2.0`, November 2026, after the beta7 wave:* the lock on the 15 Packagist `0.1.0-beta7` packages, mago 1.59 and igor 0.10.1 (the CI pin too); gates green (mago zero output, OK 85 tests, 99.50 % lines, igor 15/15, `composer audit` clean); the lab re-run on the production image: retries GET 3 / PUT 3 / POST 1, breaker, Redis and PostgreSQL outages, limiter, perimeter k6 280/280 and raw socket (archive `project_system/Audits/Beta7/gateway-0.2.0/`). Gateway PR #3 merged as `e351fc3`, tag `0.2.0`, GitHub pre-release, Packagist serves `0.2.0`.
       - **Open:**
-        - After the wave: the Packagist lock, the gates on Packagist, the production image on beta7, and the CHANGELOG stamp `[0.2.0] — 2026-11`. Push, PR, the `0.2.0` tag and Packagist are the maintainer's.
         - GATE-03: OPS-01/02, metrics, and the ladder's per-step warm-up.
         
 

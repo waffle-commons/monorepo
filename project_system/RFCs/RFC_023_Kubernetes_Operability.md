@@ -9,7 +9,7 @@ aliases: []
 
 # RFC-023: Kubernetes Operability (Health, Readiness & Graceful Shutdown)
 
-**Status:** In progress for `0.1.0-beta7` — health and readiness probes (`[OPS-01]`) and graceful shutdown & draining (`[OPS-02]`). The schema-migration workflow (`[OPS-03]`) stays in RFC-014. **Components:** `waffle-commons/contracts` (`Health\HealthCheckInterface`), `waffle-commons/runtime` (shutdown sequence), the probe owners (`waffle-commons/data`, `waffle-commons/cache`, `waffle-commons/queue`), and `waffle-commons/pipeline`, which hosts the probe middleware (§5.2, decided 2026-10-17) **Author:** Core Architect **Tags:** kubernetes, health, readiness, graceful-shutdown, frankenphp, worker-mode
+**Status:** Shipped in `0.1.0-beta7` — health and readiness probes (`[OPS-01]`) and graceful shutdown & draining (`[OPS-02]`). The schema-migration workflow (`[OPS-03]`) stays in RFC-014. **Components:** `waffle-commons/contracts` (`Health\HealthCheckInterface`), `waffle-commons/runtime` (shutdown sequence), the probe owners (`waffle-commons/data`, `waffle-commons/cache`, `waffle-commons/queue`), and `waffle-commons/pipeline`, which hosts the probe middleware (§5.2, decided 2026-10-17) **Author:** Core Architect **Tags:** kubernetes, health, readiness, graceful-shutdown, frankenphp, worker-mode
 
 **Reference RFCs:** RFC-001 (Core & Runtime), RFC-003 (HTTP & Middleware Pipeline), RFC-005 (Logging & Observability), RFC-014 (Data & Persistence — `[OPS-03]`), RFC-015 (Asynchronous Execution — queue consumers)
 

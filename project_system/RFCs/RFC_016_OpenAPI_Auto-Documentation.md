@@ -9,7 +9,7 @@ aliases: []
 
 # RFC-016: OpenAPI & Auto-Documentation
 
-**Status:** In progress for `0.1.0-beta7` (`[API-01]` OpenAPI generation, `[API-02]` DTO serializer & content negotiation) **Components:** `waffle-commons/openapi`, `waffle-commons/serializer` **Author:** DevSecOps Lead **Tags:** swagger, openapi, documentation, dx
+**Status:** Shipped in `0.1.0-beta7` (`[API-01]` OpenAPI generation, `[API-02]` DTO serializer & content negotiation) **Components:** `waffle-commons/openapi`, `waffle-commons/serializer` **Author:** DevSecOps Lead **Tags:** swagger, openapi, documentation, dx
 
 ## 1. Summary
 

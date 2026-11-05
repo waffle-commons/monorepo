@@ -1,9 +1,9 @@
 ---
 title: Retrospective Beta 7
 date_created: 2026-11-02
-date_updated: 2026-11-04
+date_updated: 2026-11-05
 type: project
-status: draft
+status: archived
 tags:
   - project
   - retro
@@ -13,7 +13,7 @@ aliases: []
 ---
 # ⏪ Retrospective: Waffle Beta 7 (The Production Surface)
 
-**Date:** November 4, 2026 (written before the wave; its outcome is added on release day) **Author:** Leslie Petrimaux (maintainer)
+**Date:** November 4, 2026 (written before the wave; its outcome was added on release day) **Author:** Leslie Petrimaux (maintainer)
 
 ## 1. The Goal
 
@@ -180,6 +180,9 @@ carry-over, all before the beta8 API freeze.
 - The development container's FrankenPHP crashes on a watcher reboot (`zend_mm_heap corrupted`,
   2026-10-10 and again 2026-11-04, when it took a gate run down with it): reproduce it, then report it
   upstream.
+- What release day left: `data`'s patch coverage (93.81 % against a 94.76 % base), the production
+  secrets named by `create-project.sh`'s last message, the skeleton's fixed container names and host
+  ports, and the log lines a created project's tests print.
 
 ## 7. Verdict
 
@@ -191,5 +194,9 @@ before the tag: the workspace's CI job runs its whole suite on GitHub, and the s
 committed, cloned and booted from what Packagist serves. Beta 8 starts from a release whose public
 face has been tried, not assumed.
 
-*Release day: the wave's outcome (component tags, Packagist, the umbrella gate after the relock) is
-added after the tag.*
+**Release day.** The wave tagged the 27 repositories without a failure, Packagist serves the 26
+packages at the commits the tag pins, and the newcomer path ran from Packagist itself: created,
+committed, cloned, installed, booted and migrated. Getting there took a security fix in `contracts`
+(Symfony's advisories of 2026-11-04 failed `composer audit`), a lock refresh in every repository, and
+two test fixes that only GitHub's environment could reveal. CI kept finding what the local gates could
+not, up to the last hour.
