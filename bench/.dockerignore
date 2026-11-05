@@ -3,6 +3,8 @@
 results/
 engines/symfony-app/var/
 engines/symfony-app/.git/
+engines/symfony-app-secured/var/
+engines/symfony-app-secured/.git/
 k6/
 sql/
 scripts/

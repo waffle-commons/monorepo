@@ -10,96 +10,82 @@ Add a new component when:
 
 - The new code is **independently useful** (a consumer outside the framework could `composer require` it).
 - It has a clean PSR-x or W3C contract you can point at.
-- It will only depend on `waffle-commons/contracts` (and possibly the PSR interface packages).
+- It will only depend on `waffle-commons/contracts` (plus `waffle-commons/utils` and the PSR interface
+  packages).
 
-If those aren't all true, extend an existing component instead. New components have ongoing release / CI / coverage cost.
+If those aren't all true, extend an existing component instead. New components have ongoing release / CI /
+coverage cost.
 
-## 1. Bootstrap from `component-template`
+## 1. Create the GitHub repository
 
-The `component-template` submodule is the canonical scaffold. It ships pinned Mago/PHPUnit/Psalm config, a CI workflow, a `mago.toml` with the ecosystem's `[guard]` rules, an `igor.json` + `composer igor` memory-neutrality gate (see [The Mago Purge Protocol](../explanation/mago-purge-protocol.md#the-memory-neutrality-companion-gate-igor-php)), and placeholder files.
+Create `waffle-commons/<slug>` (public) — empty, or from the `component-template` GitHub template. Then:
 
-```bash
-# At the umbrella root
-cd component-template
-./configure-component.sh MyThing
-```
+- **Settings:** merge commits only (turn **squash and rebase off** — the release wave requires every pinned
+  commit to be an ancestor of `main`, and a squash orphans it), delete branch on merge.
+- **Rulesets:** `wfl rulesets:sync <slug>` applies the canonical set from the root `*-ruleset.json` files;
+  `wfl rulesets:check <slug>` verifies it. See the [`component-ruleset` reference](../reference/component-ruleset.md).
 
-The script:
+## 2. Scaffold it into the umbrella
 
-- replaces every `HttpClient` placeholder (the original component the template was extracted from) with your PascalCase name;
-- renames files / directories accordingly;
-- updates the PSR-4 namespaces in `composer.json`;
-- updates badge URLs.
-
-Read the script's output carefully and confirm everything was rewritten.
-
-## 2. Move the scaffold into place
-
-The template generates the new component **in place**. Move it to the umbrella root as a sibling of the other components:
+**Empty repository** — one command does it all (submodule, template seed, configuration, `composer install`,
+Definition of Done):
 
 ```bash
-cd ..
-mv component-template/MyThing my-thing
+wfl new-component <PascalName> <git-url> "<one-sentence description>" [package-slug]
+# e.g. wfl new-component RateLimiter git@github.com:waffle-commons/rate-limiter.git \
+#        "Token-bucket rate limiting for the Waffle framework."
 ```
 
-> The exact mechanics depend on how your team prefers to bootstrap. Some teams clone the template to a separate repo first, then add it as a submodule. The pragmatic local-first variant above is fine for prototyping.
-
-## 3. Create the upstream repository
-
-Create `git@github.com:waffle-commons/my-thing.git` on GitHub (`waffle-commons` org). Push the scaffolded code:
+**Repository created from the GitHub template** — it holds the template as of its creation date, so bring it
+up to date first:
 
 ```bash
-cd my-thing
-git init
-git remote add origin git@github.com:waffle-commons/my-thing.git
-git add .
-git commit -m "chore: scaffold from component-template"
-git branch -M main
-git push -u origin main
+git submodule add git@github.com:waffle-commons/<slug>.git <slug>
+rsync -a --exclude .git --exclude vendor/ --exclude graphify-out/ component-template/ <slug>/
+(cd <slug> && ./configure-component.sh <PascalName> [package-slug] "<one-sentence description>")
+docker exec -w /waffle-commons/<slug> waffle-dev composer install
 ```
 
-Apply the canonical branch ruleset:
+`configure-component.sh` replaces three placeholders — `{COMPONENT_NAME}` (the PSR-4 segment, e.g.
+`Waffle\Commons\OpenApi`), `{COMPONENT_SLUG}` (the lowercase Composer name, derived from the PascalCase
+name unless given, e.g. `openapi`) and `{COMPONENT_DESCRIPTION}` (what Packagist shows). It installs the
+component README, removes the template-only `images/`, **fails if a placeholder survives**, and deletes
+itself.
+
+## 3. Prove the gates
 
 ```bash
-gh api -X POST /repos/waffle-commons/my-thing/rulesets \
-    --input ../component-ruleset.json
+wfl dod <slug>
 ```
 
-See [`component-ruleset` reference](../reference/component-ruleset.md) for what that JSON enforces.
+`composer mago` must print **zero** diagnostics and `composer igor` must report 0 KO with the pinned auditor
+(`.igor-version`). Tests and coverage are **N/A only while `src/` holds no PHP file**: the first class
+switches the full bar on (PHPUnit green, line coverage ≥ 95 %). The canonical CI workflow applies the same
+rule.
 
-## 4. Add it as a submodule of the umbrella
+## 4. Wire the umbrella
 
-Back at the umbrella root:
+- **Gitlink:** commit `.gitmodules` **and** the submodule pointer; `git ls-files -s <slug>` must show
+  `160000 <sha>`, or every CI `git submodule update --init -- <slug>` fails with a pathspec error.
+- **umbrella-ci:** add `<slug>` to the `dorny/paths-filter` list in `.github/workflows/umbrella-ci.yml`.
+- **Git hooks:** `./scripts/install-git-hooks.sh` (idempotent — see [Install git hooks](install-git-hooks.md)).
+- **SEC-03:** if the component compares secrets, tokens or signatures, add it to the `sec03` job's
+  submodule list **and** to its audit arguments.
+- **Release allowlist:** add `<slug>` to `RELEASE_INCLUDE` in `.github/workflows/release-wave.yml` at release
+  preparation, once the component ships code.
+- `loop.sh`, `coverage.sh` and `wfl` derive the component set from `.gitmodules`
+  (`scripts/list-components.sh`) — there is no hardcoded list to edit.
+
+Then check nothing drifted:
 
 ```bash
-git submodule add git@github.com:waffle-commons/my-thing.git my-thing
-git add .gitmodules my-thing
-git commit -m "chore: add waffle-commons/my-thing submodule"
+wfl ci:check      # canonical CI workflow, Dependabot, toolchain, description, paths filter
+wfl sync:status   # the new repo is on the release branch and its gitlink matches
 ```
 
-The umbrella now tracks `my-thing` at its initial commit.
+## 5. Register it on Packagist
 
-## 5. Register it in the cross-component scripts
-
-Both `loop.sh` and `coverage.sh` derive the component set (today, via `scripts/list-components.sh`, which discovers every `waffle-commons/*` directory). The set grows over time — Beta5 added three new releasable packages: `async`, `telemetry`, and `telemetry-otel`. If your scripts still carry a hardcoded `COMPONENTS=( … )` array, append your component:
-
-```bash
-# loop.sh + coverage.sh, alphabetical insertion
-COMPONENTS=(
-    "cache"
-    "config"
-    ...
-    "my-thing"
-    ...
-)
-```
-
-Verify:
-
-```bash
-./loop.sh ls composer.json
-# my-thing should appear with a ✅
-```
+Submit `waffle-commons/<slug>` on Packagist **before the first tag**, so the release wave's tag reaches it.
 
 ## 6. Wire the documentation entries
 
@@ -110,22 +96,24 @@ Verify:
 | `documentation/reference/<my-thing>.md` | New reference page describing the component's public surface. |
 | `docs/reference/repository-layout.md` | Mention the new directory. |
 
-If the new component introduces user-facing concepts (an attribute, a middleware, a service contract), it likely also needs an explanation page under `documentation/explanation/` and possibly a how-to under `documentation/how-to/`.
+If the new component introduces user-facing concepts (an attribute, a middleware, a service contract), it
+likely also needs an explanation page under `documentation/explanation/` and possibly a how-to under
+`documentation/how-to/`.
 
 ## 7. Open the umbrella PR
 
 Per-PR checklist:
 
-- [ ] New submodule exists on GitHub at `waffle-commons/<thing>` with the canonical ruleset applied.
-- [ ] `.gitmodules` and the submodule pointer committed in the umbrella.
-- [ ] `loop.sh` + `coverage.sh` arrays updated.
-- [ ] `README.md` matrix and `documentation/reference/index.md` updated.
-- [ ] New `documentation/reference/<thing>.md` reference page.
-- [ ] `./loop.sh composer mago` and `./loop.sh composer tests` still green.
-- [ ] `composer igor` green for the new component (it inherits the memory-neutrality gate from the template).
+- [ ] Repository on GitHub with merge-commit-only settings and the canonical rulesets (`wfl rulesets:check`).
+- [ ] `.gitmodules` and the `160000` gitlink committed in the umbrella.
+- [ ] `umbrella-ci` paths filter updated; `wfl ci:check` reports no drift.
+- [ ] `wfl dod <slug>` green; git hooks installed.
+- [ ] Package registered on Packagist.
+- [ ] `README.md` matrix and `documentation/reference/index.md` updated; new reference page.
 
 ## Related
 
 - [Release a component](release-a-component.md) — for the first real release of the new package.
 - [`component-template` reference](../reference/repository-layout.md) — the scaffold's contents.
-- [The Component Agnosticism rule](../explanation/component-agnosticism.md) — why your new component must only depend on `contracts`.
+- [The Component Agnosticism rule](../explanation/component-agnosticism.md) — why your new component must only
+  depend on `contracts`.

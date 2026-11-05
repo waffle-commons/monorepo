@@ -1,0 +1,17 @@
+{
+  "name": "waffle-commons",
+  "description": "The waffle-commons repository's own Claude Code plugins: the waffle-cockpit mod and a pinned, curated copy of Matt Pocock's engineering skills.",
+  "owner": { "name": "Waffle-Commons" },
+  "plugins": [
+    {
+      "name": "waffle-cockpit",
+      "source": "./.claude/plugins/waffle-cockpit",
+      "description": "Status lines under the prompt (incl. background shells, monitors and subagents), /dod in a pane with no model turn, and a Bash guard for host-side PHP, submodule --remote syncs and release-tag pushes."
+    },
+    {
+      "name": "mattpocock-skills",
+      "source": "./.claude/plugins/mattpocock-skills",
+      "description": "Matt Pocock's engineering skills (grilling, TDD, diagnosing bugs, writing for agents, spec and tickets…), vendored at a pinned commit and curated for this repository."
+    }
+  ]
+}

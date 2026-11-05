@@ -33,13 +33,13 @@ jobs:
       workspace:  ${{ steps.filter.outputs.workspace }}
     steps:
       - name: Checkout umbrella
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Filter changed paths
         id: filter
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@v4
         with:
           list-files: none
           filters: |
@@ -56,12 +56,16 @@ jobs:
             http:             'http/**'
             http-client:      'http-client/**'
             log:              'log/**'
+            openapi:          'openapi/**'
             pipeline:         'pipeline/**'
+            queue:            'queue/**'
             routing:          'routing/**'
             runtime:          'runtime/**'
             security:         'security/**'
+            serializer:       'serializer/**'
             telemetry:        'telemetry/**'
             telemetry-otel:   'telemetry-otel/**'
+            testing:          'testing/**'
             utils:            'utils/**'
             waffle:           'waffle/**'
             workspace:        'workspace/**'
@@ -98,10 +102,22 @@ jobs:
         component: ${{ fromJSON(needs.detect-changes.outputs.components) }}
     env:
       COMPONENT: ${{ matrix.component }}
+    # The data and queue suites talk to a real Redis (WAFFLE_TEST_REDIS_HOST); without one they skip.
+    # Same image and pin as the workspace job below.
+    services:
+      waffle-redis:
+        image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 15
 
     steps:
       - name: Checkout umbrella (no submodules)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -132,7 +148,7 @@ jobs:
           extensions: mbstring, intl, opcache, xml, dom, tokenizer
 
       - name: Cache composer
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ${{ matrix.component }}/vendor
           key:  composer-${{ runner.os }}-${{ matrix.component }}-${{ hashFiles(format('{0}/composer.lock', matrix.component)) }}
@@ -165,65 +181,109 @@ jobs:
 
       # The composer package is only a bootstrapper: bin/igor-php resolves
       # releases/latest from the GitHub API and downloads THAT binary, so the
-      # composer constraint and composer.lock pin nothing. Seed the version file
-      # it reads, then assert the pin actually took — otherwise an upstream
-      # release silently changes what this gate audits.
+      # composer constraint and composer.lock pin nothing. vendor/ is cached
+      # above, so a restored binary of any version may already sit there: drop
+      # it, seed the version file, then assert against the BINARY's own banner
+      # (`--version` prints to stderr; the bootstrapper's download message also
+      # contains the version, so only an exact-line match proves it).
+      # Keep IGOR_VERSION equal to .igor-version (wfl ci:check enforces it).
       - name: Pin the Igor auditor
         working-directory: ${{ matrix.component }}
         env:
-          IGOR_VERSION: '0.7.0'
+          IGOR_VERSION: '0.10.1'
         run: |
-          mkdir -p vendor/igor-php/igor-php/resources/bin
-          printf '%s' "$IGOR_VERSION" > vendor/igor-php/igor-php/resources/bin/.version
-          vendor/bin/igor-php --version | grep -qF "$IGOR_VERSION"
+          bin_dir=vendor/igor-php/igor-php/resources/bin
+          rm -rf "$bin_dir" && mkdir -p "$bin_dir"
+          printf '%s' "$IGOR_VERSION" > "$bin_dir/.version"
+          vendor/bin/igor-php --version 2>&1 | tee /dev/stderr | grep -qFx "igor-php version $IGOR_VERSION"
 
       - name: igor-php
         working-directory: ${{ matrix.component }}
         run: vendor/bin/igor-php .
 
+      # A fresh scaffold has no source: nothing to test or measure yet. The
+      # first PHP file under src/ switches the full test + coverage gate on.
       - name: composer tests
+        if: hashFiles(format('{0}/src/**/*.php', matrix.component)) != ''
         working-directory: ${{ matrix.component }}
         env:
           XDEBUG_MODE: coverage
+          WAFFLE_TEST_REDIS_HOST: 127.0.0.1
         run: vendor/bin/phpunit --coverage-clover ./var/data/phpunit-coverage/clover.xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        if: hashFiles(format('{0}/src/**/*.php', matrix.component)) != ''
+        uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./var/data/phpunit-coverage/clover.xml
 
   # --------------------------------------------------------------------------
   # 3. Workspace demo app — composer/security posture gate (audit FIX-01 #10).
-  #    Not a library: composer validate + install + static gates + composer
-  #    audit only — no phpunit/coverage gate. This is the demo-app policy; it is
-  #    the only exemption in this workflow (every framework component is fully
-  #    gated, igor included).
+  #    Not a library: composer validate + install + static gates + PHPUnit +
+  #    composer audit, with no coverage gate and no igor run. This is the
+  #    demo-app policy (CARRY-07); it is the only exemption in this workflow
+  #    (every framework component is fully gated, igor included).
   # --------------------------------------------------------------------------
   workspace:
     name: workspace
     needs: detect-changes
     if: needs.detect-changes.outputs.workspace == 'true'
     runs-on: ubuntu-latest
+    # The factory tests talk to a real Redis, and every POST through the kernel
+    # leases a PostgreSQL connection (TransactionIsolationMiddleware), as in the
+    # dev stack: same images and credentials, pinned as in workspace/docker-compose.yml.
+    services:
+      waffle-redis:
+        image: redis:7-alpine@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 15
+      waffle-postgres:
+        image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+        env:
+          POSTGRES_DB: waffle
+          POSTGRES_USER: waffle
+          POSTGRES_PASSWORD: waffle
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U waffle -d waffle"
+          --health-interval 2s
+          --health-timeout 2s
+          --health-retries 15
     steps:
       - name: Checkout umbrella (no submodules)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
-      # workspace/composer.json declares 21 path repositories (../contracts …
-      # ../telemetry-otel), so ALL of them must be checked out or composer
-      # install fails. Never the private 'academy' submodule (the default
-      # GITHUB_TOKEN is repo-scoped and can't clone it). Rewrite the SSH remote
-      # to HTTPS so the runner reads the public repos anonymously.
-      - name: Init workspace + its 21 path-repo components
+      # workspace/composer.json declares one path repository per component it
+      # uses (../contracts …), and composer install fails unless ALL of them are
+      # checked out. The list is read from that file, never kept by hand: a
+      # hand-kept one missed beta7's openapi, queue and serializer. Never the
+      # private 'academy' submodule (the default GITHUB_TOKEN is repo-scoped and
+      # can't clone it). Rewrite the SSH remote to HTTPS so the runner reads the
+      # public repos anonymously.
+      - name: Init workspace + its path-repo components
         run: |
           set -euo pipefail
-          COMPONENTS="workspace contracts utils config container http http-client routing pipeline event-dispatcher log error-handler cache security auth console data runtime waffle async telemetry telemetry-otel"
           git config --global url."https://github.com/".insteadOf "git@github.com:"
-          # shellcheck disable=SC2086 — word-splitting is intentional here.
-          git submodule sync -- $COMPONENTS
-          git submodule update --init --depth=1 -- $COMPONENTS
+          git submodule sync -- workspace
+          git submodule update --init --depth=1 -- workspace
+          mapfile -t COMPONENTS < <(jq -r '.repositories[] | select(.type == "path") | .url
+            | select(startswith("../")) | ltrimstr("../")' workspace/composer.json)
+          if [ "${#COMPONENTS[@]}" -eq 0 ]; then
+            echo "::error::no ../<component> path repository found in workspace/composer.json"
+            exit 1
+          fi
+          echo "Path repositories (${#COMPONENTS[@]}): ${COMPONENTS[*]}"
+          git submodule sync -- "${COMPONENTS[@]}"
+          git submodule update --init --depth=1 -- "${COMPONENTS[@]}"
 
       - name: Setup PHP 8.5
         uses: shivammathur/setup-php@v2
@@ -231,17 +291,17 @@ jobs:
           php-version: '8.5'
           tools: composer:v2
           coverage: none
-          extensions: mbstring, intl, opcache, xml, dom, tokenizer, yaml
+          extensions: mbstring, intl, opcache, xml, dom, tokenizer, yaml, redis, pdo_pgsql
 
       - name: Cache composer
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: workspace/vendor
           key:  composer-${{ runner.os }}-workspace-${{ hashFiles('workspace/composer.lock') }}
           restore-keys: |
             composer-${{ runner.os }}-workspace-
 
-      # --no-check-all: the 21 exact '1.0.0-dev' path-repo pins are intentional
+      # --no-check-all: the exact '1.0.0-dev' path-repo pins are intentional
       # for the demo app; the strict pass still enforces schema + publish rules.
       - name: composer validate (strict)
         working-directory: workspace
@@ -267,6 +327,22 @@ jobs:
         working-directory: workspace
         run: vendor/bin/mago guard
 
+      # The tests reach Redis as waffle-redis:6379, its dev-stack name, and
+      # PostgreSQL through the DB_* variables a local .env provides; both service
+      # containers listen on the runner's localhost. Coverage is reported locally
+      # (wfl dod), never gated (CARRY-07).
+      - name: phpunit (CARRY-06)
+        working-directory: workspace
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: '5432'
+          DB_NAME: waffle
+          DB_USER: waffle
+          DB_PASSWORD: waffle
+        run: |
+          echo "127.0.0.1 waffle-redis" | sudo tee -a /etc/hosts
+          vendor/bin/phpunit --no-coverage
+
       - name: composer audit (DEP-04)
         working-directory: workspace
         run: composer audit
@@ -281,7 +357,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout umbrella (no submodules)
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -307,11 +383,28 @@ jobs:
         run: php scripts/sec03-compare-audit.php auth security http http-client data cache telemetry
 
   # --------------------------------------------------------------------------
-  # 5. Single aggregating gate so branch protection can pin one required check.
+  # 5. Claude Code operating layer: skills, agents, plugins, references
+  #    (scripts/ai-check.py). Needs no submodule, PHP or Docker; paths inside a
+  #    submodule that is not checked out are skipped.
+  # --------------------------------------------------------------------------
+  ai-check:
+    name: AI operating layer (wfl ai:check)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout umbrella (no submodules)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Lint skills, agents, plugins and references
+        run: python3 scripts/ai-check.py --no-claude
+
+  # --------------------------------------------------------------------------
+  # 6. Single aggregating gate so branch protection can pin one required check.
   # --------------------------------------------------------------------------
   gate:
     name: umbrella-ci gate
-    needs: [detect-changes, check, workspace, sec03]
+    needs: [detect-changes, check, workspace, sec03, ai-check]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -328,6 +421,10 @@ jobs:
           fi
           if [ "${{ needs.sec03.result }}" != "success" ]; then
             echo "::error::SEC-03 timing-safe comparison gate failed (result: ${{ needs.sec03.result }})"
+            exit 1
+          fi
+          if [ "${{ needs.ai-check.result }}" != "success" ]; then
+            echo "::error::AI operating-layer check failed (result: ${{ needs.ai-check.result }})"
             exit 1
           fi
           if [ "${{ needs.workspace.result }}" != "success" ] && [ "${{ needs.workspace.result }}" != "skipped" ]; then

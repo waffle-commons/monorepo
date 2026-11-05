@@ -1,0 +1,55 @@
+---
+name: diataxis-doc
+description: "Write Diátaxis docs in documentation/ that mirror the PHP 8.5 code exactly, with version stamps"
+when_to_use: >-
+  Writing or updating framework documentation (tutorials, how-to, reference, explanation),
+  documenting a component's public surface, exact signatures, version stamps (0.1.0-betaN), beta8
+  [DOC-01].
+---
+
+## What I do
+I read PHP 8.5 code across the `waffle-commons` components and produce documentation categorized into
+the Diátaxis framework under `documentation/`. Docs must mirror the code **exactly**.
+
+## Diátaxis Quadrants (output under `documentation/`)
+- `tutorials/` — learning-oriented, step-by-step.
+- `how-to/` — problem-oriented recipes.
+- `reference/` — code contracts, DTO properties, attribute specifications.
+- `explanation/` — architecture (monorepo of submodules, FrankenPHP statelessness, agnosticism).
+
+## Physical Signature Mandate (exactness)
+Documentation MUST reproduce the **exact physical signatures** found in the source — never
+paraphrased or invented:
+- **Property Hooks:** show the literal `set(Type $value) { … }` block, including the thrown
+  `ValidationException`.
+- **Asymmetric visibility:** write `public private(set) Type $name` verbatim.
+- **`readonly` DTOs & promoted constructors:** show the real constructor with promoted, typed params.
+- **Typed constants:** `public const string NAME = '…';`.
+- **`#[\Override]`** and attributes (`#[Route]`, `#[Voter]`, `#[PublicAccess]`, `#[Dto]`,
+  `#[AsEventListener]`) shown with their real argument shapes.
+- **Verify each signature against the file before publishing** — a doc that drifts from the code is
+  a bug.
+
+## Core Constraints
+- Explicitly explain the PHP 8.5 feature each example uses.
+- State that every component depends **only** on `waffle-commons/contracts` (+ `waffle-commons/utils`).
+- Cite the source path (`component/src/...`) for non-trivial reference entries.
+
+## Version stamps
+- Doc/release version stamps are `0.1.0-betaN` — **no `v` prefix** (matches the no-`v` tag gate).
+- Update the **current**-version stamp on a page when its component ships; **never bulk-bump**
+  historical `CHANGELOG`/`Waffle_Evolutions` entries or past `Beta-N` prose — that history is pinned.
+- Release dates are month-precision: `## [0.1.0-beta6] — 2026-09` in a CHANGELOG, "September 2026"
+  in prose. Never `YYYY-MM-DD`. Non-release dates (front-matter, audit dates) keep full precision.
+- The direction these docs track lives in `project_system/` — see `[[roadmap-steward]]`.
+
+## Toward the freeze (beta8 `[DOC-01]`)
+- **Coverage:** `documentation/` covers every component at its v1 API state, including the four beta7
+  newcomers (`queue`, `openapi`, `serializer`, `testing`) — each with at least a Reference page, plus a
+  How-to or Tutorial where a user has a task to do.
+- **Reference against the freeze:** Reference pages are re-verified symbol by symbol against the
+  **frozen** contracts (`[[api-freeze]]`). `contracts/BC-POLICY.md` is linked wherever the BC promise
+  matters.
+- **Upgrade guide:** "beta series → 1.0" is a How-to, written when the freeze fixes the final names.
+- **EcoShield docs are not here:** they are French and live in the gateway's own repository
+  (`[[ecoshield]]`).

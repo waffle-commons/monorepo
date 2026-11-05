@@ -71,8 +71,10 @@ docker exec -w /waffle-commons/security waffle-dev composer tests 2>&1 | tee sec
 | `waffle-redis` | `redis:7-alpine` | — | PSR-16 cache backend (RFC-013) + key-value driver integration target (RFC-022). |
 | `waffle-postgres` | `postgres:17-alpine` | `5432` | Primary relational sandbox (RFC-022); `bin/waffle db:migrate` runs against it. Credentials come from `workspace/.env` (`DB_*`). |
 | `waffle-mongo` | `mongo:7` | — *(internal only)* | Document-driver integration target (RFC-022); data's Mongo tests skip cleanly when it is absent. |
+| `waffle-mysql` | `mysql:8.4` | `3306` | MySQL leg of the `[OPS-03]` migration matrix: data's `MigrationRoundTripTest` runs migrate → status → rollback live in a `waffle_ops03` sandbox database. The app does not use it. |
+| `waffle-mariadb` | `mariadb:11.4` | `3307` | MariaDB leg of the same matrix (same sandbox, same test). |
 
-`waffle-dev` waits for `legacy-backend`, `waffle-redis`, and `waffle-postgres` to be healthy before starting; `waffle-mongo` is independent. Postgres and Mongo persist their data in named volumes (`waffle-postgres-data`, `waffle-mongo-data`) — `down --volumes` resets them.
+`waffle-dev` waits for `legacy-backend`, `waffle-redis`, and `waffle-postgres` to be healthy before starting; `waffle-mongo`, `waffle-mysql` and `waffle-mariadb` are independent. Each database persists its data in a named volume (`waffle-postgres-data`, `waffle-mongo-data`, `waffle-mysql-data`, `waffle-mariadb-data`) — `down --volumes` resets them. The round trip skips an engine it cannot reach, and `wfl dod data` rejects a run with skipped tests, so keep all three SQL services up when you gate `data`.
 
 ## File ownership gotchas
 

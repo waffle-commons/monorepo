@@ -1,0 +1,24 @@
+# Engine D (equivalent features) — the counterpart of Engine A's
+# AuthenticationMiddleware + SecurityMiddleware on the bench routes:
+#   - a stateless firewall over every path that runs a bearer-token
+#     authenticator on every request, eagerly (lazy: false), as Waffle's
+#     authentication bridge does. k6 sends no token, so every bench request is
+#     anonymous; a presented token is always refused (401, see
+#     App\Security\BenchAccessTokenHandler);
+#   - authorisation per action: #[IsGranted('PUBLIC_ACCESS')] in BenchController,
+#     the counterpart of the skeleton's #[PublicAccess].
+# Tracked stub: bootstrap-symfony.sh copies it over the security-bundle recipe.
+security:
+    providers:
+        # No user is ever loaded: no bench request authenticates.
+        bench_nobody:
+            memory:
+                users: {}
+    firewalls:
+        main:
+            pattern: ^/
+            stateless: true
+            lazy: false
+            provider: bench_nobody
+            access_token:
+                token_handler: App\Security\BenchAccessTokenHandler

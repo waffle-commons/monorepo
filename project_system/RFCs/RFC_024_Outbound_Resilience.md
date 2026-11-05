@@ -1,0 +1,169 @@
+---
+title: "RFC-024: Outbound Resilience (Client Policies & Circuit Breaker)"
+type: rfc
+tags:
+  - rfc
+  - waffle
+aliases: []
+---
+
+# RFC-024: Outbound Resilience (Client Policies & Circuit Breaker)
+
+**Status:** In progress for `0.1.0-beta7` — HTTP client resilience policies (`[NET-02]`) and the circuit breaker (`[NET-03]`). Inbound rate limiting (`[NET-01]`) stays in RFC-017 §3.1 and shares this RFC's state-storage family. **Components:** `waffle-commons/http-client` (policies, retries, breaker), `waffle-commons/contracts` (policy, breaker and state-storage contracts), and `waffle-commons/data`, which implements the shared state storage over its Redis pool (§5.1, decided 2026-10-17) **Author:** DevSecOps Lead **Tags:** http-client, resilience, timeouts, retry, backoff, circuit-breaker
+
+**Reference RFCs:** RFC-003 (HTTP & Middleware Pipeline), RFC-005 (Logging & Observability), RFC-015 (Asynchronous Execution — concurrent fan-out), RFC-017 (Advanced Security & Edge Protection — rate limiting), RFC-021 (Universal Authentication Bridge — outbound credentials)
+
+## 1. Summary
+
+Outbound calls must survive flaky upstreams without taking the worker down with them. This RFC defines
+bounded, per-request resilience policies for `waffle-commons/http-client` — timeouts, retries only where
+they are safe, exponential backoff with jitter — and a circuit breaker whose state is shared by every
+worker. It is a hard prerequisite for the EcoShield Gateway alpha (`[GATE-02]`), which proxies to a
+legacy upstream.
+
+## 2. Motivation
+
+- **Today's client** (`http-client/src/Client.php`) has hard ceilings — 1 s to connect, 10 s in total —
+  does not follow redirects, and runs the SSRF guard (resolve → validate → pin) before every transfer. It
+  has no retry and no breaker.
+- **Naive retries make outages worse:** unbounded or synchronized retries turn a slow upstream into a retry
+  storm, and retrying a non-idempotent request can duplicate a side effect.
+- **A breaker in worker memory protects nothing:** each worker would open its own, N times over, and a new
+  worker would start closed. The state must be shared.
+- **Fail fast:** when an upstream is down, a gateway should answer in milliseconds instead of pinning
+  every worker for the full timeout.
+
+## 3. Technical Specifications
+
+### 3.1 Resilience policy (`[NET-02]`)
+
+- **Immutable policy DTO**, built from configuration rather than code: connect timeout, total timeout,
+  maximum attempts, backoff (base, cap, jitter), the retryable statuses and transport errors, and an
+  explicit opt-in for retrying non-idempotent methods.
+- **No infinite timeout by construction.** cURL treats `0` as "no timeout", so the DTO's property hooks
+  reject `≤ 0` and anything above the ceiling; today's ceilings become the defaults.
+- **Idempotency.** Only idempotent methods (RFC 9110: `GET`, `HEAD`, `OPTIONS`, `PUT`, `DELETE`) are
+  retried by default. `POST` and `PATCH` are retried only when the caller opts in explicitly.
+- **Backoff:** exponential with full jitter. A `Retry-After` from a 429 or 503 is honoured only within
+  the remaining budget; it may exceed the backoff cap, and when it does not fit the budget the client
+  returns the response instead of waiting (§5.4, decided 2026-10-17).
+- **Bounded total time.** The wall-clock across all attempts never exceeds the policy's total budget.
+- **Every attempt re-runs the SSRF guard.** DNS can change between attempts, so resolve → validate → pin
+  runs again each time.
+- **Per-request override** through an immutable wither on the client (or a request attribute), never
+  through mutable client state.
+
+### 3.2 Circuit breaker (`[NET-03]`)
+
+- **States:** closed → open when the failure rate over a window crosses the threshold (with a minimum
+  number of calls); open → half-open after the cool-down; half-open admits a bounded number of trial calls,
+  then closes on success or re-opens on failure.
+- **Key:** the upstream origin (scheme, host, port).
+- **Shared, atomic state.** State lives in shared storage (Redis), in the same storage family as the
+  RFC-017 limiter, never in worker memory. Recording an outcome and changing state are single atomic
+  operations (for example a Lua script), so concurrent workers agree on the state. The contract is
+  `LimiterStateStorageInterface` in `contracts`; its Redis implementation lives in `data` (§5.1).
+- **Storage unavailable:** the breaker behaves as closed: calls go through, with a warning log and a
+  metric, and the `[NET-02]` timeouts still bound every attempt (§5.2).
+- **Fail fast.** An open breaker short-circuits the call before any handle is allocated, with a specific
+  exception implementing a contracts exception interface, which the error handler maps to 503.
+- **Observability.** Each transition is emitted as an event and as metrics (a transition counter and a
+  state gauge through `MetricsRegistryInterface`). The event type (or its interface) lives in contracts,
+  so listeners in other components never import `http-client`'s concrete classes.
+
+### 3.3 Composition
+
+- An open breaker short-circuits **every** attempt, including retries; each attempt's outcome is
+  recorded.
+- The concurrent path (`sendRequests()`, `promise()`) applies the policy per request and checks the
+  breaker before a handle is allocated, exactly as it runs the SSRF guard today.
+- `AuthenticatedClient` (RFC-021) keeps decorating the client, and credentials are applied again on every
+  attempt.
+- *Implemented 2026-10-17:* composition is by decorators around any PSR-18 client —
+  `RetryingClient(CircuitBreakerClient(Client))` — so every attempt goes through the breaker and re-runs the
+  SSRF guard, and an open circuit is never retried. Timeouts are `Client::withTimeouts(TimeoutPolicy)`.
+  The retry budget bounds the waits and the start of each attempt, so the worst case is the budget plus
+  one attempt's total timeout.
+- *Concurrent path, implemented 2026-10-21:* both decorators implement `SettlingClientInterface`
+  (`ConcurrentClientInterface` plus `settleRequests()`, which settles every request instead of throwing the
+  first failure). It moved to `contracts` (`HttpClient\SettlingClientInterface`) the same day, so a decorator
+  in another component can implement it.
+  - The breaker asks the storage about every request of a batch before any is sent, sends the admitted
+    ones together and records each outcome. A refused request settles as its `CircuitOpenException`.
+  - The retry policy retries a batch in waves: each request keeps its own attempts, backoff,
+    `Retry-After` and budget, and the requests to retry go out together after the longest of their waits.
+  - `sendRequests()` is the fail-fast view of the settled batch: the first failure in key order, thrown
+    once every outcome is recorded. `promise()` runs the decorator's `sendRequest()` when it is waited on.
+  - A decorator that implements only PSR-18 keeps a batch correct but sends it one request at a time below
+    it. For the outbound credentials, auth's `AuthenticatedSettlingClient` keeps the batch concurrent.
+  - An unresolvable host is a `NetworkException` (cURL code 6) from the SSRF guard, so a DNS outage of a
+    public upstream is retried and counted like any transport failure; `SsrfException` stays a refusal.
+  - A half-open trial that records no outcome within a cool-down gives its slot back in the shared storage,
+    so a worker that dies mid-trial never holds the circuit half-open until the state expires.
+
+## 4. Contributor Guidelines
+
+- **Contracts-first:** the policy, breaker and storage contracts land in `waffle-commons/contracts` before
+  their consumers; `mago guard` keeps the perimeter.
+- **Stateless:** no retry counter or breaker state in a worker property. `wfl igor` stays at 0 KO — and a
+  per-worker counter is a correctness bug even where igor would only warn.
+- **Never retry a non-idempotent method silently.**
+- **Test the state machine with an injected clock**, never with `sleep()`; exercise the behaviour under
+  load through fault injection (the `chaos-runner` agent).
+
+## 5. Open Questions (decided 2026-10-17)
+
+1. **Where the Redis-backed state storage lives** — in `http-client`, through
+   `RedisConnectionPoolInterface`, or in the component that already owns Redis — while keeping every
+   consumer on the contract.
+
+   **Decision (2026-10-17):** one contract, `LimiterStateStorageInterface` (atomic operations, in
+   `contracts`), shared by the RFC-017 limiter and the breaker. Its Redis implementation lives in
+   `waffle-commons/data`, over the `RedisConnectionPoolInterface` that `data` already implements (Lua
+   scripts on a leased connection). `security` and `http-client` depend on the contract only. **Why:**
+   `data` owns the framework's pooled phpredis connection (heal-on-lease, pool stats), which `queue`
+   already uses; `cache` reaches Redis through predis, outside that pool, so housing the state there
+   would add a second Redis client stack. PSR-16 `get`/`set` cannot be atomic, so the state never goes
+   through the cache contracts. This supersedes RFC-017 §3.1's "must rely on `waffle-commons/cache`".
+
+   *Refined 2026-10-17 with the contracts change:* the family holds two interfaces rather than one —
+   `RateLimit\LimiterStateStorageInterface` (token buckets) and `CircuitBreaker\CircuitStateStorageInterface`
+   (`acquire`, `record`) — sharing `RateLimit\Exception\StateStorageExceptionInterface`, each implemented in
+   `data` over the Redis pool (`RedisLimiterStateStorage`, `RedisCircuitStateStorage`). Each consumer depends
+   only on the operations it uses.
+2. **Breaker behaviour when its own storage is unavailable** (treat as closed, or fail fast).
+
+   **Decision (2026-10-17): treat as closed.** Calls go through, with a warning log and a metric; the
+   `[NET-02]` timeouts still bound every attempt. **Why:** failing fast would turn a Redis outage into
+   an outage of every upstream integration.
+3. **Configuration keys** (frozen by beta8 `[FRZ-03]`).
+
+   **Decision (2026-10-17):** `waffle.http_client.resilience.*` for the policy and
+   `waffle.http_client.breaker.*` for the breaker, in snake_case like the existing keys (`redis_dsn`,
+   `trusted_hosts`). The leaf names are fixed with the code and frozen by beta8 `[FRZ-03]`.
+
+   *Fixed 2026-10-21 with the workspace wiring (`Workspace\Factory\HttpClientFactory`):*
+   - `resilience`: `connect_timeout_ms`, `total_timeout_ms`, `max_attempts`, `base_delay_ms`,
+     `max_delay_ms`, `budget_ms`, `retry_non_idempotent`.
+   - `breaker`: `enabled`, `failure_rate_percent`, `minimum_calls`, `window_seconds`,
+     `cool_down_seconds`, `half_open_trials`.
+   - A missing key takes the contract default. The breaker is on only with `enabled: true`, like the
+     limiter. Its state shares the queue's Redis DSN, as the limiter's does.
+
+   *Added 2026-10-22 with the skeleton wiring (`App\Factory\HttpClientFactory`, `App\Factory\RateLimitFactory`):*
+   `breaker.redis_dsn`, and `waffle.security.rate_limit.redis_dsn` for the limiter. The skeleton has no
+   queue, so each consumer names the Redis that holds its state; the template feeds both from `REDIS_DSN`.
+   The workspace reads the same two keys since 2026-10-29 (`waffle.queue.redis_dsn` stays the queue's).
+   These leaves freeze with the others at beta8 `[FRZ-03]`.
+4. **Whether `Retry-After` may extend a wait beyond the backoff cap** when it still fits the total budget.
+
+   **Decision (2026-10-17): yes.** A `Retry-After` may exceed the backoff cap when it fits the remaining
+   total budget; when it does not, the client returns the 429 or 503 instead of waiting. **Why:** the cap
+   bounds the client's own guesses, while `Retry-After` is the server's instruction; the total budget
+   stays the hard bound.
+
+## 6. Acceptance Criteria (`Roadmap_Beta7.md`)
+
+- The breaker opens and half-opens per its thresholds in fault-injection tests.
+- Zero infinite timeouts possible by construction.
+- Standard gates: `composer mago` zero output, `composer tests` ≥95 % coverage, `wfl igor` 0 KO.

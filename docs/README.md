@@ -29,7 +29,7 @@ Documentation is organised by what you're trying to do, following the [Diátaxis
 - [**Update a submodule pointer**](how-to/update-a-submodule.md) — when a downstream change has merged.
 - [**Release a component**](how-to/release-a-component.md) — tag, push, Packagist.
 - [**Work on multiple components locally**](how-to/work-on-multiple-components-locally.md) — Composer path repositories.
-- [**Install Git hooks**](how-to/install-git-hooks.md) — `scripts/install-git-hooks.sh` + Project Graphify.
+- [**Install Git hooks**](how-to/install-git-hooks.md) — `scripts/install-git-hooks.sh`: the pre-commit Mago and pre-push sanity gates.
 - [**Bump submodule pointers in the umbrella**](how-to/bump-submodule-pointers.md).
 - [**Check coverage across components**](how-to/check-coverage-across-components.md) — `coverage.sh`.
 
@@ -38,7 +38,7 @@ Documentation is organised by what you're trying to do, following the [Diátaxis
 - [**Docker dev environment**](reference/docker-environment.md) — `waffle-dev` container.
 - [**`loop.sh`**](how-to/run-checks-across-components.md), [**`coverage.sh`**](how-to/check-coverage-across-components.md), [**`scripts/install-git-hooks.sh`**](how-to/install-git-hooks.md), **`zip-project.sh`**.
 - [**`CLAUDE.md` conventions**](reference/claude-md.md) — the canonical project rules.
-- [**OpenCode skills**](reference/opencode-skills.md) — `.opencode/skills/*` AI prompts.
+- [**Claude Code skills, subagents & plugins**](reference/claude-skills.md) — `.claude/` and the repository marketplace.
 - [**`component-ruleset.json`**](reference/component-ruleset.md) — GitHub branch protection ruleset.
 - [**`CODEOWNERS`**](reference/codeowners.md) — review routing.
 

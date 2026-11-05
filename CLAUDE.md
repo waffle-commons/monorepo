@@ -1,13 +1,18 @@
+@AGENTS.md
+
 # CLAUDE.md — waffle-commons (PHP 8.5 · FrankenPHP · monorepo of independent submodules)
 
-> ⚡ Thin CLI router. **All** standards, architecture, and agent behaviour live in
-> **[`/AGENTS.md`](./AGENTS.md)** and **`.opencode/skills/<skill>/SKILL.md`**. Do not add standards here.
+> ⚡ The import above puts `AGENTS.md` (every standard, the architecture, agent behaviour) in context
+> for every session. This file only adds the Claude Code specifics. Do not add standards here.
 
 ## Canonical commands (always in Docker — never run PHP on the host)
 
 ```bash
-docker exec -it -w /waffle-commons/{component} waffle-dev {command}
+docker exec -w /waffle-commons/{component} waffle-dev {command}
 ```
+
+No `-it`: the agent's shell has no terminal, and Docker refuses `-t` without one. Add `-it` only when
+typing the command in a terminal; `wfl run|mago|test` choose for you.
 
 | Intent | `{command}` |
 |--------|-------------|
@@ -27,29 +32,50 @@ messages. Native-first fixes; never a baseline or suppression.
 
 > 🛠 **Internal CLI:** `wfl <cmd>` wraps the Docker calls — `wfl mago [comp]`, `wfl test [comp] [--filter=…]`,
 > `wfl igor`, `wfl compare-audit [comp…]` (SEC-03 gate), `wfl academy:test`, `wfl link/unlink`,
-> `wfl components`. **Beta5 automation:** `wfl dod [comp]` (full definition-of-done gate),
+> `wfl components`. **Set-up:** `wfl init` (fresh clone → working checkout, safe to re-run), `wfl doctor`
+> (what is missing, with the fix). **Gates:** `wfl dod [comp]` (full definition-of-done gate),
 > `wfl coverage [comp]` (clover %), `wfl flake-hunt <comp> [N]` (isolate a flaky test),
 > `wfl sync:contracts [comp]` / `wfl sync:demos [app]` (vendor-skew fix), `wfl pre-release [comp]`,
-> `wfl new-component <Name> <url>`, `wfl docker:reset`, `wfl mcp:check`. **Diagnostics / agent helpers:**
-> `wfl coverage:gaps <comp>` (files under 95% + uncovered count), `wfl xref <Symbol> [--tests]`
-> (fixed-string symbol search, vendor-excluded, sanity-checked), `wfl changed` (dirty submodules — commit
-> prep), `wfl boot-smoke <app>` (kernel boots without HTTP), `wfl wf-report <file>` (digest a workflow/agent
-> JSON output). Run `wfl help` for the full surface.
+> `wfl new-component <Name> <url>`, `wfl docker:reset`, `wfl mcp:check`, `wfl ai:check` (lints this
+> Claude Code layer). **Diagnostics / agent helpers:** `wfl coverage:gaps <comp>` (files under 95% +
+> uncovered count), `wfl xref <Symbol> [--tests]` (fixed-string symbol search, vendor-excluded,
+> sanity-checked), `wfl changed` (dirty submodules — commit prep), `wfl sync:status [--fetch]`
+> (read-only branch/ahead/behind/gitlink report), `wfl ci:check` (CI, Dependabot and toolchain drift
+> against `component-template`), `wfl rulesets:check`, `wfl boot-smoke <app>` (kernel boots without
+> HTTP), `wfl wf-report <file>` (digest a workflow/agent JSON output). **Strictness & supply chain:**
+> `wfl coverage:ratchet` (`.coverage-floors`: the DoD fails below a component's floor), `wfl mutation <comp>`
+> (Infection, pinned in `.infection-version`; MSI vs `.mutation-floors`), `wfl sbom`, `wfl images:pin`,
+> `wfl offline warm|check` (installs with the network off), `wfl local-only`, `wfl backup`
+> (+ `backup:schedule`), `wfl ai:settings` (merge the hardened settings; the person runs it),
+> `wfl ai:telemetry`. Run `wfl help` for the full surface.
 >
-> 🔌 **MCP:** five servers (filesystem · postgres · mongo · redis · github) are declared for Claude Code
-> (`.mcp.json`), opencode (`opencode.json`), and AntigravityCLI (`.antigravitycli/mcp_config.json`). Secrets
-> are env-var refs; run `wfl mcp:check` for prerequisites. See **[`/MCP.md`](./MCP.md)**.
+> 🔌 **MCP:** postgres · mongo · redis · github, each through a pinned launcher in `scripts/mcp/`
+> (`.mcp.json`, enabled by `.claude/settings.json`). GitHub and Mongo are read-only; database writes
+> ask first. `wfl mcp:check` opens a real session with each one. See **[`/MCP.md`](./MCP.md)**.
+>
+> 🧩 **Plugins:** the repository marketplace (`.claude-plugin/marketplace.json`) loads `waffle-cockpit`
+> (a mod: lines under the prompt — model, effort, context, cache, cost, limits, repo, PR, Waffle
+> phase, local-only commits + backup age, background shells / monitors / subagents — plus `/dod <comp>`
+> in a pane with no model turn, the `mcp__waffle-cockpit__dod|xref|coverage_gaps|dod_history` tools,
+> a Bash guard, Edit/Write checks for new `mixed` and secrets, an instant Mago check after each PHP edit
+> and a done-means-evidence reminder before a turn ends)
+> and `mattpocock-skills` (vendored, pinned; `/mattpocock-skills:<name>`) once the folder is trusted.
+>
+> 🔒 **Git & release safety:** agents edit files; the human commits, pushes, tags, merges and releases —
+> each only on an explicit request for that operation. See **`AGENTS.md` §6**.
+>
+> 🤖 **Skills & subagents:** `.claude/skills/` and `.claude/agents/`, Claude Code frontmatter only
+> (`AGENTS.md` §8). An agent without a `name:` is never registered; `wfl ai:check` catches it.
 
-## 🧭 Redirection directive (NON-NEGOTIABLE)
+## 🧭 Before planning or editing
 
-Before planning or editing **anything**, READ:
-
-1. **[`/AGENTS.md`](./AGENTS.md)** — PHP 8.5 strict standards, FrankenPHP statelessness mandate,
-   the Mago Purge Protocol, and the **Skills Routing Table** (intent → skill).
-2. The matching **`.opencode/skills/<skill>/SKILL.md`** for the task. When unsure, start with `tech-lead`.
-3. **`project_system/`** — the source of truth for project **direction**: `RFCs/` (RFC-001…022) and
+1. **`AGENTS.md`** is already in context through the import above, and it is binding.
+2. **Load the matching skill** (Claude Code lists them with their triggers). When unsure, `tech-lead`.
+3. **`project_system/`** — the source of truth for project **direction**: `RFCs/` (RFC-001…024) and
    `Roadmaps/` (`Roadmap_Alpha5 → Roadmap_v1_Gold` and `Roadmap_Post_v1`, plus `Roadmap_v1_Master`). Consult it before
    planning roadmap work; see the `roadmap-steward` skill.
+4. **The release phase** — beta7 build → beta8 freeze → RC1 certification. What each phase allows is in
+   `AGENTS.md` §5b; `tech-lead` routes by phase.
 
 Hard invariants: components depend **only** on `waffle-commons/contracts` (plus `waffle-commons/utils`,
 which itself requires only contracts); zero Mago baselines and zero non-empty Mago output; stateless

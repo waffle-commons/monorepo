@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # =============================================================================
 # Engine B — the shared Symfony baseline app on the CLASSIC runtime:
-# php:8.5-fpm + nginx, in ONE container.
+# php:8.5.12-fpm + nginx, in ONE container (the PHP of engines A, C and D).
 #
 # Build context = bench/ root (so the gitignored generated app is COPY-able):
 #   docker build -f engines/symfony-fpm/Dockerfile -t bench-engine-b .
@@ -12,7 +12,7 @@
 # the single-process FrankenPHP engines A and C — a sidecar would let nginx
 # escape the shared budget and skew the RAM-factor comparison.
 # =============================================================================
-FROM php:8.5-fpm
+FROM php:8.5.12-fpm-trixie@sha256:da5d8e27ec238adc0804fd4194f98e59477db7116690d275b76679c1b84c813f
 
 # `intl` is deliberately NOT installed: no bench workload touches it (the five
 # routes are JSON + DBAL), its C++ compile is the single slowest build step, and

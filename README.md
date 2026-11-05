@@ -15,7 +15,7 @@
 
 ---
 
-> **Release:** `0.1.0-beta6` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
+> **Release:** `0.1.0-beta7` &nbsp;|&nbsp; [`CHANGELOG.md`](CHANGELOG.md)
 > **Status:** beta software — production use requires an independent security audit.
 
 ## 🧠 Mission
@@ -26,7 +26,7 @@ Waffle exists to prove that PHP can ship a framework which is simultaneously:
 - **Secure** — fail-closed ABAC, stateless HMAC CSRF bound to a per-browser anonymous SID, SSRF allowlist on the outbound client, hardened HTTP headers by default.
 - **Fast** — FrankenPHP-first; every component is stateless across requests so the resident worker can hold the assembled kernel in memory between calls.
 
-The monorepo is the umbrella that holds 18 independent framework components, a project skeleton, a contributor workspace, a hands-on onboarding academy, a component scaffold template, the framework's user-facing documentation, and the project's official governance & roadmap ([`project_system/`](project_system/)). Each component is its own Git repository, released independently on Packagist; this umbrella is purely a development and integration convenience.
+The monorepo is the umbrella that holds 25 independent framework components, a project skeleton, a contributor workspace, a hands-on onboarding academy, a component scaffold template, the framework's user-facing documentation, and the project's official governance & roadmap ([`project_system/`](project_system/)). Each component is its own Git repository, released independently on Packagist; this umbrella is purely a development and integration convenience.
 
 ## 📦 What's inside
 
@@ -75,8 +75,8 @@ The project's **official roadmap and design record live in [`project_system/`](p
 
 | Area | Path | What it is |
 | :--- | :--- | :--- |
-| **Roadmap** | [`project_system/Roadmaps/`](project_system/Roadmaps/) | The official, release-by-release plan (current: [`Roadmap_Beta4.md`](project_system/Roadmaps/Roadmap_Beta4.md)). **If it isn't written here, it isn't committed direction.** |
-| **RFCs** | [`project_system/RFCs/`](project_system/RFCs/) | Authoritative design specifications (`RFC-001` … `RFC-022`) — the "why & what" behind every component. |
+| **Roadmap** | [`project_system/Roadmaps/`](project_system/Roadmaps/) | The official, release-by-release plan (current: [`Roadmap_Beta7.md`](project_system/Roadmaps/Roadmap_Beta7.md); the whole train in [`Roadmap_v1_Master.md`](project_system/Roadmaps/Roadmap_v1_Master.md)). **If it isn't written here, it isn't committed direction.** |
+| **RFCs** | [`project_system/RFCs/`](project_system/RFCs/) | Authoritative design specifications (`RFC-001` … `RFC-024`) — the "why & what" behind every component. |
 | **Release logs** | [`project_system/Logs/Releases/`](project_system/Logs/Releases/) | What shipped in each wave (`Log_<Release>.md`). |
 | **Retrospectives** | [`project_system/Logs/Retrospectives/`](project_system/Logs/Retrospectives/) | What went well / what to improve, per release. |
 
@@ -85,35 +85,33 @@ New work should **align with the current roadmap and the relevant RFC before it 
 ## 🚀 Quick start — building an app on Waffle
 
 ```bash
-composer create-project waffle-commons/skeleton my-app
+composer create-project waffle-commons/skeleton:0.1.0-beta7 my-app
 cd my-app
 docker compose up -d
 curl -k https://localhost/
 ```
+
+Name the version: until `1.0.0` every release is a beta, and Composer offers only stable releases unless you name one. Without PHP on your machine, the skeleton's [`create-project.sh`](https://github.com/waffle-commons/skeleton#create-a-new-project) does the same with Docker only.
 
 See [`documentation/tutorials/quick-start.md`](documentation/tutorials/quick-start.md) for the full walkthrough.
 
 ## 🛠️ Quick start — contributing to Waffle
 
 ```bash
-git clone --recurse-submodules git@github.com:waffle-commons/monorepo.git waffle-commons
-cd waffle-commons/workspace
-docker compose up -d        # spins up the `waffle-dev` container
-docker exec -it -w /waffle-commons waffle-dev bash
+git clone git@github.com:waffle-commons/monorepo.git waffle-commons
+cd waffle-commons
+bin/wfl init      # submodules, the waffle-dev container, composer install, git hooks, PATH link
+wfl doctor        # ✓ ready — or what is missing, with the fix
 ```
 
-Then inside the container, work on any component:
+`wfl init` is safe to re-run, falls back to HTTPS without an SSH key, and skips the private `academy`
+submodule if you cannot read it. Then work on any component, always inside the container:
 
 ```bash
+wfl dod security                                                    # the full definition of done
 docker exec -it -w /waffle-commons/security waffle-dev composer mago
 docker exec -it -w /waffle-commons/security waffle-dev composer tests
-```
-
-Or fan a command out across **all** components:
-
-```bash
-./loop.sh composer mago
-./coverage.sh
+wfl check:all --with-tests                                          # every component, in parallel
 ```
 
 See [`docs/tutorials/setup-your-monorepo-workspace.md`](docs/tutorials/setup-your-monorepo-workspace.md) for the full setup walkthrough.
@@ -163,12 +161,13 @@ waffle-commons/
 ├── LICENSE
 ├── CODEOWNERS             ← @waffle-commons/waffle-core
 ├── component-ruleset.json ← GitHub branch protection ruleset (the canonical version)
-├── opencode.json          ← OpenCode IDE config
+├── .claude/               ← Claude Code: skills, subagents, plugins, team settings
+├── .claude-plugin/        ← the repository plugin marketplace
 ├── loop.sh             ← fan a command out across every component
 ├── coverage.sh      ← read PHPUnit coverage reports, enforce ≥95%
 ├── zip-project.sh         ← package the umbrella for distribution
 ├── bin/wfl                ← unified host-side developer CLI (docker / mago / phpunit wrapper)
-├── scripts/               ← hook installer + hook payloads (pre-commit-mago, pre-push-sanity)
+├── scripts/               ← the scripts behind wfl (init, doctor, dod, ai:check…), hooks, MCP launchers
 ├── docs/                  ← MONOREPO contributor documentation (Diátaxis)
 ├── documentation/         ← FRAMEWORK user documentation (Diátaxis, submodule)
 ├── project_system/        ← OFFICIAL governance: RFCs, roadmaps, release logs & retrospectives
@@ -183,7 +182,14 @@ A more detailed map lives at [`docs/reference/repository-layout.md`](docs/refere
 
 ## 🤖 Working with AI assistants
 
-The repo ships an `.opencode/skills/` directory with **27 specialised AI prompts** (`tech-lead`, `coding`, `refactoring`, `test`, `code-review`, `maker-scaffold`, `mago-purge`, `worker-safety`, `contracts-first`, `security-audit`, `auth-bridge-audit`, `data-persistence`, `diataxis-doc`, `component-scaffold`, `release-manager`, `release-wave`, …) plus **9 focused subagents** under `.opencode/agents/`. When you ask an AI to perform a task that matches one of these skills, the assistant is expected to read the corresponding `SKILL.md` before acting — the binding routing table lives in [`AGENTS.md`](AGENTS.md) (with [`CLAUDE.md`](CLAUDE.md) as the thin CLI router that redirects to it). Reference covers [`docs/reference/opencode-skills.md`](docs/reference/opencode-skills.md).
+The repository is set up for **Claude Code**. `CLAUDE.md` imports [`AGENTS.md`](AGENTS.md), the binding
+standards, into every session. `.claude/skills/` holds 34 skills (operating procedures such as
+`tech-lead`, `coding`, `test`, `code-review`, `mago-purge`, `worker-safety`, `release-wave`, …) and
+`.claude/agents/` 18 focused subagents. The team settings (`.claude/settings.json`) ask before every git
+or GitHub write and keep PHP off the host. Two plugins load from the repository marketplace once the
+folder is trusted: `waffle-cockpit` (three status lines under the prompt, `/dod` in a pane, a Bash guard) and a pinned copy of
+Matt Pocock's engineering skills. `wfl ai:check` lints the whole layer. See
+[`docs/reference/claude-skills.md`](docs/reference/claude-skills.md).
 
 ## 🤝 Contributing
 

@@ -1,24 +1,31 @@
 # Waffle Beta6 — K6 Tri-Engine Benchmark Rig (AXE 5 / BENCH-01..04)
 
 Reproducible harness comparing the **Waffle skeleton (prod stage)** against a
-minimal, idiomatic **Symfony** API app deployed two ways. One Symfony codebase,
-two deployments, so each comparison isolates exactly one variable:
+minimal, idiomatic **Symfony** API app deployed two ways, plus a variant of that app
+doing Engine A's per-request work. Each comparison isolates one variable:
 
-- **A vs C** — same runtime (FrankenPHP worker), different framework → isolates the framework.
+- **A vs C** — same runtime (FrankenPHP worker), different framework → isolates the framework,
+  except that A also runs its secured pipeline and C does not.
 - **B vs C** — same framework (Symfony), different runtime → isolates the runtime.
+- **C vs D** — same app and runtime, D adding Engine A's per-request features → their cost in Symfony.
+- **A vs D** — same runtime and per-request work, different framework → the framework at equal
+  features (CARRY-02).
 
 Published numbers live in the tracked [`BENCH-GATE-RESULT.md`](./BENCH-GATE-RESULT.md)
 (benchmark-gate convention: baseline → representative load → verdict vs threshold → record).
+The beta6 results there were measured on FrankenPHP 1.12.2; the rig now pins 1.13.2 on PHP 8.5.12
+(the PHP2Shell security release, plus native `max_requests` thread recycling since 1.12.3), so a new
+run is a new series.
 
 ## Engine matrix & fairness pinning
 
-| | Engine A | Engine B | Engine C |
-|---|---|---|---|
-| App | Waffle skeleton (prod image stage) | Symfony (shared app, gitignored) | same Symfony app |
-| Runtime | FrankenPHP 1.12.2 worker | php:8.5-fpm + nginx | FrankenPHP worker (`runtime/frankenphp-symfony`) |
-| Workers | **4** (pinned via `FRANKENPHP_CONFIG="worker ./public/index.php 4"`) | `pm.static`, **16** children | **4** (pinned) |
-| HTTP (in-network) | `http://engine-a` | `http://engine-b` | `http://engine-c` |
-| Host smoke port | `127.0.0.1:8081` | `127.0.0.1:8082` | `127.0.0.1:8083` |
+| | Engine A | Engine B | Engine C | Engine D |
+|---|---|---|---|---|
+| App | Waffle skeleton (prod image stage) | Symfony (shared app, gitignored) | same Symfony app | same app + Engine A's per-request features (derived, gitignored) |
+| Runtime | FrankenPHP 1.13.2 worker | php:8.5-fpm + nginx | FrankenPHP 1.13.2 worker (symfony/runtime 7.4's native `FrankenPhpWorkerRunner`) | as Engine C (same Dockerfile) |
+| Workers | **4** (pinned via `FRANKENPHP_CONFIG="worker ./public/index.php 4"`) | `pm.static`, **16** children | **4** (pinned) | **4** (pinned) |
+| HTTP (in-network) | `http://engine-a` | `http://engine-b` | `http://engine-c` | `http://engine-d` |
+| Host smoke port | `127.0.0.1:8081` | `127.0.0.1:8082` | `127.0.0.1:8083` | `127.0.0.1:8087` |
 
 Identical on every engine (enforced in `docker-compose.bench.yml` + per-engine ini):
 
@@ -48,12 +55,40 @@ best under the same 1 G", not a strawman.
   400s every k6 request), switches cache to the in-memory `array` adapter (no
   Redis in the rig; comparable to Symfony's in-process compiled caches), pgsql →
   `bench-postgres`.
-- `Caddyfile` over `/etc/caddy/Caddyfile` — identical to skeleton's except it
-  interpolates `{$FRANKENPHP_CONFIG}`; the stock skeleton Caddyfile ignores that
-  env var, so the 4-worker pin would otherwise silently not apply.
+- `Caddyfile` over `/etc/caddy/Caddyfile` — the skeleton's own
+  (`skeleton/docker/frankenphp/Caddyfile`), which interpolates `{$FRANKENPHP_CONFIG}`
+  (the 4-worker pin) and carries the OPS-02 drain block. The bench copy it replaced
+  predated that interpolation and was removed on 2026-10-29.
 - `jit-bench.ini` into `conf.d/` — the JIT parity values above.
 
-## Workload routes (identical on all three engines)
+## Engine D — Engine A's per-request work in Symfony (CARRY-02)
+
+`scripts/bootstrap-symfony.sh` derives it from the bare app's lock, so every shared package stays at
+the same version, adds `symfony/security-bundle` with its components pinned to 7.4, and copies the
+tracked stubs in `scripts/stubs/app-secured/`. It fails if a shared package drifts or a Symfony
+component leaves the 7.4 line (the bundle's ranges reach 8.x).
+
+| Engine A (skeleton pipeline) | Engine D |
+|---|---|
+| `TrustedHostMiddleware` | `framework.trusted_hosts` |
+| `CorsMiddleware`, empty allow-list | `CorsSubscriber`: no `Origin` or the request's own origin passes, any other origin gets 403 |
+| `AuthenticationMiddleware` (anonymous without credentials) | stateless, eager firewall with an `access_token` authenticator; a presented token is refused (401) |
+| `SecurityMiddleware` + `#[PublicAccess]` | `#[IsGranted('PUBLIC_ACCESS')]` on every action |
+| `CsrfMiddleware` (no bench route requires a token) | stateless CSRF on; no action validates a token |
+| `TransactionIsolationMiddleware`: one transaction per POST, PUT, PATCH, DELETE | `TransactionSubscriber`, opened after the authorisation check and before payload validation |
+| `SecureHeadersMiddleware` | `SecureHeadersSubscriber`: the same three headers and values |
+
+Not mirrored, for want of a Symfony counterpart: the anonymous session id (k6 empties its cookie jar
+after every iteration, so Engine A issues a new id and a `Set-Cookie` on most bench requests), the
+telemetry (APCu request counters and histogram, cache counters, the no-op span, the probe and metrics
+path checks) and the `SecureContainer`. That work stays in Engine A's column.
+
+`POST /greet` touches no table, yet on Engines A and D it runs in a transaction (BEGIN + COMMIT); on B
+and C it never reaches the database. Run `scripts/check-features.sh` before a measured run: A and D must
+refuse an untrusted `Host` (400) and a junk bearer token (401), send the three headers and commit one
+transaction per `POST /greet`, and C must do none of that.
+
+## Workload routes (identical on all engines)
 
 | Route | Shape |
 |---|---|
@@ -107,7 +142,7 @@ container and its page cache are deliberately kept warm between engines.)
 Prerequisites: Docker running; Phase-B skeleton pre-work merged (`#[PublicAccess]`
 on the hello routes, `GET /read/demo`, `DB_POOL_SIZE` knob, pgsql driver);
 `scripts/bootstrap-symfony.sh` executed once (generates the gitignored
-`engines/symfony-app/`, then Engines B/C build from it).
+`engines/symfony-app/` for Engines B and C, and `engines/symfony-app-secured/` for Engine D).
 
 Everything goes through the runner (one engine at a time, warmup included):
 
@@ -118,6 +153,10 @@ cd bench
 scripts/run-bench.sh engine-a smoke
 scripts/run-bench.sh engine-b smoke
 scripts/run-bench.sh engine-c smoke
+scripts/run-bench.sh engine-d smoke
+
+# Before measuring: prove the per-request work each engine is credited with (CARRY-02).
+scripts/check-features.sh
 
 # BENCH-02 — constant-arrival-rate ladder 50/100/200/400/800 rps × 2 min per step.
 # Produces the published PER-RATE latency table. It does NOT produce a RAM factor:
@@ -127,6 +166,7 @@ scripts/run-bench.sh engine-c smoke
 scripts/run-bench.sh engine-a constant dbread
 scripts/run-bench.sh engine-b constant dbread
 scripts/run-bench.sh engine-c constant dbread
+scripts/run-bench.sh engine-d constant dbread
 
 # BENCH-05 — memory as a function of CONCURRENCY (the experiment BENCH-02 cannot
 # run). Pins only CPU, lets memory grow to 6g, and switches FPM to a dynamic pool
@@ -135,6 +175,11 @@ scripts/run-bench.sh engine-c constant dbread
 # Never mix these numbers with BENCH-02's — each pair answers exactly one question.
 VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-a-mem memscale
 VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-b-dyn memscale
+# Engine C's leg (CARRY-02) splits the A-vs-B gap: A-mem vs C-mem holds the runtime
+# constant, B-dyn vs C-mem holds the framework constant.
+VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-c-mem memscale
+# Engine D's leg: C-mem vs D-mem is the memory cost of the features.
+VUS_STEPS=8,16,32,64,128 STEP_DURATION=2m scripts/run-bench.sh engine-d-mem memscale
 
 # BENCH-03 — soak ~150 rps, A then C (2–3 h each, sequential; B shorter, footprint
 # only). ΔM = |mean RSS(last 10 min) − mean RSS(first 10 min after warmup)| ≤ ~1% / 5 MB:
@@ -145,6 +190,14 @@ scripts/run-bench.sh engine-c soak
 # pool=8; optional sweep DB_POOL_SIZE=16):
 scripts/run-bench.sh engine-a starve
 DB_POOL_SIZE=16 scripts/run-bench.sh engine-a starve
+
+# CARRY-01 — the pool's ping freshness window (DB_PING_FRESHNESS_MS: default 500, the
+# skeleton's; 0 probes every lease). The functional half counts transactions per request
+# and checks that dead connections are caught; the knee half is the dbread ladder at 0
+# and 500, interleaved (data/benchmarks/CARRY-01-GATE-RESULT.md).
+scripts/check-pool-freshness.sh 0
+scripts/check-pool-freshness.sh 500
+DB_PING_FRESHNESS_MS=0 RATES=1100,1200,1300,1400,1500,1600 scripts/run-bench.sh engine-a constant dbread
 ```
 
 The runner: `up` ONE engine + `bench-postgres` → warmup → k6 (JSON to `results/`) →
@@ -157,9 +210,34 @@ Pool gauges / worker memory for BENCH-04 come from `/waffle-metrics`, which is
 (`docker exec engine-a php -r '...localhost/waffle-metrics...'`), not through the
 published port.
 
+## Rolling-restart check (OPS acceptance)
+
+`wfl rolling-restart` (`scripts/rolling-restart.sh`) checks the beta7 OPS criterion "a rolling restart
+under k6 load loses zero in-flight requests". `docker-compose.rolling.yml` puts two replicas of Engine A,
+running the skeleton's Caddyfile as shipped, behind a Caddy load balancer (`engines/lb/Caddyfile`). It polls
+each replica's `/readyz` every second and never retries, as a Kubernetes Service would not. k6 runs natively
+at a constant rate (`k6/scenarios/rolling-restart.js`, the five workloads in turn) while each replica in
+turn is drained, sent SIGTERM, restarted and waited for:
+
+```bash
+wfl rolling-restart --build        # --path=marker (default): the Kubernetes preStop path, drain marker + 5 s sleep
+wfl rolling-restart --path=delay   # no preStop hook: CADDY_SHUTDOWN_DELAY=5s, as the skeleton's prod compose
+wfl rolling-restart --path=none    # the control: SIGTERM alone must lose requests, or the check proves nothing
+```
+
+PASS means every request answered 2xx, each replica exited 0 and came back ready while k6 was running, and
+both replicas served traffic. Each run writes `results/rolling-restart-<path>-<run id>/`: the events with
+their times, the k6 summary, each failed request, the replicas' and the load balancer's logs, and the
+environment. It is a correctness check on one machine, never a capacity figure.
+
 ## Where results land
 
-- `results/` — raw k6 JSON + RSS CSVs, **gitignored**.
+- `results/` — raw k6 JSON + RSS CSVs, **gitignored**. Each run's files carry its id, the UTC start
+  unless `RUN_ID` is set: `<engine>-<scenario>-<workload>-<run id>.json`, `…-mem.csv`, and `…-host.json`
+  (host CPU, cores and RAM, the Docker VM's CPUs and memory, the engine's limits and image, the umbrella
+  commit). `run-bench.sh` refuses to start over an existing series (CARRY-02).
+- `report.sh` lists every run with its host. The soak table adds the least-squares RSS slope over the
+  settled window, with its 95 % bound (AGENTS.md §7). Files from before CARRY-02 show as `unstamped`.
 - Archived per run to `project_system/Audits/Beta6/bench/` (audit-artifact convention).
 - Published, human-readable numbers: tracked [`BENCH-GATE-RESULT.md`](./BENCH-GATE-RESULT.md).
 
@@ -169,6 +247,11 @@ published port.
   every `MAX_REQUESTS` (default 500). The bench pins it to one million so worker
   recycling cannot mask a leak during the soak: any RSS drift is real drift.
   The value is deliberate and recorded here and in the compose file.
+- **`FRANKENPHP_LOOP_MAX=1000000` on Engine C** — the same pin for Symfony's native
+  `FrankenPhpWorkerRunner`, which also exits after 500 requests by default. Beta6 left it unset
+  and forced the external `runtime/frankenphp-symfony` bridge through `APP_RUNTIME`, so its
+  Engine C soak was not a leak test (*Engine C corrections* in `BENCH-GATE-RESULT.md`). Both
+  fixed in CARRY-02; the host record keeps the engine's `APP_RUNTIME` and `FRANKENPHP_LOOP_MAX`.
 - **Soak window** — target is 2–3 h per worker engine, sequential. If wall-clock
   forces the 90 min/engine fallback, the shortened window is recorded explicitly
   in `BENCH-GATE-RESULT.md`; the verdict states what was measured, not vibes.

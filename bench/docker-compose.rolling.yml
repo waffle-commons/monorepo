@@ -1,0 +1,54 @@
+# =============================================================================
+# Rolling-restart check (OPS acceptance, RFC-023 §5.1) — an overlay on
+# docker-compose.bench.yml, driven by scripts/rolling-restart.sh:
+#
+#   k6 ─▶ lb ─┬─▶ app-1 ┐  two replicas of Engine A (the skeleton's production
+#             └─▶ app-2 ┘  image built from this tree) running
+#                          skeleton/docker/frankenphp/Caddyfile as shipped
+#
+# The load balancer stands in for a Kubernetes Service and its endpoints: it
+# polls each replica's /readyz, sends nothing to a replica that is not ready,
+# and never retries, so a request a replica drops is a failed request in k6.
+# =============================================================================
+
+services:
+  app-1: &replica
+    extends:
+      file: docker-compose.bench.yml
+      service: engine-a
+    container_name: rolling-app-1
+    # Loopback only, for the script's own /readyz polls; k6 goes through lb.
+    ports: !override
+      - "127.0.0.1:8091:80"
+    # Longer than CADDY_SHUTDOWN_DELAY + the Caddyfile's 25 s grace period, as
+    # skeleton/docker-compose.prod.yml sets it.
+    stop_grace_period: 35s
+    environment:
+      CADDY_SHUTDOWN_DELAY: "${CADDY_SHUTDOWN_DELAY:-0s}"
+    depends_on:
+      bench-postgres:
+        condition: service_healthy
+
+  app-2:
+    <<: *replica
+    container_name: rolling-app-2
+    ports: !override
+      - "127.0.0.1:8092:80"
+
+  lb:
+    # The skeleton Dockerfile's pinned FrankenPHP base, used as a plain Caddy.
+    image: dunglas/frankenphp:1.13.2-php8-trixie@sha256:8a7a935deb33959200628497b8201423c8b777d513a62ac1b69a91c624afdb3d
+    container_name: rolling-lb
+    command: ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
+    volumes:
+      - type: bind
+        source: ./engines/lb/Caddyfile
+        target: /etc/caddy/Caddyfile
+        read_only: true
+    ports:
+      - "127.0.0.1:8093:8093"
+    depends_on:
+      - app-1
+      - app-2
+    networks:
+      - bench-net

@@ -27,14 +27,17 @@
 # Runtime posture is otherwise identical to skeleton's shipped prod stage:
 # non-root user, opcache preload, validate_timestamps=0 (via jit-bench.ini).
 # =============================================================================
-ARG FRANKEN_VERSION='1.12.2'
+ARG FRANKEN_VERSION='1.13.2'
 ARG PHP_VERSION='8'
 ARG OS='trixie'
+# The base image's digest, the skeleton's: change it WITH FRANKEN_VERSION, since
+# Docker resolves `tag@digest` by the digest alone (scripts/images-pin.py --verify).
+ARG FRANKEN_DIGEST='@sha256:8a7a935deb33959200628497b8201423c8b777d513a62ac1b69a91c624afdb3d'
 
 # -----------------------------------------------------------------------------
 # Stage 1: Base — mirrors skeleton/docker/Dockerfile's `base` stage exactly.
 # -----------------------------------------------------------------------------
-FROM dunglas/frankenphp:${FRANKEN_VERSION}-php${PHP_VERSION}-${OS} AS base
+FROM dunglas/frankenphp:${FRANKEN_VERSION}-php${PHP_VERSION}-${OS}${FRANKEN_DIGEST} AS base
 
 ENV APP_ENV=prod \
     SERVER_NAME=":80" \
@@ -53,8 +56,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         gd \
         intl \
         opcache \
+        pcntl \
         pdo_pgsql \
         pdo_mysql \
+        redis \
         zip \
         yaml \
     && echo "apc.enable_cli=1" >> "$PHP_INI_DIR/conf.d/docker-php-ext-apcu.ini" \
@@ -67,7 +72,7 @@ COPY skeleton/docker/frankenphp/conf.d/app.ini $PHP_INI_DIR/conf.d/
 # -----------------------------------------------------------------------------
 FROM base AS builder
 
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.10.3@sha256:da624c2c705d54e2f5a9bb77a5dc6c7d091711433ebefd7035672e84c2010fee /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 

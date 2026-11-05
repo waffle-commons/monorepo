@@ -9,7 +9,7 @@ aliases: []
 
 # RFC-018: Developer Experience (DX) & Tooling
 
-**Status:** Planned for Beta 1 & Post-v1.0 **Components:** `waffle-commons/maker`, `waffle-commons/profiler` **Author:** Core Architect **Tags:** dx, scaffolding, profiling, testing
+**Status:** Planned for Beta 1 & Post-v1.0; in progress for `0.1.0-beta7`: the testing bridge (§3.3 → `waffle-commons/testing`, `[TEST-01]`) and dev profiler headers (`[DXP-01]`, stretch) **Components:** `waffle-commons/maker`, `waffle-commons/profiler`, `waffle-commons/testing` **Author:** Core Architect **Tags:** dx, scaffolding, profiling, testing
 
 ## 1. Summary
 

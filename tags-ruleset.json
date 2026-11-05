@@ -44,11 +44,6 @@
       "bypass_mode": "always"
     },
     {
-      "actor_id": 262318,
-      "actor_type": "Integration",
-      "bypass_mode": "always"
-    },
-    {
       "actor_id": 3903025,
       "actor_type": "Integration",
       "bypass_mode": "always"

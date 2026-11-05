@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # bench/scripts/run-bench.sh — one measured bench run, end to end (BENCH-01).
 #
-#   usage: run-bench.sh <engine-a|engine-b|engine-c|engine-a-mem|engine-b-dyn> <smoke|constant|soak|starve|memscale> [workload]
+#   usage: run-bench.sh <engine-a|engine-b|engine-c|engine-d|engine-a-mem|engine-b-dyn|engine-c-mem|engine-d-mem> <smoke|constant|soak|starve|memscale> [workload]
 #
 #   engine    engine-a = waffle skeleton (FrankenPHP worker)
 #             engine-b = Symfony (php-fpm + nginx, pm.static)
 #             engine-c = Symfony (FrankenPHP worker)
-#             engine-a-mem / engine-b-dyn = BENCH-05 pair only (memory free to
-#             grow, FPM pool dynamic) — never mix their numbers with BENCH-02
+#             engine-d = the same Symfony app doing Engine A's per-request work
+#                        (equivalent-features control, CARRY-02)
+#             engine-a-mem / engine-b-dyn / engine-c-mem / engine-d-mem = BENCH-05 only (memory
+#             free to grow, FPM pool dynamic) — never mix their numbers with BENCH-02
 #   scenario  smoke    -> k6/scenarios/smoke.js
 #             constant -> k6/scenarios/constant-load.js   (BENCH-02)
 #             soak     -> k6/scenarios/soak.js            (BENCH-03)
@@ -18,7 +20,8 @@
 #
 # Env passthrough to k6 (all optional): RATES, STEP_DURATION, RATE, DURATION,
 # VUS_STEPS (BENCH-05 concurrency steps).
-# Compose-interpolated knobs: DB_POOL_SIZE (BENCH-04 sweep), MAX_REQUESTS
+# Compose-interpolated knobs: DB_POOL_SIZE (BENCH-04 sweep), DB_PING_FRESHNESS_MS
+# (CARRY-01 gate: the pool's ping freshness window, ms), MAX_REQUESTS
 # (pinned to 1000000 here unless the caller overrides — Trap 3: worker recycle
 # at the 500 default would mask leaks in the soak).
 #
@@ -34,7 +37,7 @@ INIT_SQL="$BENCH_DIR/sql/init.sql"
 RESULTS_DIR="$BENCH_DIR/results"
 
 usage() {
-  echo "usage: $0 <engine-a|engine-b|engine-c|engine-a-mem|engine-b-dyn> <smoke|constant|soak|starve|memscale> [workload]" >&2
+  echo "usage: $0 <engine-a|engine-b|engine-c|engine-d|engine-a-mem|engine-b-dyn|engine-c-mem|engine-d-mem> <smoke|constant|soak|starve|memscale> [workload]" >&2
   echo "       workload: json|hello|greet|dbread|dbwrite (constant only, default json)" >&2
   exit 2
 }
@@ -47,7 +50,7 @@ SCENARIO="$2"
 WORKLOAD_ARG="${3:-}"
 
 case "$ENGINE" in
-  engine-a|engine-b|engine-c|engine-a-mem|engine-b-dyn) ;;
+  engine-a|engine-b|engine-c|engine-d|engine-a-mem|engine-b-dyn|engine-c-mem|engine-d-mem) ;;
   *) echo "error: unknown engine '$ENGINE'" >&2; usage ;;
 esac
 
@@ -77,7 +80,19 @@ COMPOSE=(docker compose -f "$COMPOSE_FILE")
 export MAX_REQUESTS="${MAX_REQUESTS:-1000000}"
 
 mkdir -p "$RESULTS_DIR"
-MEM_CSV="$RESULTS_DIR/${ENGINE}-${SCENARIO}-${RESULT_WORKLOAD}-mem.csv"
+
+# CARRY-02: a re-run never overwrites a series. Every file of a run carries its id
+# (its UTC start unless RUN_ID is given), and a run refuses to start over one that exists.
+RUN_ID="${RUN_ID:-$(date -u '+%Y%m%dT%H%M%SZ')}"
+[[ "$RUN_ID" =~ ^[A-Za-z0-9._-]+$ ]] || { echo "error: RUN_ID '$RUN_ID' must match [A-Za-z0-9._-]+" >&2; exit 2; }
+export RUN_ID
+STEM="${ENGINE}-${SCENARIO}-${RESULT_WORKLOAD}-${RUN_ID}"
+SUMMARY_JSON="$RESULTS_DIR/${STEM}.json"
+MEM_CSV="$RESULTS_DIR/${STEM}-mem.csv"
+HOST_JSON="$RESULTS_DIR/${STEM}-host.json"
+for existing in "$SUMMARY_JSON" "$MEM_CSV" "$HOST_JSON"; do
+  [[ ! -e "$existing" ]] || { echo "error: $existing exists: a run never overwrites a series (pick another RUN_ID)" >&2; exit 1; }
+done
 
 SAMPLER_PID=""
 CLEANED=0
@@ -147,15 +162,70 @@ log "warmup: 30s over all 5 workloads (opcache/JIT/pool heat — not measured)"
 "${COMPOSE[@]}" run --rm k6 run --quiet --no-color \
   -e "TARGET=http://$ENGINE" /scripts/lib/warmup.js
 
-# --- 4. RSS sampler ----------------------------------------------------------
+# --- 4. host record + RSS sampler ----------------------------------------------
 ENGINE_CID="$("${COMPOSE[@]}" ps -q "$ENGINE")"
 [[ -n "$ENGINE_CID" ]] || { echo "error: cannot resolve container id for $ENGINE" >&2; exit 1; }
+
+# CARRY-02: the hardware travels with every run — the host, the Docker VM (on Docker
+# Desktop its CPUs and memory are what the engines share) and the engine's own limits.
+record_host() {
+  local cpu cores mem_bytes
+  case "$(uname -s)" in
+    Darwin)
+      cpu="$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo unknown)"
+      cores="$(sysctl -n hw.ncpu 2>/dev/null || echo 0)"
+      mem_bytes="$(sysctl -n hw.memsize 2>/dev/null || echo 0)" ;;
+    *)
+      cpu="$(awk -F': ' '/^model name/ { print $2; exit }' /proc/cpuinfo 2>/dev/null || echo unknown)"
+      cores="$(nproc 2>/dev/null || echo 0)"
+      mem_bytes="$(awk '/^MemTotal:/ { print $2 * 1024; exit }' /proc/meminfo 2>/dev/null || echo 0)" ;;
+  esac
+  HOST_OS="$(uname -srm)" HOST_CPU="$cpu" HOST_CORES="$cores" HOST_MEM="$mem_bytes" \
+    DOCKER_INFO="$(docker info --format '{{json .}}' 2>/dev/null || echo '{}')" \
+    ENGINE_INSPECT="$(docker inspect "$ENGINE_CID" 2>/dev/null || echo '[]')" \
+    GIT_COMMIT="$(git -C "$BENCH_DIR" rev-parse HEAD 2>/dev/null || echo unknown)" \
+    GIT_DIRTY="$(git -C "$BENCH_DIR" status --porcelain 2>/dev/null | head -n 1)" \
+    python3 -I - "$HOST_JSON" <<'PY'
+import json, os, sys
+from datetime import datetime, timezone
+
+info = json.loads(os.environ.get('DOCKER_INFO') or '{}')
+inspected = json.loads(os.environ.get('ENGINE_INSPECT') or '[]')
+container = inspected[0] if inspected else {}
+config, host_config = container.get('Config') or {}, container.get('HostConfig') or {}
+# Only these knobs: the engine environment also holds fixture secrets.
+engine_env = dict(e.split('=', 1) for e in config.get('Env') or [] if '=' in e)
+kept = ('APP_ENV', 'APP_RUNTIME', 'FRANKENPHP_CONFIG', 'FRANKENPHP_LOOP_MAX', 'MAX_REQUESTS', 'DB_POOL_SIZE',
+        'DB_PING_FRESHNESS_MS')
+knobs = ('WORKLOAD', 'RATES', 'STEP_DURATION', 'RATE', 'DURATION', 'VUS_STEPS', 'MAX_REQUESTS', 'DB_POOL_SIZE',
+         'DB_PING_FRESHNESS_MS')
+record = {
+    'run_id': os.environ['RUN_ID'],
+    'recorded_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'),
+    'host': {'os': os.environ['HOST_OS'], 'cpu': os.environ['HOST_CPU'],
+             'cores': int(os.environ['HOST_CORES'] or 0), 'memory_bytes': int(os.environ['HOST_MEM'] or 0)},
+    'docker': {k: info.get(k) for k in ('ServerVersion', 'OperatingSystem', 'Architecture', 'KernelVersion', 'NCPU', 'MemTotal')},
+    'engine': {'container': (container.get('Name') or '').lstrip('/'), 'image': config.get('Image'),
+               'image_id': container.get('Image'), 'cpus': (host_config.get('NanoCpus') or 0) / 1e9,
+               'memory_limit_bytes': host_config.get('Memory') or 0,
+               'env': {k: engine_env[k] for k in kept if k in engine_env}},
+    'umbrella_commit': os.environ['GIT_COMMIT'],
+    'umbrella_dirty': bool(os.environ.get('GIT_DIRTY')),
+    'knobs': {k: os.environ[k] for k in knobs if os.environ.get(k)},
+}
+with open(sys.argv[1], 'x') as fh:  # 'x': never overwrite a record
+    json.dump(record, fh, indent=2)
+    fh.write('\n')
+PY
+}
+log "recording the host -> $HOST_JSON"
+record_host
 log "starting RSS sampler -> $MEM_CSV (docker stats, 5s ticks)"
 bash "$SCRIPT_DIR/sample-memory.sh" "$ENGINE_CID" "$MEM_CSV" 5 &
 SAMPLER_PID=$!
 
 # --- 5. measured k6 run ------------------------------------------------------
-K6_ENV=(-e "TARGET=http://$ENGINE")
+K6_ENV=(-e "TARGET=http://$ENGINE" -e "RUN_ID=$RUN_ID")
 for v in WORKLOAD RATES STEP_DURATION RATE DURATION VUS_STEPS; do
   if [[ -n "${!v:-}" ]]; then
     K6_ENV+=(-e "$v=${!v}")
@@ -185,6 +255,6 @@ case "$SCENARIO:${WORKLOAD:-}" in
 esac
 
 log "bench-postgres left running for the next run (docker compose -f $COMPOSE_FILE down to stop)"
-log "results: $RESULTS_DIR/${ENGINE}-${SCENARIO}-${RESULT_WORKLOAD}.json + $MEM_CSV"
+log "results: $SUMMARY_JSON + $MEM_CSV + $HOST_JSON"
 log "done (k6 exit code: $K6_EXIT)"
 exit "$K6_EXIT"

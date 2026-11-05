@@ -1,12 +1,12 @@
 # Reference — `CLAUDE.md` conventions
 
-> **Release:** `0.1.0-beta6`.
+> **Release:** `0.1.0-beta7`.
 > **Scope:** `<umbrella>/CLAUDE.md`.
-> **Purpose:** the thin CLI router at the umbrella root — it ships the canonical Dockerized commands and points to `AGENTS.md` (the binding standards) and the `.opencode/skills/` library. Written for AI assistants, binding on humans too.
+> **Purpose:** the Claude Code entry file at the umbrella root — it imports `AGENTS.md` (the binding standards) and adds the Claude Code specifics: the canonical Dockerized commands, the `wfl` surface, MCP and the repository plugins. Written for AI assistants, binding on humans too.
 
 ## What it is
 
-A thin file at the umbrella root that any AI assistant (Claude Code, Cursor, Aider, …) loads automatically. It is **a router, not the rulebook**: it ships the canonical Dockerized commands plus a redirection directive, then defers the actual operating standards to [`AGENTS.md`](../../AGENTS.md) and the per-task `.opencode/skills/<skill>/SKILL.md` files.
+A thin file at the umbrella root that Claude Code loads automatically. Its first line, `@AGENTS.md`, **imports** the rulebook, so the standards are in context in every session. (Claude Code reads `AGENTS.md` on its own only when no `CLAUDE.md` exists; a sentence that merely *told* it to read `AGENTS.md` was skipped whenever it chose not to open the file.) The rest of `CLAUDE.md` is Claude Code specifics; the per-task procedures are the skills in `.claude/skills/`.
 
 Humans should read it too — then follow the link into `AGENTS.md` for the full standards.
 
@@ -15,9 +15,11 @@ Humans should read it too — then follow the link into `AGENTS.md` for the full
 | Section | Codifies |
 | :--- | :--- |
 | **Canonical commands** | The Dockerized `docker exec … waffle-dev` invocations, the `composer` intents (`mago`, `tests`, `igor`, …), and the `wfl` CLI wrapper. |
-| **Redirection directive** | The non-negotiable "read `AGENTS.md` + the matching `SKILL.md` before planning or editing" rule, and the hard invariants (contracts-only perimeter, zero Mago output, statelessness / `wfl igor` 0 KO). |
+| **`@AGENTS.md` import** | The first line: puts the binding standards in context for every session. |
+| **MCP, plugins, skills & subagents** | Where the MCP servers, the repository plugins (`waffle-cockpit`, `mattpocock-skills`) and the skills / subagents come from. |
+| **Before planning or editing** | Load the matching skill (`tech-lead` when unsure), consult `project_system/`, respect the release phase, and the hard invariants (contracts-only perimeter, zero Mago output, statelessness / `wfl igor` 0 KO). |
 
-> The operational standards themselves — PHP 8.5 strict coding, the FrankenPHP statelessness mandate, the Mago Purge Protocol, the worker-safety gate, and the **Skills Routing Table** — live in [`AGENTS.md`](../../AGENTS.md). `CLAUDE.md` only routes you there.
+> The operational standards themselves — PHP 8.5 strict coding, the FrankenPHP statelessness mandate, the Mago Purge Protocol, the worker-safety gate, git safety and the skills rules — live in [`AGENTS.md`](../../AGENTS.md). `CLAUDE.md` imports them; it never restates them.
 
 ## The non-negotiables
 
@@ -59,6 +61,6 @@ Trivial changes (typos, formatting, link fixes) can go straight to PR.
 ## Related
 
 - [`AGENTS.md` — the central brain](agents-md.md) — the binding operating standards `CLAUDE.md` routes to.
-- [`.opencode/skills/` reference](opencode-skills.md) — the specialised AI prompts CLAUDE.md routes to.
+- [Claude Code skills, subagents and plugins](claude-skills.md) — the skill catalogue and the repository plugins.
 - [The Mago Purge Protocol](../explanation/mago-purge-protocol.md) — the rationale behind the Zero-Debt rule.
 - [The Component Agnosticism rule](../explanation/component-agnosticism.md) — the rationale behind the contracts-only dependency rule.

@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: Release Train to v1.0 (Master)"
 date_created: 2026-06-07
-date_updated: 2026-09-08
+date_updated: 2026-10-21
 type: project
 status: 🏗️ wip
 tags:
@@ -28,15 +28,15 @@ aliases: []
 | `0.1.0-beta4` | Late June 2026 (shipped) | Security & Stability — RC-readiness groundwork | `Roadmap_Beta4.md` |
 | `0.1.0-beta5` | July 8, 2026 (shipped) | Runtime Power — AOT, Pooling, Telemetry, WebAuthn | `Roadmap_Beta5.md` |
 | `0.1.0-beta6` | **September 2026** | **Stabilization & Audit** — multi-engine audits, Diátaxis docs, EcoShield POC, K6 benchmarking | `Roadmap_Beta6.md` |
-| `0.1.0-beta7` | **October 2026** | **Production Surface** — OpenAPI, Serializer, Testing bridge, NET/QUEUE/OPS | `Roadmap_Beta7.md` |
-| `0.1.0-beta8` | **November 2026** | **Consolidation & API Freeze** — last feature release | `Roadmap_Beta8.md` |
-| `1.0.0-RC1` | **December 2026** | Freeze certification + EcoShield-Gateway soak | `Roadmap_RC1.md` |
+| `0.1.0-beta7` | **November 2026** (tag targeted 5 November; re-dated 2026-10-21) | **Production Surface** — OpenAPI, Serializer, Testing bridge, NET/QUEUE/OPS | `Roadmap_Beta7.md` |
+| `0.1.0-beta8` | **December 2026** (tag targeted ~3 December; re-dated 2026-10-21) | **Consolidation & API Freeze** — last feature release | `Roadmap_Beta8.md` |
+| `1.0.0-RC1` | **December 2026** (~12 December; re-dated 2026-10-21) | Freeze certification + EcoShield-Gateway soak | `Roadmap_RC1.md` |
 | `1.0.0-RC2` | contingency only | Critical blockers found in RC1 — never planned, only triggered | clause in `Roadmap_RC1.md` |
-| `1.0.0` (Gold) | **January 2027** | Launch | `Roadmap_v1_Gold.md` |
+| `1.0.0` (Gold) | **late January 2027** (re-dated 2026-10-21) | Launch | `Roadmap_v1_Gold.md` |
 
 > **Schedule guards (added 2026-09-08) — read these before re-committing to any date above.** Two milestones carry a written guard in their own roadmap, and both bind this table:
-> - **beta7 · capacity** (`Roadmap_Beta7.md`) — the heaviest release of the train (four new repositories + eleven items) in its shortest window. The stretch tier is cut on first contact with the schedule, and an unscaffolded-by-mid-October state splits the release rather than sliding it into November. **The November freeze is protected; beta7's scope is not.**
-> - **RC1 · schedule** (`Roadmap_RC1.md`) — the ≥4-week soak, not the tag, is the binding constraint: a January 2027 Gold needs the `1.0.0-RC1` tag by **~December 5, 2026**. The soak straddles the year-end holidays, and an RC2 restarts the clock (Gold → February–March 2027). **The soak is never shortened to recover a date.**
+> - **beta7 · capacity** (`Roadmap_Beta7.md`) — the heaviest release of the train (four new repositories + eleven items) in its shortest window. The stretch tier is cut on first contact with the schedule, and unless `[API-01]`, `[API-02]` and `[TEST-01]` have code landed and green on their own gates by mid-October, the release splits rather than sliding into November (amended 2026-10-06: the empty scaffolds already cleared the first wording, "unscaffolded by mid-October"). **The November freeze is protected; beta7's scope is not.** *Superseded 2026-10-21:* the mid-October checkpoint was met (no split, 2026-10-17), and the maintainer then kept the stretch tier in scope and moved the beta7 tag to 5 November 2026. Per the corollary below, the maintainer re-dated the later rows by the same week on 2026-10-21: beta8 ~3 December (the freeze keeps its four weeks), RC1 ~12 December, soak to ~9 January, Gold late January 2027. **The freeze is still what is protected, not beta7's scope.**
+> - **RC1 · schedule** (`Roadmap_RC1.md`) — the ≥4-week soak, not the tag, is the binding constraint: a January 2027 Gold needs the `1.0.0-RC1` tag by **~December 12, 2026** (re-dated 2026-10-21 from ~December 5). The soak straddles the year-end holidays, ends ~9 January and leaves no slack; an RC2 restarts the clock (Gold → March 2027). **The soak is never shortened to recover a date.**
 >
 > Corollary for this table: a slip at beta7 or beta8 moves every later row by the same amount — the rows above are re-dated together, never absorbed by compressing the freeze or the soak.
 

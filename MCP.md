@@ -1,143 +1,98 @@
 # MCP.md — Model Context Protocol servers for waffle-commons
 
-> **Scope:** developer tooling only. MCP servers are an *editor/agent* convenience (Claude Code,
-> opencode & AntigravityCLI); they are **not** part of the framework runtime and ship with **no** secrets.
+> **Scope:** developer tooling only. MCP servers are a Claude Code convenience; they are **not** part of
+> the framework runtime and ship with **no** secrets.
 
-This repo registers five MCP servers so agents (Claude Code, opencode, AntigravityCLI) can read the
-working tree, query the local development databases, and reach GitHub. The same five servers are mirrored
-across all three runtimes (AntigravityCLI shares the `.opencode/` skills+agents via symlink, so only its
-MCP config is repo-specific). Configuration lives in four files:
-
-| File | Consumer | Role |
-|------|----------|------|
-| [`.mcp.json`](./.mcp.json) | Claude Code | Server definitions (`mcpServers`) |
-| [`opencode.json`](./opencode.json) | opencode | Mirror of the same servers under `mcp` |
-| [`.claude/settings.local.json`](./.claude/settings.local.json) | Claude Code | `enabledMcpjsonServers` allowlist + non-secret `env` defaults |
-| [`.antigravitycli/mcp_config.json`](./.antigravitycli/mcp_config.json) | AntigravityCLI (Antigravity/Gemini CLI) | Project-scoped mirror (`mcpServers`); gitignored. Global fallback: `~/.gemini/config/mcp_config.json` |
-
-> ⚙️ **uvx is intentionally avoided.** This environment has `npx`, `node`, and `docker` but **no**
-> `uvx`. Every server below runs through `npx` or `docker` only. Where the official upstream is a
-> Python/`uvx` package (Redis), we use its maintained **Docker image** instead.
-
----
+Claude Code gets the local development databases and GitHub through four MCP servers. Every server
+starts through a **launcher** in [`scripts/mcp/`](./scripts/mcp/), so versions are pinned in one place,
+no personal path is committed, and `wfl mcp:check` can prove each one works.
 
 ## 🔌 Servers
 
-### 1. `filesystem` — workspace file access
-- **Package:** [`@modelcontextprotocol/server-filesystem`](https://www.npmjs.com/package/@modelcontextprotocol/server-filesystem) (official, `npx`)
-- **Purpose:** read/list/search files under the repo root.
-- **Scope:** pinned to `/Users/lesliepetrimaux/Git/Perso/waffle-commons` — the server only exposes that directory.
-- **Prereqs:** none beyond `npx`/`node`.
+| Server | Runs via | Pinned version | Access |
+|---|---|---|---|
+| `postgres` | `npx` | `@henkey/postgres-mcp-server@1.0.7` | read + write (writes ask) |
+| `mongo` | Docker | `mongodb/mongodb-mcp-server:3.0.4@sha256:f8484a34…` | **read-only** |
+| `redis` | Docker | `mcp/redis@sha256:e886a7e9…` | read + write (writes ask) |
+| `github` | Docker | `ghcr.io/github/github-mcp-server:v1.12.2@sha256:508a0857…` | **read-only** (`default,actions` toolsets) |
 
-### 2. `postgres` — PostgreSQL dev sandbox
-- **Package:** [`@henkey/postgres-mcp-server`](https://www.npmjs.com/package/@henkey/postgres-mcp-server) (`npx`)
-- **Why this one:** the original `@modelcontextprotocol/server-postgres` is **archived**. `@henkey/postgres-mcp-server` is an actively maintained drop-in (17+ tools, schema introspection, safe query execution) that runs over `npx` — no `uvx`, no Docker network juggling.
-- **Connection:** `--connection-string postgresql://waffle:waffle@localhost:5432/waffle` (Claude Code reads it from `${WAFFLE_PG_DSN}` with that value as the default). Postgres is **host-reachable** on `:5432` via the `waffle-postgres` compose service.
-- **Prereqs:** `wfl up` (the `waffle-postgres` container must be healthy).
+- **`postgres`** targets the workspace `waffle-postgres` (`localhost:5432`). The original
+  `@modelcontextprotocol/server-postgres` is archived; `@henkey/postgres-mcp-server` is the maintained
+  replacement.
+- **`mongo`** runs MongoDB's official image instead of `npx`: `mongodb-mcp-server` 3.x needs Node ≥ 20.19
+  and crashes on older hosts (`ERR_REQUIRE_ESM`). The container carries its own Node. It is started
+  read-only and with telemetry disabled.
+- **`redis`** runs the official Redis server image (its upstream package is PyPI/`uvx` only, which this
+  environment avoids). `mcp/redis` publishes only a moving `latest` tag, so it is pinned by digest.
+- **`github`** is **read-only by design**: merges, pushes, releases and repository settings stay with the
+  human, through `gh` and its own prompts (see `AGENTS.md` §6, "Git & release safety"). The `actions`
+  toolset adds read access to workflow runs and logs.
 
-> 🐳 **Docker alternative (noted, not used):** [`crystaldba/postgres-mcp`](https://hub.docker.com/r/crystaldba/postgres-mcp)
-> exists and is maintained. Swap it in only if you prefer a containerized Postgres MCP; it would need
-> `--network=host` (or `host.docker.internal`) to reach `localhost:5432`.
+The three Docker images are pinned by digest, because a tag can be re-pushed: two different builds were
+published as `mongodb-mcp-server` `3.0.4`. Docker resolves only the digest; the version tag beside it
+(`mongo`, `github`) is a label for readers.
 
-### 3. `mongo` — MongoDB dev sandbox
-- **Package:** [`mongodb-mcp-server`](https://www.npmjs.com/package/mongodb-mcp-server) — **MongoDB's official** server (`npx`).
-- **Connection:** `MDB_MCP_CONNECTION_STRING=mongodb://localhost:27017` (Claude Code reads `${WAFFLE_MONGO_URI}` with that default).
-- **Prereqs:** `wfl up` **and** the host port mapping `27017:27017` on the `waffle-mongo` service (added to [`workspace/docker-compose.yml`](./workspace/docker-compose.yml) for this purpose — Mongo is otherwise internal-only).
+The Postgres and Redis *write* tools are listed under `permissions.ask` in the team settings
+(`.claude/settings.json`), so each one prompts before it runs, on every clone.
 
-### 4. `redis` — Redis dev sandbox
-- **Image:** [`mcp/redis`](https://hub.docker.com/r/mcp/redis) — the **official Redis** MCP server, run via **Docker** (the upstream `@redis/mcp-redis` is published only to PyPI / `uvx`, which we avoid; there is no maintained first-party npm build).
-- **Run:** `docker run --rm -i --network=host -e REDIS_HOST -e REDIS_PORT mcp/redis`. The image takes discrete `REDIS_HOST`/`REDIS_PORT` env vars (it does **not** accept a single `REDIS_URL`); we set `localhost`/`6379`. `--network=host` lets the container reach the host-published Redis port.
-- **Connection target:** `redis://localhost:6379` (host port mapping `6379:6379` on `waffle-redis`).
-- **Prereqs:** `wfl up` **and** the host port mapping `6379:6379` on the `waffle-redis` service (added to [`workspace/docker-compose.yml`](./workspace/docker-compose.yml) — Redis is otherwise internal-only). The `mcp/redis` image is pulled on first use.
+## 🗂️ Configuration files
 
-> 🐳 **npm alternative (noted, not used):** [`@gongrzhe/server-redis-mcp`](https://www.npmjs.com/package/@gongrzhe/server-redis-mcp)
-> is a maintained `npx` Redis MCP that accepts a `redis://…` URL argument. Use it if you would rather
-> avoid Docker for Redis.
+| File | Tracked | Content |
+|---|---|---|
+| [`.mcp.json`](./.mcp.json) | yes | `bash scripts/mcp/<server>.sh` for the four servers |
+| [`.claude/settings.json`](./.claude/settings.json) | yes | `enabledMcpjsonServers` (no approval prompt per server once the folder is trusted) and the ask rules for the write tools |
+| `.claude/settings.local.json` | no | your own additions, if any |
 
-### 5. `github` — GitHub API
-- **Image:** [`ghcr.io/github/github-mcp-server`](https://github.com/github/github-mcp-server) — the **official GitHub** MCP server, run via **Docker**.
-- **Run:** `docker run --rm -i -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server`.
-- **Auth:** `GITHUB_PERSONAL_ACCESS_TOKEN` is sourced from **`${GITHUB_TOKEN}`** — never inlined. Export it in your shell, or pipe `gh auth token` into it (see below).
-- **Prereqs:** Docker; a valid `GITHUB_TOKEN` in the environment.
-
----
+The commands are **relative to the repository root**: start the agent from the root.
 
 ## 🔑 Secrets & environment
 
-- **No secret is ever inlined.** Every credential in `.mcp.json` and `opencode.json` is an env-var
-  reference — the GitHub token as `${GITHUB_TOKEN}` / `{env:GITHUB_TOKEN}`, the database values as
-  the `WAFFLE_*` vars below.
-- The database connection values are **non-secret local dev defaults** (the same `waffle/waffle`
-  credentials documented in [`workspace/.env`](./workspace/.env)) and are surfaced as overridable
-  env vars in `.claude/settings.local.json`:
+- **No secret is ever written to a file.** The GitHub launcher resolves the token at start-up — first
+  `GITHUB_TOKEN`, then `GITHUB_PERSONAL_ACCESS_TOKEN`, then the GitHub CLI keyring (`gh auth token`) —
+  and hands it to the container through the environment only. A plain `gh auth login` is enough.
+- The database values are **non-secret local dev defaults** (the `waffle/waffle` credentials of
+  [`workspace/.env`](./workspace/.env)). The launchers apply them; override with:
 
   | Env var | Default | Used by |
-  |---------|---------|---------|
+  |---|---|---|
   | `WAFFLE_PG_DSN` | `postgresql://waffle:waffle@localhost:5432/waffle` | `postgres` |
   | `WAFFLE_MONGO_URI` | `mongodb://localhost:27017` | `mongo` |
   | `WAFFLE_REDIS_HOST` / `WAFFLE_REDIS_PORT` | `localhost` / `6379` | `redis` |
-  | `GITHUB_TOKEN` | *(unset — you must provide it)* | `github` |
+  | `WAFFLE_MCP_NPM_CACHE` | `~/.cache/waffle-commons/mcp-npm` | `npx` launchers |
 
-  `.mcp.json` applies these defaults inline (`${WAFFLE_PG_DSN:-postgresql://…}`), so Claude Code
-  works with nothing exported. **opencode has no default-value syntax** — `opencode.json` uses the
-  bare `{env:WAFFLE_PG_DSN}` form, so export all three before launching opencode:
+- The `npx` launchers use their **own npm cache** (`WAFFLE_MCP_NPM_CACHE`). A `~/.npm` holding
+  root-owned files (left by a `sudo npm …`) makes every `npx` fail with `EACCES`; the MCP servers no
+  longer depend on it.
 
-  ```bash
-  export WAFFLE_PG_DSN="postgresql://waffle:waffle@localhost:5432/waffle"
-  export WAFFLE_MONGO_URI="mongodb://localhost:27017"
-  export WAFFLE_REDIS_HOST="localhost"
-  ```
-
-- **Set the GitHub token** before launching an agent:
-
-  ```bash
-  export GITHUB_TOKEN="$(gh auth token)"   # reuse your gh CLI login
-  # or: export GITHUB_TOKEN=ghp_xxx        # a fine-grained PAT
-  ```
-
-- **Bring the DB sandboxes up** (required for `postgres`, `mongo`, `redis`):
-
-  ```bash
-  wfl up
-  ```
-
-  `wfl up` starts the `workspace/` compose stack. The MCP servers run **on the host** and reach the
-  databases through the published host ports (`5432`, `27017`, `6379`).
-
----
-
-## ✅ Quick test per server
-
-Run these from the repo root. They confirm each transport is reachable **without** starting a
-long-running MCP session.
+## ✅ Verify
 
 ```bash
-# 0. Prereqs
-wfl up                                   # databases healthy
-export GITHUB_TOKEN="$(gh auth token)"   # github server auth
-
-# 1. filesystem — package resolves
-npx -y @modelcontextprotocol/server-filesystem --help
-
-# 2. postgres — host port answers, package resolves
-pg_isready -h localhost -p 5432 -U waffle           # or: nc -z localhost 5432
-npx -y @henkey/postgres-mcp-server --help
-
-# 3. mongo — host port answers, package resolves
-nc -z localhost 27017 && echo "mongo up"
-npx -y mongodb-mcp-server --version
-
-# 4. redis — host port answers, image present
-nc -z localhost 6379 && echo "redis up"
-docker run --rm -i --network=host -e REDIS_HOST=localhost -e REDIS_PORT=6379 mcp/redis --help
-
-# 5. github — token set, image present
-test -n "$GITHUB_TOKEN" && echo "token set"
-docker run --rm -i -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server --help
+wfl up            # the dev databases (postgres :5432, mongo :27017, redis :6379)
+wfl mcp:check     # prerequisites + wiring + a real MCP session per server
 ```
 
-Inside Claude Code, `/mcp` lists the connected servers and their tool inventories; in opencode the
-servers appear once `opencode.json`'s `mcp` block is loaded; AntigravityCLI loads them from
-`.antigravitycli/mcp_config.json` (project-scoped; falls back to `~/.gemini/config/mcp_config.json` if the
-CLI build only reads the global path). Only the five servers in `enabledMcpjsonServers` are activated from
-`.mcp.json`. Run `wfl mcp:check` to verify prerequisites (npx/docker, DB reachability, `GITHUB_TOKEN`).
+`wfl mcp:check` checks the prerequisites (Docker, Node/npx, python3, the database ports, a GitHub token
+that the API accepts), the wiring (every configured server uses a launcher, no personal path), then opens
+a **real stdio session with every launcher** — `initialize`, `tools/list` and one read-only tool call —
+so it cannot report green while a server is down. `--quick` stops after the wiring. The first run also
+downloads the packages and images, so the next agent session connects within its start-up timeout.
+
+In Claude Code, `/mcp` lists the servers; reconnect one there after changing its launcher.
+
+## 🩺 Troubleshooting
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| `npm error code EACCES` … "root-owned files" | a past `sudo npm` left root-owned files in `~/.npm` | the launchers avoid it; to repair npm itself: `sudo chown -R "$(id -u):$(id -g)" ~/.npm` |
+| mongo exits with `ERR_REQUIRE_ESM` | `mongodb-mcp-server` 3.x on Node < 20.19 via `npx` | use the Docker launcher (the default); upgrade Node to 22/24 LTS |
+| github connects but every call returns 401 | empty or stale token | `gh auth login`, or export a valid `GITHUB_TOKEN` |
+| a server times out on the very first session | first-time package download / image pull | run `wfl mcp:check` once, then reconnect |
+| postgres/mongo/redis tools fail | the dev stack is down | `wfl up` |
+
+## ⬆️ Updating a server
+
+Edit the pin in its launcher (`scripts/mcp/<server>.sh`), run `wfl mcp:check`, and reconnect. For
+`mongo` and `github`, change the version tag and copy the new index digest from
+`docker buildx imagetools inspect <image>:<version>`: a tag left behind misleads readers without failing
+anything. For `mcp/redis`, pull `latest` and copy the new digest from
+`docker image inspect mcp/redis:latest --format '{{index .RepoDigests 0}}'`.

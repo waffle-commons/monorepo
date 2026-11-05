@@ -9,10 +9,11 @@
 #   - every engine: cpus "2", mem_limit 1g, PHP 8.5, APP_ENV=prod,
 #     APP_DEBUG=false, opcache.validate_timestamps=0, JIT 1234 / 128M buffer,
 #     no Xdebug.
-#   - worker engines (A, C): 4 workers pinned. FPM engine (B): pm.static,
+#   - worker engines (A, C, D): 4 workers pinned. FPM engine (B): pm.static,
 #     children sized to the same 1G RAM budget (~16).
-#   - MAX_REQUESTS=1000000 on Engine A so the worker recycle does not mask
-#     leaks during the BENCH-03 soak (documented honest-method note).
+#   - MAX_REQUESTS=1000000 on Engine A and FRANKENPHP_LOOP_MAX=1000000 on
+#     Engines C and D, so no worker loop recycles and masks a leak during the
+#     BENCH-03 soak (documented honest-method note).
 # =============================================================================
 
 name: waffle-bench
@@ -40,7 +41,10 @@ services:
     cpus: "2"
     mem_limit: 1g
     # Hardening mirrored from skeleton/docker-compose.prod.yml (read-only rootfs
-    # + 1777 tmpfs for the only writable paths — Caddy state, /tmp, var/).
+    # + 1777 tmpfs for the only writable paths — Caddy state, /tmp, var/). The
+    # mode must be written in octal: Compose reads a bare `1777` as decimal,
+    # i.e. 0o3361, and the non-root user then cannot write any of these paths
+    # (beta7's fail-fast upload root stops the boot on it).
     read_only: true
     security_opt:
       - "no-new-privileges:true"
@@ -48,19 +52,19 @@ services:
       - type: tmpfs
         target: /tmp
         tmpfs:
-          mode: 1777
+          mode: 0o1777
       - type: tmpfs
         target: /config
         tmpfs:
-          mode: 1777
+          mode: 0o1777
       - type: tmpfs
         target: /data
         tmpfs:
-          mode: 1777
+          mode: 0o1777
       - type: tmpfs
         target: /app/var
         tmpfs:
-          mode: 1777
+          mode: 0o1777
       # JIT parity drop-in (opcache.jit=1234, buffer 128M) — see README.
       - type: bind
         source: ./engines/waffle/jit-bench.ini
@@ -73,11 +77,11 @@ services:
         source: ./engines/waffle/app.bench.yaml
         target: /app/config/app.yaml
         read_only: true
-      # Bench Caddyfile: identical to the skeleton one EXCEPT it interpolates
-      # {$FRANKENPHP_CONFIG} — the stock skeleton Caddyfile ignores that env
-      # var, so the 4-worker pin below would otherwise be a no-op.
+      # The skeleton's Caddyfile as shipped: it interpolates
+      # {$FRANKENPHP_CONFIG} (the 4-worker pin below) and carries the OPS-02
+      # drain block, which acts only at shutdown.
       - type: bind
-        source: ./engines/waffle/Caddyfile
+        source: ../skeleton/docker/frankenphp/Caddyfile
         target: /etc/caddy/Caddyfile
         read_only: true
     environment:
@@ -108,6 +112,9 @@ services:
       DB_PASSWORD: "waffle"
       # BENCH-04 sweep knob (default pool size 8 — Trap 4).
       DB_POOL_SIZE: "${DB_POOL_SIZE:-8}"
+      # CARRY-01 gate knob: the pool's ping freshness window in ms (default =
+      # the skeleton's 500; 0 pings on every lease).
+      DB_PING_FRESHNESS_MS: "${DB_PING_FRESHNESS_MS:-500}"
     depends_on:
       bench-postgres:
         condition: service_healthy
@@ -198,9 +205,9 @@ services:
       - "127.0.0.1:8085:80"
 
   # ---------------------------------------------------------------------------
-  # Engine C — the SAME Symfony app on FrankenPHP worker mode (4 workers,
-  # runtime/frankenphp-symfony). Dockerfile written by the engine-stub task
-  # into bench/engines/symfony-worker/.
+  # Engine C — the SAME Symfony app on FrankenPHP worker mode (4 workers),
+  # through symfony/runtime's native FrankenPhpWorkerRunner. Dockerfile in
+  # bench/engines/symfony-worker/.
   # ---------------------------------------------------------------------------
   engine-c:
     build:
@@ -214,8 +221,11 @@ services:
     environment:
       SERVER_NAME: ":80"
       FRANKENPHP_CONFIG: "worker ./public/index.php 4"
-      # Selects the FrankenPHP Symfony runtime loop (runtime/frankenphp-symfony).
-      APP_RUNTIME: "Runtime\\FrankenPhpSymfony\\Runtime"
+      # No APP_RUNTIME: symfony/runtime 7.4 sees FRANKENPHP_WORKER and picks its
+      # native FrankenPhpWorkerRunner. That loop exits after FRANKENPHP_LOOP_MAX
+      # requests (default 500, which invalidated the beta6 soak comparison), so
+      # it is pinned like Engine A's MAX_REQUESTS (CARRY-02).
+      FRANKENPHP_LOOP_MAX: "1000000"
       APP_ENV: "prod"
       APP_DEBUG: "0"
       APP_SECRET: "bench-fixture-app-secret-do-not-reuse-anywhere"
@@ -233,13 +243,57 @@ services:
     networks:
       - bench-net
 
+  # BENCH-05 third leg: Engine C in the same memory-free box as the pair above.
+  # A-mem vs C-mem holds the runtime constant (the framework's effect); B-dyn vs
+  # C-mem holds the framework constant (the runtime's effect). Beta6 had only
+  # A vs B, which mixes the two.
+  engine-c-mem:
+    extends:
+      service: engine-c
+    container_name: engine-c-mem
+    cpus: "2"
+    mem_limit: 6g
+    ports: !override
+      - "127.0.0.1:8086:80"
+
+  # ---------------------------------------------------------------------------
+  # Engine D — the same Symfony app doing Engine A's per-request work
+  # (CARRY-02): trusted hosts, CORS, a stateless bearer-token firewall,
+  # per-action authorisation, stateless CSRF, three security headers and one
+  # transaction per unsafe request (scripts/stubs/app-secured/). Built from
+  # engine C's Dockerfile with the derived app, so C vs D isolates the features
+  # and A vs D compares the frameworks doing the same work. Not mirrored, for
+  # want of a Symfony counterpart: Waffle's anonymous session id, its telemetry
+  # and its SecureContainer (see bench/README.md).
+  # ---------------------------------------------------------------------------
+  engine-d:
+    extends:
+      service: engine-c
+    build:
+      args:
+        APP_DIR: engines/symfony-app-secured
+    image: waffle-bench-engine-d
+    container_name: engine-d
+    ports: !override
+      - "127.0.0.1:8087:80"
+
+  # BENCH-05 leg for Engine D: C-mem vs D-mem is the features' memory cost.
+  engine-d-mem:
+    extends:
+      service: engine-d
+    container_name: engine-d-mem
+    cpus: "2"
+    mem_limit: 6g
+    ports: !override
+      - "127.0.0.1:8088:80"
+
   # ---------------------------------------------------------------------------
   # Shared PostgreSQL 17 — deterministic 10k-row seed via sql/init.sql (runs on
   # a FRESH volume only: re-seed = `docker compose ... down -v` first, which is
   # what scripts/run-bench.sh does between runs).
   # ---------------------------------------------------------------------------
   bench-postgres:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
     container_name: bench-postgres
     environment:
       POSTGRES_DB: "waffle"
@@ -266,7 +320,7 @@ services:
   #   docker compose -f docker-compose.bench.yml run --rm k6 run /scripts/scenarios/<x>.js
   # ---------------------------------------------------------------------------
   k6:
-    image: grafana/k6:latest
+    image: grafana/k6:2.3.0@sha256:2dd4756ec6e14e62778916e1eb850108e4b499304c02df56760fa0bdb0fba0b8
     container_name: bench-k6
     profiles:
       - tools

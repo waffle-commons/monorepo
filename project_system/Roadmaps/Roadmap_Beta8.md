@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 8)"
 date_created: 2026-06-07
-date_updated: 2026-09-08
+date_updated: 2026-10-21
 type: project
 status: pending
 tags:
@@ -14,7 +14,7 @@ aliases: []
 
 > **Status:** Pending Validation — Draft (scope partially determined by the beta5 spike outcomes and the beta7 retrospective)
 > 
-> **Target Release:** **November 2026** — **the last feature release before v1**. The tag of beta8 *is* the feature freeze.
+> **Target Release:** **December 2026** — tag targeted ~3 December (re-dated 2026-10-21 from November 2026: beta7 tags on 5 November and the freeze keeps its four weeks; see `Roadmap_v1_Master.md`) — **the last feature release before v1**. The tag of beta8 *is* the feature freeze.
 > 
 > **Core Mandate:** Resolve every open decision, soak every deep change, freeze the public API, and re-audit the final security surface. A beta exists to change things; after beta8, nothing changes except bug fixes.
 > 
@@ -60,12 +60,14 @@ _The three beta5 research spikes get their final verdict. "Go" means landing the
         
     - Cross-component grep for usages; skeleton/workspace/Academy templates updated to the final APIs.
         
+    - *Candidates recorded 2026-10-22:* `http-client`'s `Client::CONNECT_TIMEOUT_MS` and `Client::TIMEOUT_MS`, which the client no longer reads since `[NET-02]` (`TimeoutPolicy::DEFAULT_CONNECT_MS` / `DEFAULT_TOTAL_MS` replaced them).
+        
 
 ### `[FRZ-03]` Naming & Convention Consistency Pass
 
 - **Specification:**
     
-    - One sweep across all components: namespace conventions (`Waffle\Commons\*` / `Waffle\Contracts\*`), exception hierarchies, config key naming, console command naming (`domain:action`), error response shapes.
+    - One sweep across all components: namespace conventions (`Waffle\Commons\*` / `Waffle\Commons\Contracts\*`), exception hierarchies, config key naming, console command naming (`domain:action`), error response shapes.
         
     - Inconsistencies found after v1 are permanent — this is the last cheap moment.
         
