@@ -1,7 +1,21 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
-import type { CockpitStatus, DodRecord, DodRun, DodView, Job, JobState, RepoInfo, SessionInfo } from '../types'
+import type { AuditStatus, AuditView, CockpitStatus, DodRecord, DodRun, DodView, Job, JobState, RepoInfo, SessionInfo } from '../types'
+import {
+  AUDIT_RUN,
+  AUDIT_VERSION,
+  auditRunOf,
+  auditStatusOf,
+  branchVersionOf,
+  choiceOf,
+  decisionsTextOf,
+  findingsOf,
+  firstOf,
+  notStarted,
+  optionLabelOf,
+  requiresAudit,
+} from './audit'
 import { applyLine, emptyRun, excerptOf, LineSplitter, summaryOf } from './dod'
 import {
   EMPTY_EVIDENCE,
@@ -36,13 +50,14 @@ import {
 import { optionsOf } from './options'
 import type { CockpitOptions } from './options'
 import { dirtyComponentsOf, dirtyCountOf, phaseOf } from './status'
-import { mixedVerdictOf, secretVerdictOf } from './strict'
+import { isLedgerPath, ledgerVerdictOf, mixedVerdictOf, secretVerdictOf } from './strict'
 import { duration, elapsed, JOB_ICONS, linesOf } from './view'
 import type { Tone } from './view'
 
 const PLUGIN = 'waffle-cockpit'
 const PANE = 'waffle-dod'
 const JOBS_PANE = 'waffle-jobs'
+const AUDIT_PANE = 'waffle-audit'
 const CONTAINER = 'waffle-dev'
 
 /** One timer drives the lines: the session every tick, the repository every other, the umbrella every tenth. */
@@ -83,6 +98,7 @@ const pulse = atom({ plugin: 'waffle-cockpit', key: 'pulse' } as const, 0)
 const evidence = atom({ plugin: 'waffle-cockpit', key: 'evidence' } as const, EMPTY_EVIDENCE)
 const history = atom({ plugin: 'waffle-cockpit', key: 'history' } as const, {})
 const isHidden = atom({ plugin: 'waffle-cockpit', key: 'isHidden' } as const, false)
+const auditView = atom({ plugin: 'waffle-cockpit', key: 'auditView' } as const, null)
 
 const EMPTY_SESSION: SessionInfo = {
   model: '',
@@ -185,8 +201,8 @@ function componentsOf($: EngineInterface, root: string): Promise<ReadonlySet<str
  * `wfl dod` and `coverage:gaps` can outlast `process.run`'s ten minutes) and
  * hands back its exit code and both streams joined.
  */
-async function collect($: EngineInterface, argv: string[], cwd: string): Promise<{ code: number | null; output: string }> {
-  const child = $.process.spawn({ argv, cwd })
+async function collect($: EngineInterface, argv: string[], cwd: string, env?: Record<string, string>): Promise<{ code: number | null; output: string }> {
+  const child = $.process.spawn(env === undefined ? { argv, cwd } : { argv, cwd, env })
   let output = ''
   for await (const chunk of child) output += chunk.text
   const ended = await child.result
@@ -266,9 +282,28 @@ async function changeOf($: EngineInterface, e: { tool: string; file_path: string
   return { before, after: e.content ?? '' }
 }
 
-/** Why an Edit or Write is refused (a secret anywhere; new `mixed` in waffle-commons PHP), or undefined. */
+/** A release audit ledger's whole text before and after an Edit or Write, so its decisions compare. */
+async function ledgerTextsOf($: EngineInterface, e: { tool: string; file_path: string; old_string?: string; new_string?: string; content?: string }): Promise<{ before: string; after: string }> {
+  const before = await $.fs.read(e.file_path).catch(() => '')
+  if (e.tool !== 'Edit') return { before, after: e.content ?? '' }
+  const old = e.old_string ?? ''
+  const replacement = e.new_string ?? ''
+  if (old === '') return { before, after: before }
+  const after = Reflect.get(e, 'replace_all') === true ? before.split(old).join(replacement) : before.replace(old, () => replacement)
+  return { before, after }
+}
+
+/**
+ * Why an Edit or Write is refused (a secret anywhere; new `mixed` in waffle-commons PHP; a change to a
+ * release audit's decisions, whatever the guard setting), or undefined.
+ */
 async function editVerdictOf($: EngineInterface, e: { tool: string; file_path: string; old_string?: string; new_string?: string; content?: string }): Promise<string | undefined> {
   const { options } = local
+  if (isLedgerPath(e.file_path)) {
+    const whole = await ledgerTextsOf($, e)
+    const ledger = ledgerVerdictOf(e.file_path, whole.before, whole.after)
+    if (ledger !== undefined) return ledger
+  }
   const { before, after } = await changeOf($, e)
   if (options.secretScan) {
     const secret = secretVerdictOf(before, after, e.file_path)
@@ -482,6 +517,7 @@ async function readStatus($: EngineInterface, force: boolean): Promise<void> {
     local.localOnly = seen.localOnly
     local.backupAgeS = seen.backupAgeS
   }
+  const audit = await auditOf($, root, branch?.trim() ?? '').catch(() => null)
   const next: CockpitStatus = {
     branch: branch?.trim() ?? '?',
     phase: phaseOf(branch ?? ''),
@@ -490,6 +526,7 @@ async function readStatus($: EngineInterface, force: boolean): Promise<void> {
     igor: igor.trim(),
     localOnly: local.localOnly,
     backupAgeS: local.backupAgeS,
+    audit,
   }
   await update($, status, () => next)
   if (local.lastContainer === 'running' && next.container !== 'running') {
@@ -537,6 +574,96 @@ async function runDod($: EngineInterface, root: string, components: string[]): P
     const failed = runs.filter(run => run.verdict !== 'pass').map(run => run.component)
     $.ui.toast(failed.length === 0 ? `DoD PASS: ${components.join(', ')}` : `DoD FAIL: ${failed.join(', ')}`)
     void refresh($, true).catch(ignoreFailure)
+  }
+}
+
+/**
+ * The release audit the status line shows: the branch's own release when it waits for an audit (`not
+ * started` until a run exists), else the newest run while it is under way; null when there is none.
+ */
+async function auditOf($: EngineInterface, root: string, branch: string): Promise<AuditStatus | null> {
+  const version = branchVersionOf(branch)
+  const wanted = version !== undefined && requiresAudit(version) ? version : undefined
+  const out = await textOf($, [`${root}/bin/wfl`, 'audit:status', ...(wanted === undefined ? ['--latest'] : [wanted]), '--json'], root, 15_000)
+  const seen = out === undefined ? undefined : auditStatusOf(out)
+  if (seen !== undefined) return wanted === undefined && seen.phase === 'done' ? null : seen
+  return wanted === undefined ? null : notStarted(wanted)
+}
+
+/** A decision the pane can record. */
+function isChoice(value: string): value is AuditView['choice'] {
+  return value === 'fix' || value === 'accept' || value === 'post-v1'
+}
+
+/** A run's ledger as the /audit pane's view: the newest run, or the release (and run) named. A string says why not. */
+async function loadAudit($: EngineInterface, root: string, version: string, run: string): Promise<AuditView | string> {
+  const argv = [`${root}/bin/wfl`, 'audit:status', ...(version === '' ? ['--latest'] : [version]), ...(run === '' ? [] : ['--run', run]), '--json']
+  const out = await textOf($, argv, root, 15_000)
+  const report = out === undefined ? undefined : auditRunOf(out)
+  if (report === undefined) {
+    return version === ''
+      ? 'No release audit run yet: the release-audit skill starts one (wfl audit:init <version>).'
+      : `No audit run for ${version}${run === '' ? '' : ` (${run})`}.`
+  }
+  const text = await $.fs.read(`${root}/${report.dir}/ledger.json`).catch(() => undefined)
+  if (text === undefined) return `The audit of ${report.version} (${report.run}) has no ledger yet (phase: ${report.phase}): nothing to decide.`
+  const findings = findingsOf(text)
+  if (findings === undefined) return `${report.dir}/ledger.json does not read as a ledger: run wfl audit:check ${report.version}.`
+  const first = firstOf(findings)
+  return { version: report.version, run: report.run, dir: report.dir, findings, selected: first?.id ?? '', choice: choiceOf(first?.proposal ?? ''), message: '', recorded: [], isBusy: false }
+}
+
+/** Re-reads the open ledger; `toNext` moves the selection to the most severe finding still undecided. */
+async function reloadAudit($: EngineInterface, message: string, toNext = false): Promise<void> {
+  const root = await rootOf($)
+  const view = await read($, auditView)
+  if (root === undefined || view === null) return
+  const findings = findingsOf(await $.fs.read(`${root}/${view.dir}/ledger.json`).catch(() => ''))
+  if (findings === undefined) {
+    await update($, auditView, was => (was === null ? was : { ...was, message: '✗ the ledger no longer reads: run wfl audit:check', isBusy: false }))
+    return
+  }
+  const kept = findings.find(f => f.id === view.selected)
+  const moves = toNext || kept === undefined
+  const selected = moves ? firstOf(findings) : kept
+  await update($, auditView, was =>
+    was === null ? was : { ...was, findings, selected: selected?.id ?? '', choice: moves ? choiceOf(selected?.proposal ?? '') : was.choice, message, isBusy: false },
+  )
+}
+
+/**
+ * Records the maintainer's decision on the selected finding through `wfl audit:sign`, from the pane: the
+ * person's own action, never a model turn. Accepting the risk or moving to post-v1 needs a reason.
+ */
+async function recordDecision($: EngineInterface, reason: string): Promise<void> {
+  const root = await rootOf($)
+  const view = await read($, auditView)
+  if (root === undefined || view === null || view.isBusy || view.selected === '') return
+  const why = reason.trim()
+  if (view.choice !== 'fix' && why === '') {
+    const what = view.choice === 'accept' ? 'Accepting the risk' : 'Moving it to post-v1'
+    await update($, auditView, was => (was === null ? was : { ...was, message: `✗ ${what} needs a reason: type it, then Enter.` }))
+    return
+  }
+  await update($, auditView, was => (was === null ? was : { ...was, isBusy: true, message: `recording ${view.selected} ${view.choice}…` }))
+  const argv = [
+    `${root}/bin/wfl`, 'audit:sign', view.version, view.selected, view.choice,
+    ...(why === '' ? [] : [why]),
+    ...(view.run === 'release-audit' ? [] : ['--run', view.run]),
+  ]
+  const done = await collect($, argv, root, { WFL_AUDIT_SIGNER: 'cockpit' }).catch((error: unknown) => ({
+    code: null,
+    output: error instanceof Error ? error.message : String(error),
+  }))
+  const last = done.output.trim().split('\n').filter(line => line.trim() !== '').pop() ?? ''
+  if (done.code === 0) {
+    const entry = `${view.selected} ${view.choice}`
+    await update($, auditView, was => (was === null ? was : { ...was, recorded: [...was.recorded, entry] }))
+    await reloadAudit($, `✓ ${last.replace(/^✓\s*/, '')}`, true)
+    $.ui.toast(`Recorded ${entry}`)
+  } else {
+    const why2 = last.replace(/^✗\s*/, '') || `wfl audit:sign exited ${done.code ?? '?'}`
+    await update($, auditView, was => (was === null ? was : { ...was, isBusy: false, message: `✗ ${why2}` }))
   }
 }
 
@@ -604,6 +731,11 @@ export const register: Register = (on, options) => {
         name: 'dod',
         description: 'Run wfl dod in a pane, with no model turn (components, or --changed; --history for the last verdicts)',
         argumentHint: '<component…> | --changed | --history',
+      })
+      await $.command.register({
+        name: 'audit',
+        description: "Decide the release audit's findings in a pane, with no model turn: fix, accept the risk, or post-v1",
+        argumentHint: '[version] [--run <name>]',
       })
       await registerTools($).catch(ignoreFailure)
       void refresh($, true).catch(ignoreFailure)
@@ -880,6 +1012,23 @@ export const register: Register = (on, options) => {
     return { text: `Running wfl dod for ${components.join(', ')} in the DoD pane.` }
   })
 
+  on('command.run', { command: 'audit' }, async ($, e) => {
+    const root = await rootOf($)
+    if (root === undefined) return { text: 'Not inside the waffle-commons umbrella.' }
+    const words = e.args.trim().split(/\s+/).filter(word => word !== '')
+    const runAt = words.indexOf('--run')
+    const run = runAt === -1 ? '' : (words[runAt + 1] ?? '')
+    const version = words.find((word, i) => !word.startsWith('-') && (runAt === -1 || i !== runAt + 1)) ?? ''
+    if (version !== '' && !AUDIT_VERSION.test(version)) return { text: `Not a release version: ${version} (for example 0.1.0-beta8).` }
+    if (runAt !== -1 && !AUDIT_RUN.test(run)) return { text: 'Give the run name after --run: lowercase letters, digits and hyphens.' }
+    const loaded = await loadAudit($, root, version, run)
+    if (typeof loaded === 'string') return { text: loaded }
+    await update($, auditView, () => loaded)
+    await $.ui.open({ id: AUDIT_PANE, title: 'Release audit' })
+    const decided = loaded.findings.filter(f => f.decision !== '').length
+    return { text: `Release audit ${loaded.version} (${loaded.run}): ${loaded.findings.length} finding(s), ${decided} decided. Decide them in the Release audit pane.` }
+  })
+
   on('ui.render', { component: 'PromptHint' }, async ($, e, next) => {
     if (await read($, isHidden)) return next(e)
     const { Box, Text } = $.ui.resolve(e)
@@ -998,6 +1147,66 @@ export const register: Register = (on, options) => {
             )}
           </Box>
         )}
+      </Box>
+    )
+  })
+
+  // The maintainer's decisions on a release audit's findings: their action in the pane, no model turn.
+  on('ui.render', { component: 'Pane', requestId: AUDIT_PANE }, async ($, e) => {
+    const { Box, Text, Button, Select, Input } = $.ui.resolve(e)
+    const view = await read($, auditView)
+    if (view === null) return <Text dimColor>No audit open: /audit [version] reads a run's ledger.</Text>
+
+    const decided = view.findings.filter(f => f.decision !== '').length
+    const finding = view.findings.find(f => f.id === view.selected)
+    const toneOf = (severity: string) => (severity === 'CRITICAL' ? 'red' : severity === 'HIGH' ? 'yellow' : undefined)
+    const select = (id: string) =>
+      void update($, auditView, was => {
+        if (was === null) return was
+        const picked = was.findings.find(f => f.id === id)
+        return picked === undefined ? was : { ...was, selected: id, choice: choiceOf(picked.proposal), message: '' }
+      }).catch(ignoreFailure)
+    const choose = (value: string) => void update($, auditView, was => (was === null || !isChoice(value) ? was : { ...was, choice: value, message: '' })).catch(ignoreFailure)
+
+    return (
+      <Box flexDirection="column">
+        <Text bold>{`Release audit ${view.version} (${view.run}) · ${view.findings.length} finding(s) · decided ${decided}/${view.findings.length}`}</Text>
+        {view.findings.length === 0 && <Text dimColor>The ledger holds no finding: nothing to decide.</Text>}
+        {view.findings.length > 0 && (
+          <Select key="audit-finding" label="Finding " options={view.findings.map(f => ({ value: f.id, label: optionLabelOf(f) }))} value={view.selected} onSelect={select} />
+        )}
+        {finding !== undefined && (
+          <Box flexDirection="column">
+            <Text bold color={toneOf(finding.severity)} wrap="truncate">{`${finding.id} · ${finding.severity} · ${finding.title}`}</Text>
+            <Text dimColor wrap="truncate">{`  ${finding.where} · lens ${finding.lens} · ${finding.verdict} · ${finding.moscow} · proposed: ${finding.proposal} · ${finding.status}`}</Text>
+            {finding.summary !== '' && <Text>{`  ${finding.summary}`}</Text>}
+            {finding.fix !== '' && <Text dimColor>{`  fix: ${finding.fix}`}</Text>}
+            <Text color={finding.decision === '' ? 'yellow' : 'green'}>{finding.decision === '' ? '  undecided' : `  decided: ${finding.decision}`}</Text>
+            <Select
+              key="audit-choice"
+              label="Decision "
+              options={[
+                { value: 'fix', label: 'fix it in this release' },
+                { value: 'accept', label: 'accept the risk (reason required)' },
+                { value: 'post-v1', label: 'move it to post-v1 (reason required)' },
+              ]}
+              value={view.choice}
+              onSelect={choose}
+            />
+            <Input
+              key="audit-reason"
+              label="Reason "
+              placeholder={view.choice === 'fix' ? 'optional · Enter records the decision' : 'required · Enter records the decision'}
+              submitLabel="record"
+              onSubmit={reason => void recordDecision($, reason).catch(ignoreFailure)}
+            />
+          </Box>
+        )}
+        {view.message !== '' && <Text color={view.message.startsWith('✓') ? 'green' : view.message.startsWith('✗') ? 'red' : undefined}>{view.message}</Text>}
+        <Box flexDirection="row">
+          <Button key="audit-send" label="Send decisions to Claude" hotkey="s" onPress={() => void $.prompt.fill({ text: decisionsTextOf(view), mode: 'insert' }).catch(ignoreFailure)} />
+          <Button key="audit-reload" label="Reload the ledger" hotkey="r" onPress={() => void reloadAudit($, 'ledger reloaded').catch(ignoreFailure)} />
+        </Box>
       </Box>
     )
   })
