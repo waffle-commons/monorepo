@@ -23,9 +23,9 @@ moving the gateway onto a new framework release, any claim about the gateway's p
 - Its own repository `waffle-commons/ecoshield-gateway`, checked out at
   `contributions/ecoshield-gateway/`. The umbrella gitignores it: never a submodule, never in
   `RELEASE_INCLUDE`, never covered by `wfl check:all` or `wfl igor`. Run its gates from its own directory.
-- Published on Packagist and tagged `0.1.0` (POC) and `0.1.1` (measurement correction). It is a released
-  artefact: change it only when the request names it (`AGENTS.md` §6).
-- It consumes **released** framework versions from Packagist (`waffle-commons/*: ^0.1.0-beta6` today).
+- Published on Packagist and tagged `0.1.0` (POC), `0.1.1` (measurement correction) and `0.2.0` (alpha,
+  November 2026). It is a released artefact: change it only when the request names it (`AGENTS.md` §6).
+- It consumes **released** framework versions from Packagist (`waffle-commons/*: ^0.1.0-beta7` today).
   Framework work lands and ships first; only then does the gateway move.
 
 ## Conventions (non-negotiable)
@@ -61,7 +61,7 @@ moving the gateway onto a new framework release, any claim about the gateway's p
 | Step | Framework | Gateway | What must be true |
 |---|---|---|---|
 | `[GATE-01]` POC | beta6 | 0.1.x | ✅ shipped: proxy, rescue and shield on public APIs; igor 0 KO; 100 % coverage |
-| `[GATE-02]` alpha | beta7 | 0.2.0 | the Strangler route served natively with cache **and the beta7 rate limiter** `[NET-01]`; the catch-all proxy **over the resilient client** `[NET-02/03]` (bounded timeouts, idempotency-aware retries, breaker); a reproducible legacy lab. **Beta7 stretch tier:** in scope since 2026-10-21 (nothing cut), built last on the finished NET items. |
+| `[GATE-02]` alpha | beta7 | 0.2.0 | ✅ shipped (`0.2.0`, November 2026): the Strangler route served natively with cache **and the beta7 rate limiter** `[NET-01]`; the catch-all proxy **over the resilient client** `[NET-02/03]` (bounded timeouts, idempotency-aware retries, breaker); a reproducible legacy lab. **Beta7 stretch tier:** in scope since 2026-10-21 (nothing cut), built last on the finished NET items. |
 | `[GATE-03]` beta | beta8 | 0.3.0 | the FinOps benchmark in its own repo: k6 **≥1000 rps**, Scenario A (legacy PHP-FPM direct) vs Scenario B (through the gateway) — RAM ceiling, latency, breaking point. The report is a v1 launch asset and the proof for indicator #2 (slope + measured RAM factor + crossover). |
 | `[RC-04]` soak | RC1 | RC1 build | ≥4 weeks continuous, production-like traffic, chaos injections — `[[soak-endurance]]` |
 | `[RC-05]` | RC1 | RC1 build | the FinOps benchmark re-run **on the RC bits**; launch numbers come from the RC, not a beta |
@@ -74,16 +74,22 @@ From the 0.1.1 release notes and `BENCHMARK_RESULTS.md`:
   behind the Shield.
 - Moved to `[GATE-03]`: a per-step warm-up in the ladder (only the ladder numbers 0.3.0 publishes need it).
 
-## Alpha state (`[GATE-02]`, 2026-10-22)
-- Built and checked on the LOCAL beta7 tree, branch `alpha/beta7` (7 commits, not pushed). Status, evidence
-  and findings: `Roadmap_Beta7.md` `[GATE-02]`.
+## Alpha state (`[GATE-02]`, shipped as `0.2.0`)
+- Shipped 2026-11-05: built on the 15 Packagist `0.1.0-beta7` packages, gates and the lab re-run on the
+  production image (archive `project_system/Audits/Beta7/gateway-0.2.0/`), PR #3 merged as `e351fc3`, tag
+  `0.2.0`, GitHub pre-release, Packagist. It was first built on the LOCAL beta7 tree (branch `alpha/beta7`,
+  deleted after the merge). Status, evidence and findings: `Roadmap_Beta7.md` `[GATE-02]`.
+- Lab traps met that day: retry counts read nginx **access** lines only, one method per **fully** closed
+  circuit (one success leaves it half-open); k6's summary JSON lands relative to the working directory;
+  `perimeter-raw.sh` rewrites the tracked `bench/results/perf-perimeter-raw.txt` (restore it after a lab run).
 - Until a framework release reaches Packagist, the gateway builds on it through `{gateway}/bin/framework-local.sh`
   (`VERSION=… install`, then `resync` after a framework change): copies in `var/framework-local/`,
   `composer.local.json` excluded from git. The production image installs from `composer.lock`, so it cannot
   build on the unpublished version: run the lab with `-f docker-compose.dev.yml` last.
-- After the beta7 wave: drop `composer.local.*` and `var/framework-local/`, `composer update 'waffle-commons/*'`,
-  rerun the gates and the lab on the production image, stamp `## [0.2.0] — 2026-11`. Push, PR, tag and
-  Packagist are the maintainer's.
+- After a framework wave (done for beta7 → `0.2.0`; the same for beta8 → `0.3.0`): drop `composer.local.*` and
+  `var/framework-local/`, `composer update`, rerun the gates and the lab on the production image, stamp the
+  CHANGELOG (`## [0.3.0] — <YYYY-MM>`). Then push, PR (merge commit), the tag and Packagist; the agent does
+  them on the maintainer's request, the tag only with the cockpit `releaseTag` set to that version.
 - `{gateway}/bench/legacy-symfony/app/` is tracked (no `vendor/`, `var/`, `.env`); `bootstrap.sh` installs it from its
   lock with digest-pinned PHP 8.3 and Composer images. Never read its `.env` (the cockpit guard refuses).
 
