@@ -1,9 +1,9 @@
 ---
 title: "Log Beta 7"
 date_created: '2026-11-02'
-date_updated: '2026-11-02'
+date_updated: '2026-11-05'
 type: project
-status: draft
+status: archived
 tags:
   - waffle
   - beta7
@@ -23,8 +23,9 @@ aliases: []
 > that re-measured every published number (`[CARRY-02]`). Full scope: nothing was cut. Every roadmap
 > item was accepted on evidence on 2026-10-31. Release: November 2026.
 >
-> **Draft, 2026-11-02:** written before the wave. §3 holds the last pre-wave gate run; §5 and the
-> Packagist check are completed on release day.
+> **Release day:** the wave tagged all 27 repositories without a failure, Packagist serves the 26
+> packages at the commits the tag pins, and the newcomer path works from Packagist (§5). §3 holds the
+> last pre-wave gate run.
 
 ## 1. Technical Changelog (What changed)
 
@@ -206,17 +207,83 @@ Previous run, 2026-11-03 (after the dependency refresh of 2026-11-02):
   - The beta7 classes that no public signature exposes need their `@internal` decision (`[FRZ-01]`).
   - The skeleton's `.env.example` and `.gitignore` comments and its README are English, although
     AGENTS.md §1 makes the template apps French.
+- **Found on release day, for beta8:**
+  - `data`'s `codecov/patch`: 93.81 % of the beta7 diff is covered, under its 94.76 % base.
+  - `create-project.sh` ends by asking production to inject `WAFFLE_CSRF_SECRET` and
+    `WAFFLE_AUTH_SECRET`. Since 2026-11-04 the requirement is `APP_SECRET` and `WAFFLE_AUTH_SECRET`, as
+    the README says.
+  - The skeleton's development compose fixes its container names (`waffle-app-dev`, `waffle-redis`,
+    `waffle-postgres`) and its host ports (80, 443, 5432, 6379): it cannot start next to another Waffle
+    stack on the same machine. The release-day newcomer test ran with an override kept outside the
+    project.
+  - A created project's test run prints the JSON log lines of its negative tests (a broken YAML file,
+    an untrusted host) on the console.
 
 ## 5. Release mechanics
 
-*Completed on release day.* What the wave enforces, as of 2026-11-02:
+What the wave enforces:
 
 - `RELEASE_INCLUDE` lists 27 repositories: the 25 framework components, `documentation` and `skeleton`.
   `component-template`, `workspace` and the private `academy` are never tagged.
 - `release-wave.yml` refuses to tag a component whose pinned gitlink is not an ancestor of its default
   branch (exit 3): merges into `main` are merge commits, never a squash.
 - Pushing the umbrella tag `0.1.0-beta7` fires the LIVE wave (`on.push.tags`); `workflow_dispatch` with
-  `dry_run` runs on a tag that already exists.
+  `dry_run` runs on a tag that already exists, so the four new repositories had no dry run.
 - `queue`, `openapi`, `serializer` and `testing` were registered on Packagist on 2026-10-31; the wave's
   tag is their first version.
-- After the wave: Packagist shows `0.1.0-beta7` for all 27 packages.
+
+### On release day
+
+Each pull request merged as a merge commit, with the admin bypass, once its CI passed and its head on
+GitHub matched the local one. In order:
+
+1. **`contracts` first** (#66). Its `main` run then failed `composer audit`: `symfony/filesystem` 8.1.9,
+   GHSA-6prc-h956-hxjq, one of the Symfony advisories published on 2026-11-04. `contracts` #68 moved it
+   to 8.1.11 (`main` 9a0f59b) before anything resolved against it. The ten components whose CI already
+   passed against the beta6 contracts had merged in between.
+2. **Every lock refreshed after the contracts merge** (the maintainer's rule), so each one pins the
+   released commits: `contracts` 9a0f59b in every component, `utils` 20b7067 in the eight that
+   require it, and the Symfony 8.1.11 security releases (`symfony/filesystem`; `symfony/serializer` in
+   `auth`, CVE-2026-118515 and two more; `symfony/http-client` in `telemetry-otel` and the workspace,
+   GHSA-gq53-v8w2-gjhj and GHSA-c7hm-wqwp-f9v8). `composer audit` is clean in every repository. The ten
+   early merges got a follow-up pull request each: runtime #30, container #32, config #39, log #14,
+   event-dispatcher #13, error-handler #38, telemetry #8, telemetry-otel #8, async #8 and routing #39.
+3. **`utils`** (#35) merged before the components that require it.
+4. **Two test defects** surfaced once the refreshed locks let the suites run on GitHub. Both were fixed
+   before their component merged, and proven under CI's own conditions:
+   - `queue`: a never-connected `new Redis()` talks to 127.0.0.1:6379, where the CI workflow runs a real
+     Redis, so two transport-failure tests passed locally and failed on GitHub. The fixture now uses a
+     client whose connection to port 1 was refused: OK (49 tests) with a Redis on 127.0.0.1:6379.
+   - `cache`: the XFetch early-recompute test drew its random number unseeded and kept the entry in
+     about 2 % of the runs. It is now seeded: 30 runs out of 30.
+5. **`data`** merged with `codecov/patch` red (93.81 % of the diff covered, against a 94.76 % base), on
+   the maintainer's decision: every job passed, the ≥ 95 % coverage gate included (§4).
+6. **The rest:** `component-template`, `documentation` and `skeleton`; the workspace after its relock
+   (the four path packages whose reference is a git head now point at their merge commits); `labs`,
+   `sandbox`, then `academy`, its two gitlinks pinned at their merge commits; the umbrella last, its 30
+   gitlinks re-pinned at the merge commits, CI 30/30 green, monorepo #10 merged.
+
+Before the tag, every component's `main` was green on its final head, and the wave's own checks passed
+locally: the 30 gitlinks on their `main`, no `0.1.0-beta7` tag anywhere, `RELEASE_INCLUDE` at 27.
+
+The lightweight tag `0.1.0-beta7` on the merge commit of #10 started the live wave, run 41952081448:
+
+```text
+released : 27  (the 25 framework components, documentation and skeleton)
+tagged   : 0
+skipped  : 0
+excluded : 3   component-template workspace academy
+failed   : 0
+```
+
+After the wave:
+
+- Packagist serves `0.1.0-beta7` for all 26 packages, each at the commit the umbrella tag pins.
+  `documentation` has no Composer package: it is tagged on GitHub only.
+- **The newcomer path works from Packagist.** `create-project.sh`, downloaded at the tag, created the
+  project: the skeleton and 22 packages at `0.1.0-beta7`, `composer audit` clean, secrets generated.
+  The project was committed, cloned and installed from its lock, then booted with `docker compose`:
+  `/healthz`, `/readyz`, `/` and `/_docs` answer 200. `db:migrate`, `db:rollback` and `db:migrate` again
+  succeed; the project's own suite passes (OK, 127 tests) and Mago reports nothing.
+- The org profiles (`.github`, `.github-private`) moved to beta7; the public one's install command
+  names `0.1.0-beta7`.

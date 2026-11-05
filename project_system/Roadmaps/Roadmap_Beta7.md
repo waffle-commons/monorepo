@@ -1,20 +1,20 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 7)"
 date_created: 2026-06-07
-date_updated: 2026-10-31
+date_updated: 2026-11-05
 type: project
-status: in-progress
+status: shipped
 tags:
   - project
   - roadmap
   - waffle
 aliases: []
 ---
-# 🧇 WAFFLE-COMMONS — PENDING ECOSYSTEM ROADMAP 0.1.0-beta7
+# 🧇 WAFFLE-COMMONS — ECOSYSTEM ROADMAP 0.1.0-beta7
 
-> **Status:** In progress — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. `[CARRY-02]` re-measured on 2026-11-01: the clean full run is recorded and, since 2026-11-02, published in `bench/BENCH-GATE-RESULT.md` (the two earlier runs are kept as invalidated series); the two `[API-01]` follow-ups were built and the two `[NET-01]` spec points settled the same day
+> **Status:** Shipped in November 2026 — kicked off in September 2026 (release branches 2026-09-25, tooling and scaffolds 2026-09-29; see *Kickoff state & carry-overs* below). Mid-October checkpoint met on 2026-10-17: no split (see *Capacity guard*). Full scope decided 2026-10-21: nothing is cut, tag targeted for 5 November 2026. Acceptance check 2026-10-31 (see *ACCEPTANCE CRITERIA*): every criterion passes, NET's since the concurrent-limiter test of that day. `[CARRY-02]` re-measured on 2026-11-01: the clean full run is recorded and, since 2026-11-02, published in `bench/BENCH-GATE-RESULT.md` (the two earlier runs are kept as invalidated series); the two `[API-01]` follow-ups were built and the two `[NET-01]` spec points settled the same day
 > 
-> **Target Release:** **November 2026** — tag targeted for 5 November (re-dated 2026-10-21 from October 2026; the first release after the API Platform Conference, Lille — September 17–18, 2026)
+> **Released:** **November 2026**, on its target (re-dated 2026-10-21 from October 2026; the first release after the API Platform Conference, Lille — September 17–18, 2026)
 > 
 > **Core Mandate:** Close every gap between "high-performance framework" and **full production-ready API ecosystem**: traffic protection, outbound resilience, background processing, Kubernetes operability, API tooling, and testability. This is the release where the missing components get built — beta8 then freezes, so anything not landed here is post-v1.
 > 
