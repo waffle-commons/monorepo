@@ -8,7 +8,8 @@
  *   3. work: the running commands, background shells, monitors, subagents, the next wakeup (always drawn, idle when there is none)
  *   4. 5h / 7d limits │ PR │ the engine's own hint (shortcuts, esc to interrupt)
  */
-import type { CockpitStatus, Job, RepoInfo, SessionInfo } from '../types'
+import type { AuditStatus, CockpitStatus, Job, RepoInfo, SessionInfo } from '../types'
+import { shortVersion } from './audit'
 
 export type Tone = 'plain' | 'dim' | 'bold' | 'green' | 'yellow' | 'red' | 'cyan' | 'magenta' | 'blue'
 
@@ -106,6 +107,23 @@ export function localGroup(localOnly: number | null, backupAgeS: number | null, 
   return [head, DOT, { text: `backup ${duration(backupAgeS * 1000)} ago`, tone }]
 }
 
+/**
+ * The release audit: `audit beta8 · 5/12 finders · 1 HIGH`, red with an open CRITICAL, `not started` when the
+ * release needs one and has none, a tick once its gate passes; nothing when there is no audit to show.
+ */
+export function auditGroup(audit: AuditStatus | null | undefined): Line {
+  if (audit === null || audit === undefined) return []
+  const name: Segment = { text: `audit ${shortVersion(audit.version)}${audit.run === 'release-audit' ? '' : ` (${audit.run})`}`, tone: 'plain' }
+  if (audit.phase === 'not-started') return [name, { text: ' not started', tone: 'yellow' }]
+  if (audit.phase === 'done') return [name, audit.gate === 'pass' ? { text: ' ✓', tone: 'green' } : { text: ' ✗ gate', tone: 'red' }]
+  const group: Line = [name]
+  if (audit.profile !== '' && audit.profile !== 'balanced') group.push({ text: ` · ${audit.profile}`, tone: 'magenta' })
+  group.push({ text: ` · ${audit.progress === '' ? audit.phase : audit.progress}`, tone: 'dim' })
+  if (audit.openCritical > 0) group.push({ text: ` · ${audit.openCritical} CRITICAL`, tone: 'red' })
+  if (audit.openHigh > 0) group.push({ text: ` · ${audit.openHigh} HIGH`, tone: 'yellow' })
+  return group
+}
+
 function waffleGroup(waffle: CockpitStatus | null, warnHours: number): Line {
   if (waffle === null) return []
   const isUp = waffle.container === 'running'
@@ -115,6 +133,8 @@ function waffleGroup(waffle: CockpitStatus | null, warnHours: number): Line {
   if (waffle.igor !== '') group.push(DOT, { text: `igor ${waffle.igor}`, tone: 'dim' })
   const local = localGroup(waffle.localOnly ?? null, waffle.backupAgeS ?? null, warnHours)
   if (local.length > 0) group.push(DOT, ...local)
+  const audit = auditGroup(waffle.audit)
+  if (audit.length > 0) group.push(DOT, ...audit)
   return group
 }
 

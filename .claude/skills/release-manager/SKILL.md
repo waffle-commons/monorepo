@@ -53,6 +53,11 @@ For **each** component in the wave:
 README carries the current version stamp and the CHANGELOG has a `## [<version>]` entry. It infers the
 version from the `pre-release/<version>` branch, so it works for `1.0.0-RC1` as well.
 
+When it runs with `--all`, it also holds the release on its audit, for beta8 and every later minor,
+major or RC release: `wfl audit:check <version> --gate` must pass (the `[[release-audit]]` skill).
+A patch release is exempt. `WFL_AUDIT_VERSION=<other>` points the gate at the run that covers this
+release, such as the RC's run for a Gold that changes no code.
+
 ## RC1 packaging pass (`[RC-03]`)
 Per component `composer.json`, on `pre-release/1.0.0-RC1`:
 - **PHP constraint:** the roadmap says `>=8.5`, while every package declares `^8.5` today. Apply the form

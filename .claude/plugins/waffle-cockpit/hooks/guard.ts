@@ -27,6 +27,9 @@
  *   subject once). One heredoc command per line, chained with `set -e`.
  * - Secret files (`.env`, keys, certificates' private halves) are never read
  *   through the shell: a Read deny rule does not cover `cat`.
+ * - A release audit's decisions are the maintainer's: `wfl audit:sign`, and the
+ *   script behind it, are never Claude's to run (the release-audit skill). The
+ *   person decides in /audit, or runs it in their own terminal.
  *
  * The guard only ever denies. Everything it lets through still meets the
  * permission rules in .claude/settings.json.
@@ -314,6 +317,19 @@ function dockerExecCommandOf(args: string[]): string[] | undefined {
   return args.slice(i + 1) // past the container name
 }
 
+/** `wfl audit:sign`, or the script behind it (`release-audit.py sign`), run directly or by an interpreter. */
+function isAuditSign(name: string, args: string[]): boolean {
+  const signs = (script: string, rest: string[]) =>
+    (basenameOf(script) === 'wfl' && rest[0] === 'audit:sign') || (basenameOf(script) === 'release-audit.py' && rest[0] === 'sign')
+  if (signs(name, args)) return true
+  // `python3 -I scripts/release-audit.py sign …`, `bash bin/wfl audit:sign …`: the first word that is no option is the script.
+  if (/^python[\d.]*$/.test(name) || SHELLS.has(name)) {
+    const at = args.findIndex(a => !a.startsWith('-'))
+    return at !== -1 && signs(args[at] ?? '', args.slice(at + 1))
+  }
+  return false
+}
+
 /** Why one simple command is refused, or undefined. */
 function verdictOfWords(words: string[], depth: number, isInContainer: boolean, isStrict: boolean, releaseTag: string): string | undefined {
   const cmd = commandWordsOf(words)
@@ -341,6 +357,10 @@ function verdictOfWords(words: string[], depth: number, isInContainer: boolean, 
   // PHP belongs in the container; git and release rules apply there all the same.
   const inner = name === 'docker' ? dockerExecCommandOf(args) : undefined
   if (inner !== undefined && depth < 3) return verdictOfWords(inner, depth + 1, true, isStrict, releaseTag)
+
+  if (isAuditSign(name, args)) {
+    return "`wfl audit:sign` records the maintainer's decision on a release-audit finding, so Claude never runs it (the release-audit skill). Ask the person to decide in /audit, or to run it in their own terminal."
+  }
 
   if (name === 'git') return gitVerdictOf(args, releaseTag)
 

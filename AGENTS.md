@@ -236,6 +236,10 @@ Procedures: the `benchmark-gate`, `soak-endurance` and `ecoshield` skills.
     `description` that starts with "Use …"; the skill it follows preloaded with `skills:`; tool limits
     that match its contract (`disallowedTools: Write, Edit, NotebookEdit` when read-only, `Edit,
     NotebookEdit` when it only writes a report); `model` only for mechanical runners;
+  - one exception to that last rule, decided 2026-11-06: a release audit chooses the model and effort of
+    its agents per run (a profile, or per-role overrides), records the choice in the run's
+    `manifest.json`, and passes it at dispatch. The agent files stay without `model` (the `release-audit`
+    skill);
   - permissions belong in `.claude/settings.json`, never in a skill's `allowed-tools`.
 - **Plugins** come from the repository marketplace (`.claude-plugin/marketplace.json`) and load for
   every clone once the folder is trusted: `waffle-cockpit` (a mod: the lines under the prompt, `/dod` in a pane,

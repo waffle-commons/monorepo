@@ -11,6 +11,7 @@ What it checks:
   runtimes    no opencode / Antigravity left in the live files (history excluded)
   plugins     the repo marketplace, the vendored mattpocock-skills pin and curation
   settings    .claude/settings.json enables what the marketplace lists
+  scripts     scripts/tests/test_*.py, the unit tests of the wfl helpers, pass
   claude      `claude plugin validate --strict` + `claude plugin test` (skipped with
               --no-claude or when the CLI is absent, e.g. in CI)
 
@@ -39,7 +40,8 @@ AGENT_KEYS = {
 }
 # Tool policy: what each agent's body promises, enforced by its frontmatter.
 READ_ONLY = {'acceptance-verifier', 'aot-verifier', 'bc-reviewer', 'flake-hunter', 'gate-runner'}
-REPORT_WRITERS = {'benchmark-runner', 'chaos-runner', 'soak-analyst'}
+REPORT_WRITERS = {'benchmark-runner', 'chaos-runner', 'soak-analyst',
+                  'owasp-finder', 'modernization-finder', 'finding-verifier', 'audit-triager'}
 # Skills the vendored plugin must never ship (see its VENDORED.md).
 MP_EXCLUDED = {'implement', 'implement-spec', 'triage', 'wayfinder', 'prototype', 'setup-matt-pocock-skills', 'code-review'}
 # Paths that live outside this checkout on purpose.
@@ -260,6 +262,16 @@ if os.path.isfile(settings):
         err(settings, f'invalid JSON ({e})')
 else:
     notes.append(f'{settings} not present yet (apply the team settings)')
+
+# --- script tests -------------------------------------------------------------------
+if os.path.isdir('scripts/tests'):
+    run = subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'scripts/tests'],
+                         capture_output=True, text=True)
+    tail = [l for l in (run.stdout + run.stderr).strip().splitlines() if l.strip()]
+    if run.returncode != 0:
+        err('scripts/tests', ' / '.join(tail[-3:]) or f'exit {run.returncode}')
+    else:
+        notes.append('script tests: ' + next((l for l in reversed(tail) if l.startswith('Ran ')), 'ok'))
 
 # --- claude CLI ---------------------------------------------------------------------
 if '--no-claude' not in sys.argv:

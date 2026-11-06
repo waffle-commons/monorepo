@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "version": "0.1.0-beta8",
+  "run": "release-audit",
+  "generated": "2026-11-20T10:00:00+01:00",
+  "findings": [
+    {
+      "id": "S-A05-01",
+      "title": "Report export splices a sort column into ORDER BY",
+      "phase": "security",
+      "lens": "A05",
+      "component": "example-repo",
+      "where": "example-repo/src/Report/ReportRepository.php:42",
+      "also": ["example-repo/src/Report/ExportRepository.php:57"],
+      "severity": "MEDIUM",
+      "verdict": "CONFIRMED",
+      "verifiers": ["verdicts/S-A05.md"],
+      "moscow": "MUST",
+      "proposal": "fix",
+      "summary": "The sort column reaches the SQL text unquoted, unlike every other identifier.",
+      "fix": "Quote the column and allow-list sortable columns; add a hostile-column test.",
+      "size": "S",
+      "duplicates": [],
+      "notes": "",
+      "decision": null,
+      "roadmap": null,
+      "ticket": null,
+      "status": "open",
+      "fixed_by": null
+    }
+  ],
+  "refuted": [
+    {"id": "S-A05-02", "control": "the SSRF guard re-validates every attempt (example-repo/src/Http/RetryingClient.php:84)"}
+  ],
+  "_comment": "decision is written only by `wfl audit:sign` (the maintainer): {choice: fix|accept|post-v1, reason, by, at}. status follows it: open | fixed | accepted | deferred. fixed_by is written by `wfl audit:fixed`: {repo, commit, at}."
+}

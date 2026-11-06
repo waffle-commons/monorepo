@@ -1,7 +1,8 @@
 /**
  * What the cockpit checks in a file before an Edit or Write lands: `mixed`
- * added to waffle-commons PHP (AGENTS.md §1, an absolute rule), and secrets
- * written into any file. Pure, so it is tested without an engine.
+ * added to waffle-commons PHP (AGENTS.md §1, an absolute rule), secrets
+ * written into any file, and a release audit's decisions, which only the
+ * maintainer records. Pure, so it is tested without an engine.
  *
  * Both checks look at what the change adds, never at what the file already
  * holds: an edit next to a PSR-forced `mixed`, or beside a test fixture's key,
@@ -82,4 +83,62 @@ export function secretVerdictOf(before: string, after: string, path: string): st
   const added = secretsOf(after, path).filter(name => !had.has(name))
   if (added.length === 0) return undefined
   return `the change writes ${added.join(', ')} into ${path}. Secrets never go into files Claude writes: read it from the environment (a \`.env\` the person fills, \`wfl secret-gen\`), or use \`bin2hex(random_bytes(…))\` in a test. If this is a deliberate fixture, put it under tests/ or fixtures/, or ask the person.`
+}
+
+/** A release audit's ledger, which the maintainer signs: `project_system/Audits/<release>/<run>/ledger.json`. */
+const LEDGER = /(^|\/)project_system\/Audits\/[^/]+\/[^/]+\/ledger\.json$/
+
+/** Whether a path is a release audit's ledger. */
+export function isLedgerPath(path: string): boolean {
+  return LEDGER.test(path)
+}
+
+/** What no decision looks like: no decision, no history. */
+const UNDECIDED = JSON.stringify([null, []])
+
+/**
+ * Each finding's decision and decision history, by id, as one JSON text: what only `wfl audit:sign`
+ * writes. An empty text is an empty ledger; undefined when the text does not parse.
+ */
+function decisionsOf(text: string): Map<string, string> | undefined {
+  if (text.trim() === '') return new Map()
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch {
+    return undefined
+  }
+  const findings: unknown = typeof data === 'object' && data !== null ? Reflect.get(data, 'findings') : undefined
+  const out = new Map<string, string>()
+  for (const finding of Array.isArray(findings) ? findings : []) {
+    if (typeof finding !== 'object' || finding === null) continue
+    const id: unknown = Reflect.get(finding, 'id')
+    out.set(typeof id === 'string' ? id : '', JSON.stringify([Reflect.get(finding, 'decision') ?? null, Reflect.get(finding, 'decision_history') ?? []]))
+  }
+  return out
+}
+
+/**
+ * Why an Edit or Write of a release audit's ledger is refused: it writes, changes or erases a decision.
+ * Everything else in the ledger (roadmap, ticket, summary fields) stays Claude's to edit. A text that does
+ * not parse is judged by how many decision fields it holds.
+ *
+ * @param before the whole file before the change ('' when it does not exist)
+ * @param after the whole file as the change leaves it
+ */
+export function ledgerVerdictOf(path: string, before: string, after: string): string | undefined {
+  if (!isLedgerPath(path)) return undefined
+  const was = decisionsOf(before)
+  const now = decisionsOf(after)
+  const changed: string[] = []
+  if (was === undefined || now === undefined) {
+    const fields = (text: string) => (text.match(/"(choice|decision_history)"\s*:/g) ?? []).length
+    if (fields(after) !== fields(before)) changed.push('a finding')
+  } else {
+    for (const id of new Set([...was.keys(), ...now.keys()])) {
+      if ((was.get(id) ?? UNDECIDED) !== (now.get(id) ?? UNDECIDED)) changed.push(id === '' ? 'a finding' : id)
+    }
+  }
+  if (changed.length === 0) return undefined
+  return `the change writes, changes or erases the maintainer's decision on ${changed.join(', ')} in ${path}. Decisions are recorded only by the maintainer, through /audit in the cockpit or \`wfl audit:sign\` in their own terminal (the release-audit skill): leave \`decision\` and \`decision_history\` as they are.`
 }
