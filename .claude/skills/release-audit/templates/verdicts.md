@@ -1,6 +1,6 @@
 # Verdicts · S-A05
 
-Run: 0.1.0-beta8 / release-audit · verifier: finding-verifier
+Run: 0.1.0-beta8 / release-audit · verifier: finding-verifier (opus · high)
 Status: complete
 
 <!-- Fictional examples. Keep the "### <ID> · <CONFIRMED|PLAUSIBLE|REFUTED> · <SEVERITY>" heading exactly:

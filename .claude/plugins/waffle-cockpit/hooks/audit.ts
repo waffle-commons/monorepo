@@ -79,6 +79,7 @@ export function auditStatusOf(json: string): AuditStatus | undefined {
   return {
     version: report.version,
     run: stringOf(report.run) || 'release-audit',
+    profile: stringOf(report.profile),
     phase: report.phase,
     progress: progressOf(report.phase, report, ledger),
     openCritical: numberOf(open.CRITICAL),
@@ -96,7 +97,7 @@ export function auditRunOf(json: string): { version: string; run: string; dir: s
 
 /** The status of a release that needs its audit and has no run yet. */
 export function notStarted(version: string): AuditStatus {
-  return { version, run: 'release-audit', phase: 'not-started', progress: '', openCritical: 0, openHigh: 0, gate: null }
+  return { version, run: 'release-audit', profile: '', phase: 'not-started', progress: '', openCritical: 0, openHigh: 0, gate: null }
 }
 
 /** A decision as one line: `accept · Leslie Petrimaux · 2026-11-20 · demo only`; empty when there is none. */

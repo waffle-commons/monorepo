@@ -116,7 +116,9 @@ export function auditGroup(audit: AuditStatus | null | undefined): Line {
   const name: Segment = { text: `audit ${shortVersion(audit.version)}${audit.run === 'release-audit' ? '' : ` (${audit.run})`}`, tone: 'plain' }
   if (audit.phase === 'not-started') return [name, { text: ' not started', tone: 'yellow' }]
   if (audit.phase === 'done') return [name, audit.gate === 'pass' ? { text: ' ✓', tone: 'green' } : { text: ' ✗ gate', tone: 'red' }]
-  const group: Line = [name, { text: ` · ${audit.progress === '' ? audit.phase : audit.progress}`, tone: 'dim' }]
+  const group: Line = [name]
+  if (audit.profile !== '' && audit.profile !== 'balanced') group.push({ text: ` · ${audit.profile}`, tone: 'magenta' })
+  group.push({ text: ` · ${audit.progress === '' ? audit.phase : audit.progress}`, tone: 'dim' })
   if (audit.openCritical > 0) group.push({ text: ` · ${audit.openCritical} CRITICAL`, tone: 'red' })
   if (audit.openHigh > 0) group.push({ text: ` · ${audit.openHigh} HIGH`, tone: 'yellow' })
   return group

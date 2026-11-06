@@ -24,6 +24,8 @@ export type AuditStatus = {
   version: string
   /** The run's name, `release-audit` unless a rehearsal. */
   run: string
+  /** Who runs its agents: `balanced`, `economy`, `thorough`, `custom`, `inherited`; empty before a run exists. */
+  profile: string
   /** `not-started`, `evidence`, `finders`, `verification`, `triage`, `decisions`, `integration`, `closure` or `done`. */
   phase: string
   /** One short progress text for the phase (`5/12 finders`, `decided 3/40`); empty when none. */

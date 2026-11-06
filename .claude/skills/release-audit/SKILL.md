@@ -48,7 +48,31 @@ setting, so these rules do that job:
 - **After v1:** before each release, as the protocol says. A diff-scoped run covers what changed.
 
 A full run is about 40 to 50 subagents, the size of the beta6 Claude pass (42 agents, about 3.5M
-tokens). **State the count and wait for the maintainer's go before dispatching the finders.**
+tokens). **State the count and the run's profile, and wait for the maintainer's go before dispatching
+the finders.**
+
+## Who runs the agents
+Each run records, in `manifest.json`, the model and effort for each role, plus how many agents run at
+once (`wave`). AGENTS.md §8 allows this run-level choice for the release audit.
+
+| Profile | finder | verifier | triager |
+|---|---|---|---|
+| `thorough` | opus · high | opus · high | opus · high |
+| `balanced` (default) | opus · medium | opus · high | opus · high |
+| `economy` | sonnet · medium | opus · medium | opus · medium |
+
+- **Choosing:** `wfl audit:init <version> --profile <name>`, with per-role overrides
+  (`--model finder=sonnet --effort verifier=xhigh`) and `--wave N` (default 6). The maintainer picks;
+  when they name none, the default is `balanced`.
+- **Changing mid-run:** `wfl audit:profile <version> --profile economy` (or any override) changes the
+  agents dispatched from then on. The manifest keeps the history. Re-dispatched work uses the new choice.
+- **Dispatching:** every Agent call passes `model` and `effort` from `manifest.json` → `agents.<role>`
+  (`owasp-finder` and `modernization-finder` are `finder`). Never more than `wave` agents in flight.
+  A run made before profiles has no `agents`: its agents inherit the session's model and effort.
+- **Recording:** each candidates and verdicts file names, in its header, the model and effort that wrote
+  it. The report's Methodology states the profile, so two runs compare.
+- **Measuring:** note each agent's token count from its completion notice in the report's Methodology,
+  so the next run can choose its profile on evidence.
 
 ## The pipeline
 Files live in `project_system/Audits/<Beta8|RC1|version>/<run>/` (gitignored, local only). Every step
@@ -82,8 +106,8 @@ One `modernization-finder` per group in `manifest.json` → `modernization_units
 `lenses/modernization.md`. Complexity comes from the Mago metrics in `evidence/`, never from an
 estimate.
 
-**Dispatching the finders.** Background agents, in waves of up to six; `wfl audit:status` between waves.
-Give each one this prompt, filled in:
+**Dispatching the finders.** Background agents, at most `wave` at a time (manifest), each with the
+`finder` model and effort; `wfl audit:status` between waves. Give each one this prompt, filled in:
 
 ```text
 Release audit <version> · run <run> · unit <S-A05 | M-data>
@@ -100,7 +124,8 @@ dispatched again.
 For each candidates file:
 1. `wfl audit:claims <version> <S-A05>` prints its claims without the finder's evidence, reasoning,
    proposed fix or severity.
-2. A `finding-verifier` gets that output, not the file. It writes `verdicts/<S-A05>.md`.
+2. A `finding-verifier`, with the `verifier` model and effort, gets that output, not the file. It writes
+   `verdicts/<S-A05>.md`.
 3. Every HIGH or CRITICAL candidate also gets a verifier of its own:
    `wfl audit:claims <version> <S-A05> --ids S-A05-03` → `verdicts/S-A05-03.md`.
 4. The majority verdict wins. When one verifier confirms and another refutes, `wfl audit:status` lists
@@ -115,7 +140,7 @@ Do not open candidates/ or another verifier's file.
 ```
 
 ### 4. Triage and the roadmap proposal (Phase 3)
-One `audit-triager`. It reads the candidates, the verdicts and the evidence, merges duplicates, settles
+One `audit-triager`, with the `triager` model and effort. It reads the candidates, the verdicts and the evidence, merges duplicates, settles
 severities, and writes:
 - `ledger.json` (one entry per confirmed or plausible finding, `decision: null`);
 - `consolidated.md` (the beta6 report layout);
@@ -172,6 +197,9 @@ The triager applies them (`lenses/roadmap.md`) and I check them before presentin
 | 1.x minor | fix in the release | the release, with no BC break | the release or later |
 
 ## Cost knobs
+- The profile (above): the finders carry most of the cost, so `economy` or a lower finder effort saves
+  the most. Keep the verifiers strong: they decide what the maintainer sees.
+- `--wave N` paces a run to the usage limit; a run that stops resumes where it left off.
 - `--only <repositories>` for a partial run.
 - A diff-scoped run (RC1, 1.x): `--only` the repositories that changed since the last audited tag, and
   name the changed files in each finder's prompt (`git -C <repo> diff --stat <tag>`) so it reads those

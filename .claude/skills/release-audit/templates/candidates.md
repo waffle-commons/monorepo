@@ -1,6 +1,6 @@
 # Candidates · S-A05 · Injection
 
-Run: 0.1.0-beta8 / release-audit · finder: owasp-finder · scope: example-repo @ 1a2b3c4d5e6f
+Run: 0.1.0-beta8 / release-audit · finder: owasp-finder (opus · medium) · scope: example-repo @ 1a2b3c4d5e6f
 Status: complete
 
 <!-- The example below is fictional on purpose: it names no Waffle code. Keep the shapes exactly:

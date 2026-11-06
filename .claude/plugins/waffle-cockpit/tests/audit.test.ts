@@ -56,13 +56,14 @@ describe('reading the audit', () => {
 
   test('the status report becomes the line: phase, progress, open CRITICAL and HIGH', () => {
     const seen = auditStatusOf(statusJson('decisions'))
-    expect(seen).toEqual({ version: '0.1.0-beta8', run: 'release-audit', phase: 'decisions', progress: 'decided 1/3', openCritical: 0, openHigh: 1, gate: 'fail' })
+    expect(seen).toEqual({ version: '0.1.0-beta8', run: 'release-audit', profile: '', phase: 'decisions', progress: 'decided 1/3', openCritical: 0, openHigh: 1, gate: 'fail' })
     expect(auditStatusOf(statusJson('finders'))?.progress).toBe('5/12 finders')
     expect(auditStatusOf('not json')).toBeUndefined()
     const drawn = auditGroup(seen).map(segment => segment.text).join('')
     expect(drawn).toBe('audit beta8 · decided 1/3 · 1 HIGH')
     expect(auditGroup({ ...seen!, phase: 'not-started' }).map(s => s.text).join('')).toBe('audit beta8 not started')
     expect(auditGroup({ ...seen!, phase: 'done', gate: 'pass' }).map(s => s.text).join('')).toBe('audit beta8 ✓')
+    expect(auditGroup({ ...seen!, profile: 'economy' }).map(s => s.text).join('')).toBe('audit beta8 · economy · decided 1/3 · 1 HIGH')
     expect(auditGroup(null)).toEqual([])
   })
 

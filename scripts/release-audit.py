@@ -73,6 +73,22 @@ BUNDLES: dict[str, list[str]] = {
 }
 BUNDLE_MAX_REPOS = 3
 
+# Who runs each role, chosen per run and recorded in the manifest (AGENTS.md §8): the skill passes these
+# to every agent it dispatches. Finders carry the cost; verifiers are the precision gate and stay strong.
+ROLES = ['finder', 'verifier', 'triager']
+MODELS = ['opus', 'sonnet', 'haiku', 'fable']
+EFFORTS = ['low', 'medium', 'high', 'xhigh', 'max']
+PROFILES: dict[str, dict[str, dict[str, str]]] = {
+    'thorough': {'finder': {'model': 'opus', 'effort': 'high'}, 'verifier': {'model': 'opus', 'effort': 'high'},
+                 'triager': {'model': 'opus', 'effort': 'high'}},
+    'balanced': {'finder': {'model': 'opus', 'effort': 'medium'}, 'verifier': {'model': 'opus', 'effort': 'high'},
+                 'triager': {'model': 'opus', 'effort': 'high'}},
+    'economy': {'finder': {'model': 'sonnet', 'effort': 'medium'}, 'verifier': {'model': 'opus', 'effort': 'medium'},
+                'triager': {'model': 'opus', 'effort': 'medium'}},
+}
+DEFAULT_PROFILE = 'balanced'
+DEFAULT_WAVE = 6
+
 SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO']
 VERDICTS = ['CONFIRMED', 'PLAUSIBLE', 'REFUTED']
 MOSCOW = ['MUST', 'SHOULD', 'COULD']
@@ -234,6 +250,69 @@ def toolchain() -> dict:
     }
 
 
+# --- who runs the agents ------------------------------------------------------------------
+def pairs_of(text: str | None, allowed: list[str], what: str) -> dict[str, str]:
+    """`finder=sonnet,verifier=opus` → {role: value}; `sonnet` alone sets every role."""
+    out: dict[str, str] = {}
+    for part in [p.strip() for p in (text or '').split(',') if p.strip()]:
+        role, _, value = part.rpartition('=')
+        roles = [role] if role else ROLES
+        if role and role not in ROLES:
+            die(f"unknown role '{role}' (roles: {', '.join(ROLES)})", 2)
+        if value not in allowed:
+            die(f"unknown {what} '{value}' ({', '.join(allowed)})", 2)
+        for r in roles:
+            out[r] = value
+    return out
+
+
+def agents_of(profile: str, models: str | None, efforts: str | None) -> dict[str, dict[str, str]]:
+    if profile not in PROFILES:
+        die(f"unknown profile '{profile}' ({', '.join(PROFILES)})", 2)
+    agents = {role: dict(PROFILES[profile][role]) for role in ROLES}
+    for role, model in pairs_of(models, MODELS, 'model').items():
+        agents[role]['model'] = model
+    for role, effort in pairs_of(efforts, EFFORTS, 'effort').items():
+        agents[role]['effort'] = effort
+    return agents
+
+
+def profile_label(m: dict) -> str:
+    """The profile's name, `custom` when a role departs from it, `inherited` for a run made before profiles."""
+    agents = m.get('agents')
+    if not agents:
+        return 'inherited'
+    name = m.get('profile', DEFAULT_PROFILE)
+    return name if agents == PROFILES.get(name) else 'custom'
+
+
+def agents_line(m: dict) -> str:
+    agents = m.get('agents')
+    if not agents:
+        return 'agents inherit the session model and effort (run made before profiles)'
+    roles = ' · '.join(f"{r} {agents[r]['model']}/{agents[r]['effort']}" for r in ROLES if r in agents)
+    return f"{profile_label(m)}: {roles} · wave {m.get('wave', DEFAULT_WAVE)}"
+
+
+def cmd_profile(a: argparse.Namespace) -> int:
+    rd = resolve_run(a)
+    m = load_manifest(rd)
+    base = a.profile or m.get('profile') or DEFAULT_PROFILE
+    # A new profile starts from its table; otherwise the run's current choice is the starting point.
+    agents = agents_of(base, None, None) if a.profile or not m.get('agents') else {r: dict(v) for r, v in m['agents'].items()}
+    for role, model in pairs_of(a.model, MODELS, 'model').items():
+        agents[role]['model'] = model
+    for role, effort in pairs_of(a.effort, EFFORTS, 'effort').items():
+        agents[role]['effort'] = effort
+    m.setdefault('profile_history', []).append({'at': now(), 'profile': m.get('profile'), 'agents': m.get('agents'),
+                                                'wave': m.get('wave')})
+    m['profile'], m['agents'], m['wave'] = base, agents, a.wave or m.get('wave', DEFAULT_WAVE)
+    write_json(rd / 'manifest.json', m)
+    write_atomic(rd / 'MANIFEST.md', render_manifest(m))
+    say(f'✓ {rel(rd)}: {agents_line(m)} (agents dispatched from now on)')
+    return 0
+
+
 # --- init -------------------------------------------------------------------------------
 def security_units(repo_count: int, bundle: bool | None, agentic: bool) -> list[dict]:
     use_bundles = repo_count <= BUNDLE_MAX_REPOS if bundle is None else bundle
@@ -276,6 +355,7 @@ def cmd_init(a: argparse.Namespace) -> int:
         raise Problem(f'uncommitted changes in {", ".join(dirty)}: the manifest pins commits, so commit first '
                       '(or pass --allow-dirty and say so in the report)')
 
+    agents = agents_of(a.profile, a.model, a.effort)
     units = security_units(len(repos), a.bundle, agentic)
     modern = [{'id': g, 'repos': [n for n in names if n in selected]} for g, names in GROUPS.items()]
     modern = [u for u in modern if u['repos']]
@@ -290,6 +370,9 @@ def cmd_init(a: argparse.Namespace) -> int:
         'umbrella': umbrella,
         'repos': repos,
         'toolchain': toolchain(),
+        'profile': a.profile,
+        'agents': agents,
+        'wave': a.wave,
         'security_units': units,
         'modernization_units': modern,
     }
@@ -299,6 +382,7 @@ def cmd_init(a: argparse.Namespace) -> int:
     write_atomic(rd / 'MANIFEST.md', render_manifest(manifest))
     stale = [r['name'] for r in repos if r['pin_matches'] is False]
     say(f'✓ {rel(rd)}: {len(repos)} repositories, {len(units)} security and {len(modern)} modernization finders')
+    say(f'  agents: {agents_line(manifest)}')
     if stale:
         say(f'  ! {", ".join(stale)}: the checked-out commit differs from the umbrella pin (the manifest records both)')
     if dirty:
@@ -315,6 +399,7 @@ def render_manifest(m: dict) -> str:
         f"Created {m['created']} · scope {m['scope']} · umbrella `{m['umbrella']['sha'][:12]}` on "
         f"`{m['umbrella']['branch']}`",
         f"Toolchain: PHP {tc['php']} · FrankenPHP {tc['frankenphp']} · Mago {tc['mago']} · igor {tc['igor']}",
+        f"Agents: {agents_line(m)}",
         '',
         '| Repository | Commit | Branch | Umbrella pin | Group |',
         '|---|---|---|---|---|',
@@ -734,6 +819,7 @@ def status_data(rd: Path) -> dict:
     finals = [v for v in col['final'].values() if v]
     data = {
         'version': m['version'], 'run': m['run'], 'dir': rel(rd), 'scope': m['scope'],
+        'profile': profile_label(m), 'agents': m.get('agents'), 'wave': m.get('wave', DEFAULT_WAVE),
         'evidence': {'done': len(ev_done), 'total': len(m['repos'])},
         'finders': {'done': len(finders_done), 'total': len(units),
                     'missing': [u['unit'] for u in units if u['state'] != 'done']},
@@ -790,6 +876,7 @@ def cmd_status(a: argparse.Namespace) -> int:
         return 0
     v = d['verification']
     say(f"release audit {d['version']} · run {d['run']} · scope {d['scope']} · {d['dir']}")
+    say(f"  agents        {agents_line(load_manifest(rd))}")
     say(f"  evidence      {d['evidence']['done']}/{d['evidence']['total']} repositories")
     say(f"  finders       {d['finders']['done']}/{d['finders']['total']} done · {d['candidates']} candidates")
     say(f"  verification  {v['verified']}/{d['candidates']} verified · {v['confirmed']} confirmed · "
@@ -931,7 +1018,20 @@ def parser() -> argparse.ArgumentParser:
                     help='one finder per lens, even for a small scope')
     sp.add_argument('--allow-dirty', action='store_true')
     sp.add_argument('--force', action='store_true', help='overwrite an existing manifest')
+
+    def who(parser_: argparse.ArgumentParser, default_profile: str | None) -> None:
+        parser_.add_argument('--profile', default=default_profile, help=f"{' | '.join(PROFILES)} (default {DEFAULT_PROFILE})")
+        parser_.add_argument('--model', help='per role, e.g. finder=sonnet,verifier=opus (a bare value sets every role)')
+        parser_.add_argument('--effort', help='per role, e.g. finder=medium (low, medium, high, xhigh, max)')
+        parser_.add_argument('--wave', type=int, default=None if default_profile is None else DEFAULT_WAVE,
+                             help=f'agents running at once (default {DEFAULT_WAVE})')
+
+    who(sp, DEFAULT_PROFILE)
     sp.set_defaults(fn=cmd_init)
+
+    sp = add('profile', "change who runs an existing run's agents from now on", version_optional=True)
+    who(sp, None)
+    sp.set_defaults(fn=cmd_profile)
 
     sp = add('evidence', 'run the automated tools and keep their output', version_optional=True)
     sp.add_argument('repos', nargs='*', help='only these repositories (and umbrella for the AI layer)')

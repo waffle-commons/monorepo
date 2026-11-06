@@ -137,6 +137,25 @@ class AuditTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn('beta released but in no audit group', err)
 
+    def test_profiles_overrides_and_a_change_mid_run(self) -> None:
+        m = self.init()
+        self.assertEqual((m['profile'], m['wave']), ('balanced', 6))
+        self.assertEqual(m['agents']['finder'], {'model': 'opus', 'effort': 'medium'})
+        self.assertEqual(m['agents']['verifier'], {'model': 'opus', 'effort': 'high'})
+        self.assertEqual(ra.profile_label(m), 'balanced')
+        code, out, _ = self.run_cli('profile', '0.1.0-beta8', '--profile', 'economy', '--model', 'triager=sonnet', '--wave', '3')
+        self.assertEqual(code, 0)
+        m = json.loads((self.rd() / 'manifest.json').read_text())
+        self.assertEqual((m['agents']['finder']['model'], m['agents']['triager']['model'], m['wave']), ('sonnet', 'sonnet', 3))
+        self.assertEqual(ra.profile_label(m), 'custom')
+        self.assertEqual(m['profile_history'][0]['profile'], 'balanced')
+        self.assertIn('Agents: custom', (self.rd() / 'MANIFEST.md').read_text())
+        for bad in (['--profile', 'cheap'], ['--model', 'finder=gpt'], ['--effort', 'scout=low']):
+            code, _, _ = self.run_cli('profile', '0.1.0-beta8', *bad)
+            self.assertEqual(code, 2)
+        self.assertEqual(ra.agents_of('thorough', 'sonnet', None)['verifier']['model'], 'sonnet')  # a bare value sets every role
+        self.assertEqual(ra.profile_label({}), 'inherited')
+
     def test_parsing_and_majority(self) -> None:
         text = ('Status: complete\n\n## Candidates\n\n'
                 '### S-B1-01 · HIGH · Missing check\n- lens: A01\n- component: alpha\n- where: alpha/src/Foo.php:2\n'
