@@ -65,6 +65,8 @@ LENSES: dict[str, str] = {
     'AG': 'Agentic layer (OWASP Top 10 for Agentic Applications 2026)',
 }
 CORE_LENSES = [k for k in LENSES if k != 'AG']
+# The modernization lenses, named for the claims a verifier reads.
+MODERN_LENSES: dict[str, str] = {'M1': 'Modern features', 'M2': 'Complexity (measured by Mago)', 'M3': 'Patterns and anti-patterns'}
 # A scope of three repositories or fewer bundles the twelve lenses into three finders (a pilot stays cheap).
 BUNDLES: dict[str, list[str]] = {
     'B1': ['A01', 'A02', 'A03', 'A04'],
@@ -449,7 +451,9 @@ def mago_rows(data) -> list[tuple[str, str, str]]:
         for ann in issue.get('annotations', [])[:1]:
             span = ann.get('span', {})
             name = span.get('file_id', {}).get('name', '?')
-            rows.append((issue.get('code', '?'), f"{name}:{span.get('start', {}).get('line', '?')}", ann.get('message', '')))
+            line = span.get('start', {}).get('line')
+            # Mago's JSON counts lines from 0; the report cites them from 1, as editors do.
+            rows.append((issue.get('code', '?'), f"{name}:{line + 1 if isinstance(line, int) else '?'}", ann.get('message', '')))
     return rows
 
 
@@ -916,7 +920,7 @@ def cmd_claims(a: argparse.Namespace) -> int:
         lens = c.get('lens', '?')
         say('')
         say(f"## {c['id']}: {c['title']}")
-        say(f"- lens: {lens} {LENSES.get(lens, '')}".rstrip())
+        say(f"- lens: {lens} {LENSES.get(lens) or MODERN_LENSES.get(lens, '')}".rstrip())
         comp = c.get('component', '?')
         say(f"- component: {comp} @ {shas.get(comp, '?')}")
         say(f"- where: {c.get('where', '?')}")
