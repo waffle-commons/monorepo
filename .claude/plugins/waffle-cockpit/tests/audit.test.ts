@@ -172,6 +172,12 @@ describe('the /audit pane', () => {
     expect(world.toasts).toContain('Recorded S-A05-01 accept')
     // The pane moves on to the next undecided finding.
     expect((await ui.find({ type: 'Text', text: /^S-A07-01 · MEDIUM/ }))?.text).toContain('title of S-A07-01')
+
+    // The Record button records the choice shown, with what the Reason field holds.
+    await $.ui.select({ plugin: 'waffle-cockpit', key: 'audit-choice', value: 'fix' })
+    await $.ui.press({ plugin: 'waffle-cockpit', key: 'audit-record' })
+    await until(world, () => world.toasts.includes('Recorded S-A07-01 fix'))
+    expect(seen[1]?.argv).toEqual([`${ROOT}/bin/wfl`, 'audit:sign', '0.1.0-beta8', 'S-A07-01', 'fix'])
     await ui.unmount()
   })
 

@@ -73,6 +73,8 @@ export type AuditView = {
   recorded: string[]
   /** True while a decision is being recorded. */
   isBusy: boolean
+  /** What the Reason field holds, so the Record button can send it; absent in a view stored before 0.5.1. */
+  reason?: string
 }
 
 /** Which components changed since their last green DoD: `$.clock.now()` of the last edit and of the last pass. */

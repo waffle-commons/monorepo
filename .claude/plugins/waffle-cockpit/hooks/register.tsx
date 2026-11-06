@@ -658,7 +658,7 @@ async function recordDecision($: EngineInterface, reason: string): Promise<void>
   const last = done.output.trim().split('\n').filter(line => line.trim() !== '').pop() ?? ''
   if (done.code === 0) {
     const entry = `${view.selected} ${view.choice}`
-    await update($, auditView, was => (was === null ? was : { ...was, recorded: [...was.recorded, entry] }))
+    await update($, auditView, was => (was === null ? was : { ...was, recorded: [...was.recorded, entry], reason: '' }))
     await reloadAudit($, `✓ ${last.replace(/^✓\s*/, '')}`, true)
     $.ui.toast(`Recorded ${entry}`)
   } else {
@@ -1164,9 +1164,15 @@ export const register: Register = (on, options) => {
       void update($, auditView, was => {
         if (was === null) return was
         const picked = was.findings.find(f => f.id === id)
-        return picked === undefined ? was : { ...was, selected: id, choice: choiceOf(picked.proposal), message: '' }
+        return picked === undefined ? was : { ...was, selected: id, choice: choiceOf(picked.proposal), reason: '', message: '' }
       }).catch(ignoreFailure)
-    const choose = (value: string) => void update($, auditView, was => (was === null || !isChoice(value) ? was : { ...was, choice: value, message: '' })).catch(ignoreFailure)
+    const choose = (value: string) =>
+      void update($, auditView, was =>
+        was === null || !isChoice(value)
+          ? was
+          : { ...was, choice: value, message: `decision: ${value}${value === 'fix' ? '' : ' (a reason is required)'} · press Record decision (d) to record it` },
+      ).catch(ignoreFailure)
+    const typed = (value: string) => void update($, auditView, was => (was === null ? was : { ...was, reason: value })).catch(ignoreFailure)
 
     return (
       <Box flexDirection="column">
@@ -1196,10 +1202,13 @@ export const register: Register = (on, options) => {
             <Input
               key="audit-reason"
               label="Reason "
-              placeholder={view.choice === 'fix' ? 'optional · Enter records the decision' : 'required · Enter records the decision'}
+              placeholder={view.choice === 'fix' ? 'optional · then Record decision (d), or Enter here' : 'required · then Record decision (d), or Enter here'}
               submitLabel="record"
+              value={view.reason ?? ''}
+              onInput={typed}
               onSubmit={reason => void recordDecision($, reason).catch(ignoreFailure)}
             />
+            <Button key="audit-record" label={view.isBusy ? 'Recording…' : 'Record decision'} hotkey="d" onPress={() => void recordDecision($, view.reason ?? '').catch(ignoreFailure)} />
           </Box>
         )}
         {view.message !== '' && <Text color={view.message.startsWith('✓') ? 'green' : view.message.startsWith('✗') ? 'red' : undefined}>{view.message}</Text>}
