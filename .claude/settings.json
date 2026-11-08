@@ -550,7 +550,13 @@
       "Bash(bin/wfl audit:fixed)",
       "Bash(bin/wfl audit:fixed *)",
       "Bash(wfl audit:fixed)",
-      "Bash(wfl audit:fixed *)"
+      "Bash(wfl audit:fixed *)",
+      "Bash(./bin/wfl audit:calibrate)",
+      "Bash(./bin/wfl audit:calibrate *)",
+      "Bash(bin/wfl audit:calibrate)",
+      "Bash(bin/wfl audit:calibrate *)",
+      "Bash(wfl audit:calibrate)",
+      "Bash(wfl audit:calibrate *)"
     ],
     "ask": [
       "Bash(git reset)",
