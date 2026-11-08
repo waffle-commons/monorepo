@@ -25,4 +25,6 @@ Status: complete
 - test: example-repo/tests/Report/ReportRepositoryTest.php::testHostileSortColumnIsRejected
 - reason: the column now goes through the allow-list; the test fails on the parent commit
 
-(FAILS instead of HOLDS when a location still carries the flaw or no test covers it.) -->
+(FAILS instead of HOLDS when a location still carries the flaw or no test covers it. `wfl audit:fixed` reads
+the `- fix:` line: it must name the commit the fix-check verified.) -->
+<!-- A tie-break verifier writes verdicts/<id>-tiebreak.md, in the shape above. -->

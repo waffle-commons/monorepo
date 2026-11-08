@@ -39,7 +39,8 @@ single component out of band.
    Verify per repo: `git merge-base --is-ancestor <gitlink-sha> origin/main && echo OK`.
    The workflow creates the component tags itself — do **not** pre-push them.
    Before the umbrella tag, `wfl pre-release --all` must be READY. From beta8 on, that includes the
-   release audit's gate (`wfl audit:check <version> --gate`, the `[[release-audit]]` skill).
+   release audit's gate (`wfl audit:check <version> --gate --for <version>`, the `[[release-audit]]`
+   skill); a Gold with no code delta sets `WFL_AUDIT_VERSION` to its RC.
 4. **Umbrella tag → dry-run → LIVE:**
    - Push the **umbrella** tag to the remote.
    - The dispatch **dry-run checks out `ref:<tag>`**, so the tag **must already exist on the remote**

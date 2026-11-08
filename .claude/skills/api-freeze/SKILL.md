@@ -99,7 +99,8 @@ Re-verified as RC1's entry gate (`[RC-01]`):
    (`[[soak-endurance]]`).
 4. Security audit: zero open criticals; report archived in `project_system/` (`[[security-audit]]`).
    The `[[release-audit]]` run is the evidence: `wfl audit:check 0.1.0-beta8 --gate` passes (every
-   finding decided by the maintainer, every fix landed and re-verified, no CRITICAL deferred).
+   run complete and reconciled, every finding decided by the maintainer, every fix fix-checked and
+   released, the surface covered, no CRITICAL deferred).
 5. EcoShield-Gateway benchmark report produced; RAM factor documented (`[[ecoshield]]`).
 6. Docs complete for all components; Academy labs green against beta8 (`[[diataxis-doc]]`,
    `wfl academy:test`).

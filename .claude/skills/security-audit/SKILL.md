@@ -4,7 +4,7 @@ description: "Security audit of one component: statelessness, fail-closed ABAC, 
 when_to_use: >-
   Auditing a component's security, #[PublicAccess] or #[Voter] reviews, SSRF (SEC-02), timing-safe
   comparisons (SEC-03, wfl compare-audit), CORS, path traversal, superglobals or sessions in worker
-  mode, the beta8 final re-audit [AUD-01].
+  mode, one component's depth inside a release audit.
 argument-hint: "[component]"
 ---
 
@@ -77,7 +77,7 @@ engine". Independence now comes from five things:
 - tool evidence read before any code;
 - a separate finder per lens;
 - blind, refute-first verifiers that see the claim but never the finder's reasoning;
-- majority verdicts with a tie-break;
+- two verdicts on every HIGH or CRITICAL, majority verdicts, and a third verifier on a tie;
 - a calibration on known defects.
 
 One `ledger.json` holds the triage.
@@ -89,4 +89,5 @@ local: say where it lives in `Roadmap_Beta8.md`. `wfl audit:check 0.1.0-beta8 --
 exit gate #4.
 
 For depth on one component, the `security-auditor` agent still grades it against the checklist above.
-`auth` also gets `auth-bridge-audit` and the `webauthn-auditor` agent.
+`auth` also gets `auth-bridge-audit`. Inside an audit run its passkeys are the `WA` unit: the
+`webauthn-auditor` agent applies fixes, so it stays outside a run.

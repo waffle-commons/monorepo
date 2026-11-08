@@ -11,10 +11,14 @@
       "lens": "A05",
       "component": "example-repo",
       "where": "example-repo/src/Report/ReportRepository.php:42",
-      "also": ["example-repo/src/Report/ExportRepository.php:57"],
+      "also": [
+        "example-repo/src/Report/ExportRepository.php:57"
+      ],
       "severity": "MEDIUM",
       "verdict": "CONFIRMED",
-      "verifiers": ["verdicts/S-A05.md"],
+      "verifiers": [
+        "verdicts/S-A05.md"
+      ],
       "moscow": "MUST",
       "proposal": "fix",
       "summary": "The sort column reaches the SQL text unquoted, unlike every other identifier.",
@@ -30,7 +34,10 @@
     }
   ],
   "refuted": [
-    {"id": "S-A05-02", "control": "the SSRF guard re-validates every attempt (example-repo/src/Http/RetryingClient.php:84)"}
+    {
+      "id": "S-A05-02",
+      "control": "the SSRF guard re-validates every attempt (example-repo/src/Http/RetryingClient.php:84)"
+    }
   ],
-  "_comment": "decision is written only by `wfl audit:sign` (the maintainer): {choice: fix|accept|post-v1, reason, by, at}. status follows it: open | fixed | accepted | deferred. fixed_by is written by `wfl audit:fixed`: {repo, commit, at}."
+  "_comment": "decision is written only by `wfl audit:sign` (the maintainer, from /audit or a terminal): {choice: fix|accept|post-v1, reason, residual_risk, by, at, via: cockpit|terminal, subject}. accept and post-v1 need a reason and the residual risk; subject fingerprints the finding, so a decided finding that changes fails `wfl audit:check`. status follows the decision: open | fixed | accepted | deferred. fixed_by is written by `wfl audit:fixed`: {repo, commit, at}, after a HOLDS fix-check. Every verified candidate appears once: as a finding's id, in a finding's duplicates, or in refuted."
 }

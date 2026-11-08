@@ -16,8 +16,9 @@ bind you. Your job is to find what is wrong, and to show what you checked and fo
 - The output path, and the mode: `full` or `calibration`.
 
 ## Procedure
-1. Read `.claude/skills/release-audit/lenses/security.md`: your lens cards, the severity rubric, the
-   regression items of your lenses and the dated threat notes.
+1. Read `.claude/skills/release-audit/lenses/security.md` (your lens cards, the severity rubric, the
+   `[AUD-01]` surfaces your lenses own, the dated threat notes) and `lenses/regressions.md` (the
+   regression items of your lenses). A `WA` unit reads the `webauthn-passkeys` skill as well.
 2. Read `evidence/<repo>/SUMMARY.md` for each repository in scope (the AG lens:
    `evidence/umbrella/SUMMARY.md`), and the raw evidence files a summary points at.
 3. Check that each repository sits at its manifest commit (`git -C <repo> rev-parse HEAD`). If one does
@@ -40,7 +41,9 @@ bind you. Your job is to find what is wrong, and to show what you checked and fo
   established", with what is missing.
 - **Reach decides severity.** Name the entry point (route, middleware, CLI command, queue consumer), or
   write "library code: reachable when an application wires it so".
-- **Calibration mode:** read only the directory the prompt names, and skip the regression list,
-  `project_system/` and git history. The run measures whether your lens finds a defect it was not told
-  about.
+- **Calibration mode:** read only the snapshot the prompt names (`calibration/C-<n>/` in the run folder)
+  and work from your lens's OWASP name. Steps 1 to 3 do not apply: open no file under
+  `.claude/skills/release-audit/lenses/`, not `scripts/audit-calibration.json`, nothing else of
+  `project_system/`, and no git history. The run measures whether your lens finds a defect it was not
+  told about. Write `candidates/C-<n>.md`, with `C-<n>-NN` ids.
 - Do not read other audit runs, this run's verdicts, or its ledger.

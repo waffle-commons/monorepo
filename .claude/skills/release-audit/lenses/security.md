@@ -1,8 +1,9 @@
 # Security lens cards (Phase 1)
 
 Read by every `owasp-finder`. A finder owns one unit of `manifest.json` → `security_units`: a single
-lens, or a bundle of four in a small run. It reads its own cards, the threat notes, the regression items
-of its lenses, and the evidence files named on each card.
+lens, or a bundle of four in a small run. It reads its own cards, the `[AUD-01]` surfaces its lenses own
+(below), the threat notes and the evidence files named on each card. In full mode it also checks the
+regression items of its lenses (`lenses/regressions.md`).
 
 ## The protocol's prompt (kept word for word)
 
@@ -24,7 +25,8 @@ The edition is **OWASP Top 10:2025** (the current web edition; OWASP has publish
    (PSR-7 request, CLI argument, queue payload, config, upstream response) to where it is used.
 3. Check every control the card names. A control that holds goes under `## Checked` with its
    `path:line`, and that negative evidence is half the job.
-4. Check the regression items of your lenses at their current code.
+4. Check the `[AUD-01]` surfaces your lenses own (the table below) and, in full mode, the regression
+   items of your lenses at their current code (`lenses/regressions.md`).
 5. Write the candidates file (`templates/candidates.md`). A candidate needs a `path:line` at the
    manifest commit, a snippet, a one-sentence claim, a severity from the rubric, and a native fix.
 
@@ -105,6 +107,13 @@ or say "library code: reachable only when an application wires it so".
   (`[FIX-01]` 1, 14). That includes SQL Server and Oracle, which have generation tests only.
 - **Other query languages:** the GraphQL, Mongo, KV and Cassandra compilers.
 - **Header and CRLF injection** in response headers, redirects and the gateway's forwarded headers.
+- **The gateway proxy path:**
+  - request smuggling: a `Content-Length` and `Transfer-Encoding` ambiguity, a duplicated
+    `Content-Length`, obsolete line folding, on the way in and on the way upstream;
+  - hop-by-hop handling: `Connection`, every field it names, `TE`, `Upgrade` and `Proxy-*` removed
+    before forwarding.
+
+  The gateway's perimeter campaign (280 assertions) is the regression baseline.
 - **SSE frames:** `SseBroadcastTransport` strips CR, LF, NUL and C0 controls from the raw channel
   (REACTIVE-01).
 - **Log injection.**
@@ -133,8 +142,7 @@ or say "library code: reachable only when an application wires it so".
 - Rate limiting now exists (`[NET-01]`): is it wired in front of every authentication scheme in the
   skeleton?
 - Authentication failures are logged on the `SECURITY` channel (`[FIX-01]` 6).
-- Passkeys: UV enforced, challenges single-use, counters monotonic. Leave the depth to the
-  `webauthn-auditor` agent, which the orchestrator dispatches for `auth`.
+- Passkeys belong to the `WA` unit (its card below), a unit of its own whenever `auth` is in scope.
 
 ### A08 Software or Data Integrity Failures
 - **`unserialize()` anywhere** (route cache: `[FIX-01]` 2, now `var_export` or `allowed_classes`).
@@ -192,6 +200,16 @@ or say "library code: reachable only when an application wires it so".
 - **Lookups that leak timing:** an API key found by an array key or SQL `WHERE` on the raw key is a
   lookup oracle; compare digests instead. The Basic-auth dummy-hash path (`[FIX-01]` 7).
 
+### WA WebAuthn passkeys (scope: `auth`)
+A unit of its own whenever `auth` is in scope. Read the `webauthn-passkeys` skill first. (The
+`webauthn-auditor` agent applies fixes, so it stays out of an audit run.)
+- User verification is enforced as configured, at registration and at assertion (`AUTH-01`).
+- Challenges are bound to their ceremony, single use and expiring: a replayed assertion fails.
+- Sign counters only move forward: a counter that goes back flags a cloned authenticator.
+- The authenticator is stateless across requests (W1); the challenge store holds the only state.
+- Test fixtures use fixed key pairs, and the Mago permit for the WebAuthn library covers the adapter only.
+- Evidence: `evidence/auth/SUMMARY.md`.
+
 ### AG Agentic layer (OWASP Top 10 for Agentic Applications 2026)
 - **Scope:** the umbrella only:
   - `.claude/`: skills, agents, `settings.json`, and the plugins (the `waffle-cockpit` hooks and the
@@ -207,32 +225,32 @@ or say "library code: reachable only when an application wires it so".
 | ID | Risk | What to check here |
 |---|---|---|
 | ASI01 | Agent Goal Hijack | Untrusted text (issues, PR bodies, fetched pages, vendored skills, MCP results, subagent reports) is treated as data; AGENTS.md §6 and §9 rules hold. |
-| ASI02 | Tool Misuse | The permission rules (allow / ask / deny) and the cockpit Bash guard cover what AGENTS.md §6 promises: release tags, force pushes, squash merges, host PHP, secret reads, `wfl audit:sign`. |
+| ASI02 | Tool Misuse | The permission rules (allow / ask / deny) and the cockpit Bash guard cover what AGENTS.md §6 promises: release tags, force pushes, squash merges, host PHP, secret reads, `wfl audit:sign` and ledger writes. They are guard rails: find a spelling that slips past them. |
 | ASI03 | Identity and Privilege Abuse | The GitHub MCP server is read-only; tokens are scoped; `gh auth token` is denied; each agent's `disallowedTools` matches its contract. |
 | ASI04 | Agentic Supply Chain | MCP launchers pinned by digest; the vendored skills pinned to a commit and curated; the cockpit's code reviewed and validated. |
-| ASI05 | Unexpected Code Execution | Hooks run only repository scripts; the mod runs only the commands its README lists; the guard parses chains, `sh -c` and `env` prefixes. |
+| ASI05 | Unexpected Code Execution | Hooks run only repository scripts; the mod runs only the commands its README lists; the guard parses chains, `sh -c`, `eval`, wrappers and `env` prefixes. |
 | ASI06 | Memory and Context Poisoning | What agents load as trusted (`CLAUDE.md` imports, skills, memory) can be changed only through review. |
 | ASI07 | Insecure Inter-Agent Communication | Subagent hand-backs and messages carry no authority; no permission is granted through them. |
 | ASI08 | Cascading Failures | Background agents, loops and the release wave stop on failure instead of continuing. |
 | ASI09 | Human-Agent Trust Exploitation | Human-only steps stay human: risk sign-off, release tags, merges; "done" means evidence. |
 | ASI10 | Rogue Agents | Guard rails, not a sandbox (stated in the catalogue): is every irreversible action covered twice? |
 
-## Regression list
-Each finder checks the items of its lenses, as they stand today. A regression is a candidate with
-`- regression: <item>` among its fields.
-- **beta4:** SEC-01 CSRF (stateless HMAC double-submit), SEC-02 SSRF (default-on guard), SEC-03
-  timing-safe comparisons, SEC-04 CORS fail-closed, SEC-05 path containment.
-- **beta5 AXE 0** (`Roadmap_Beta5.md`): `[AUTHZ-01]`, context-aware voters, and the hardening backlog
-  listed there.
-- **beta6 `[FIX-01]`** (`Roadmap_Beta6.md`, 17 items): 1 SQL identifier quoting · 2 route-cache
-  `unserialize` · 3 upload path containment · 4 container reset parity (AOT) · 5 `#[PublicAccess]` and
-  voter subjects · 6 CSRF and authentication logging · 7 Basic-auth timing · 8 HS256 key floor ·
-  9 prod with debug fails closed · 10 workspace stability flags · 11 demo endpoint `INSERT` ·
-  12 `YamlParser` swallowing · 13 non-root image · 14 Cassandra write-path quoting · 15 escaping and
-  CSP · 16 route-parameter coercion · 17 Maker code generation.
-- **beta8 `[AUD-01]` surfaces** (the `security-audit` skill): the rate limiter, the resilient client and
-  breaker, queue payloads, health endpoints, OpenAPI dev routes, the serializer, `/waffle-metrics`,
-  pooling, WebAuthn, the EcoShield proxy path.
+## `[AUD-01]` surfaces: the lens that owns each
+`[AUD-01]` names these surfaces. Each has one owning lens, and in a bundled run the bundle that holds that
+lens owns it. The owner checks it as its card says.
+
+| Surface | Owner | What it checks |
+|---|---|---|
+| `/waffle-metrics` | A01 | who can read it; no secret or topology in the series |
+| Connection pooling | W1 | per-request reset and affinity; no connection or transaction left open |
+| Rate limiter storage | A06 | fail-open or fail-closed by choice; keys that tenants cannot collide on |
+| The resilient client and breaker | A10 | timeouts, the retry ceiling, non-idempotent replays, shared breaker keys |
+| Queue payloads | A08 | no class name or `unserialize` from a payload; envelope fields bound |
+| The serializer | A08 | hydration through `set` hooks; depth and size bounded |
+| OpenAPI and Swagger dev routes | A02 | 404 outside debug |
+| Health endpoints | A02 | no topology in public bodies; no query per hit; placement before `TrustedHostMiddleware` |
+| WebAuthn | WA | its card |
+| The EcoShield proxy path | A05 | smuggling, hop-by-hop handling, header injection; A01 checks egress and `X-Forwarded-*` trust, A08 shared caching |
 
 ## Threat notes (dated: refresh before each run)
 **2026-11-05**

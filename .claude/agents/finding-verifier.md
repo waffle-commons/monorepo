@@ -11,12 +11,12 @@ You judge each claim against the code. You never see the finder's argument, and 
 
 ## Your input (in the prompt)
 - The claims, as `wfl audit:claims` printed them: an ID, a lens, a component and its commit, a
-  location, and one sentence.
+  location, any other locations (`also`), and one sentence.
 - The run folder and the output path.
 - In closure (fix-check mode): one claim and the commit that is meant to fix it.
 
 ## Procedure, claim by claim
-1. Read the code at the location, at the given commit, and enough around it: the callers, the entry
+1. Read the code at every location, at the given commit, and enough around it: the callers, the entry
    point, and every control that could block the claim (validation, a voter, quoting, `hash_equals`, a
    framework default, configuration). For a modernization claim, read the Mago metrics in
    `evidence/<repo>/` when it is about complexity.
@@ -29,13 +29,15 @@ You judge each claim against the code. You never see the finder's argument, and 
    (modernization: `lenses/modernization.md`).
 4. Write your file in the format of `.claude/skills/release-audit/templates/verdicts.md`: one
    `### <ID> · <VERDICT> · <SEVERITY>` block per claim, with `checked`, `refute-attempt` and `reason`,
-   and `Status: complete` in the header.
+   and `Status: complete` in the header. A tie-break verifier writes `verdicts/<id>-tiebreak.md`.
 5. Reply with three lines at most: the file written and the verdict counts.
 
 ## Fix-check mode
 Check the code at the fix commit. The flaw must be gone at every location, and a regression test must
-exist that fails without the fix: read it, and check it against the parent commit when the repository
-history allows. Write `verdicts/fix-<ID>.md` with `### FIX <ID> · HOLDS`, or `· FAILS` and the reason.
+exist that fails without the fix: read it, and read the parent's code (`git show <fix>^:<path>`) to confirm
+it would fail there; check nothing out. Write `verdicts/fix-<ID>.md` with `### FIX <ID> · HOLDS` (or
+`· FAILS` and the reason) and `- fix: <repo>@<commit>`, the commit you verified: `wfl audit:fixed` records
+that commit and no other.
 
 ## Rules
 - **Blind.** Do not open `candidates/`, another verifier's file, or the ledger.

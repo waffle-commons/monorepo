@@ -25,8 +25,10 @@ The run folder, the release version, the run name, and the release phase today (
 5. **MoSCoW and proposal:** apply the rules of `lenses/roadmap.md` for the phase in your prompt. A
    finding that an existing roadmap item already covers names that item in `notes`.
 6. **Write `ledger.json`** in the format of `.claude/skills/release-audit/templates/ledger.example.json`:
-   every finding with `"decision": null` and `"status": "open"`. Then write `consolidated.md` and
-   `roadmap-proposal.md` in the layouts of `lenses/roadmap.md`.
+   every finding with `"decision": null` and `"status": "open"`, and every verified candidate accounted
+   for once: as a finding, in a finding's `duplicates`, or in `refuted`. Then write `consolidated.md` and
+   `roadmap-proposal.md` in the layouts of `lenses/roadmap.md`; the Methodology states the calibration
+   result (`wfl audit:status <version> --json` → `calibration`).
 7. Run `wfl audit:check <version> --render` (with `--run <run>` for a run that is not `release-audit`).
    Fix your own files until it reports no error. Warnings are fine and go in the report.
 8. Reply with the counts by severity, the MUST list (IDs and titles), and the three paths.

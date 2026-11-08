@@ -31,3 +31,4 @@ $sql = sprintf('SELECT * FROM reports ORDER BY %s', $options->sort);
 <!-- No candidates: write "None." under "## Candidates" and keep "## Checked". -->
 <!-- A regression of an earlier fix adds:   - regression: FIX-01 14 -->
 <!-- A modernization candidate (M-<group>-NN, lens M1|M2|M3) adds:   - public-api: yes|no -->
+<!-- A calibration unit writes candidates/C-<n>.md with C-<n>-NN ids, in the same shape. -->

@@ -43,7 +43,7 @@
 
 | Skill | Use when… |
 | :--- | :--- |
-| **release-audit** | The pre-release audit, run end to end by Claude: OWASP Top 10:2025 + W1/W2 + agentic-layer finders, PHP 8.5 modernization, blind refute-first verification, `ledger.json`, a phase-aware MUST/SHOULD/COULD roadmap, the maintainer's sign-off; `wfl audit:*`; beta8 `[AUD-01]`, freeze exit gate #4. |
+| **release-audit** | The pre-release audit, run end to end by Claude: OWASP Top 10:2025 + W1/W2/WA + agentic-layer finders, a calibration on known defects, PHP 8.5 modernization, blind refute-first verification, `ledger.json`, a phase-aware MUST/SHOULD/COULD roadmap, the maintainer's sign-off; `wfl audit:*`; beta8 `[AUD-01]`, freeze exit gate #4. |
 | **security-audit** | Statelessness, fail-closed ABAC, SSRF (SEC-02), CSRF, CORS, traversal, `#[PublicAccess]`, SEC-03 compare-audit. |
 | **auth-bridge-audit** | The Universal Authentication Bridge (RFC-021, `auth`): JWT, OAuth2/OIDC, HMAC assertions, API keys. |
 | **webauthn-passkeys** | WebAuthn / passkeys (AUTH-01, `auth`): sole lib adapter, stateless authenticator, configurable UV. |
@@ -110,10 +110,10 @@
 | `benchmark-runner` | benchmark-gate | writes its report, no Edit | session |
 | `chaos-runner` | soak-endurance | writes its report, no Edit | session |
 | `soak-analyst` | soak-endurance | writes its report, no Edit | session |
-| `owasp-finder` | release-audit, security-audit | writes its report, no Edit | session |
-| `modernization-finder` | release-audit | writes its report, no Edit | session |
-| `finding-verifier` | release-audit | writes its report, no Edit | session |
-| `audit-triager` | release-audit, roadmap-steward | writes its report, no Edit | session |
+| `owasp-finder` | release-audit, security-audit | writes its report, no Edit | per run (manifest) |
+| `modernization-finder` | release-audit | writes its report, no Edit | per run (manifest) |
+| `finding-verifier` | release-audit | writes its report, no Edit | per run (manifest) |
+| `audit-triager` | release-audit, roadmap-steward | writes its report, no Edit | per run (manifest) |
 | `coding-worker` | coding | all | session |
 | `coding-integrator` | coding | all | session |
 | `contracts-sync` | contracts-first | all | sonnet, low effort |

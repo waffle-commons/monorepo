@@ -42,6 +42,8 @@ AGENT_KEYS = {
 READ_ONLY = {'acceptance-verifier', 'aot-verifier', 'bc-reviewer', 'flake-hunter', 'gate-runner'}
 REPORT_WRITERS = {'benchmark-runner', 'chaos-runner', 'soak-analyst',
                   'owasp-finder', 'modernization-finder', 'finding-verifier', 'audit-triager'}
+# AGENTS.md §8: `model` only for mechanical runners. A release audit passes its agents' model at dispatch.
+MECHANICAL = {'contracts-sync', 'gate-runner'}
 # Skills the vendored plugin must never ship (see its VENDORED.md).
 MP_EXCLUDED = {'implement', 'implement-spec', 'triage', 'wayfinder', 'prototype', 'setup-matt-pocock-skills', 'code-review'}
 # Paths that live outside this checkout on purpose.
@@ -116,6 +118,8 @@ for path in sorted(glob.glob('.claude/skills/*/SKILL.md')):
         err(path, 'description + when_to_use exceed the 1,536-character listing cap')
     for k in set(fm) - SKILL_KEYS:
         err(path, f"unknown frontmatter key '{k}'")
+    if 'allowed-tools' in fm:
+        err(path, 'allowed-tools: permissions belong in .claude/settings.json, never in a skill (AGENTS.md §8)')
     if body.count('\n') > 500:
         err(path, f'body is {body.count(chr(10))} lines (keep SKILL.md under 500; move detail to a reference file)')
 
@@ -134,6 +138,9 @@ for path in sorted(glob.glob('.claude/agents/*.md')):
         err(path, 'description should start with "Use …" (Claude delegates on it)')
     for k in set(fm) - AGENT_KEYS:
         err(path, f"unknown frontmatter key '{k}'" + (' (an opencode key)' if k in ('mode', 'hidden') else ''))
+    if 'model' in fm and name not in MECHANICAL:
+        err(path, 'pins a model: AGENTS.md §8 keeps `model` for mechanical runners (MECHANICAL in scripts/ai-check.py); '
+                  'a release audit passes the model at dispatch')
     for s in fm.get('skills') or []:
         if s not in skills:
             err(path, f"preloads unknown skill '{s}'")
