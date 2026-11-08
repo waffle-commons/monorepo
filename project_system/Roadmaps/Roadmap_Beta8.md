@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 8)"
 date_created: 2026-06-07
-date_updated: 2026-11-05
+date_updated: 2026-11-08
 type: project
 status: pending
 tags:
@@ -105,50 +105,50 @@ _The three beta5 research spikes get their final verdict. "Go" means landing the
     - *Decision 2026-11-05, the method:* the `release-audit` skill runs the audit end to end with Claude Code (`/release-audit 0.1.0-beta8`). It replaces the zipped payload sent to Google AI Studio and beta6's rule of "more than one independent engine" (the maintainer: "You will handle everything"). Independence now comes from:
         - tool evidence read before any code (`wfl audit:evidence`: Mago metrics, Psalm taint, `composer audit`, igor, SEC-03);
         - one finder per lens: the OWASP Top 10:2025 categories, worker-state leaks, timing-safe comparisons, and the repository's AI layer against OWASP's Top 10 for Agentic Applications 2026;
-        - blind, refute-first verifiers and majority verdicts with a tie-break;
-        - a calibration on known beta6 defects.
+        - blind, refute-first verifiers, two on every HIGH or CRITICAL, majority verdicts and a third on a tie;
+        - a calibration on known beta6 defects (`wfl audit:calibrate`).
 
       The sweep includes dated threat notes: PHP2Shell (CVE-2026-109618, CVE-2026-109619), CVE-2026-115560 and the Symfony security releases of 2026-11-04.
 
-    - *Sign-off:* the decision on each finding (fix, accept the risk, post-v1) is the maintainer's, recorded in the cockpit's `/audit` pane or with `wfl audit:sign`. Claude never records one.
+    - *Sign-off:* the decision on each finding (fix, accept the risk, post-v1) is the maintainer's, recorded in the cockpit's `/audit` pane or with `wfl audit:sign` in their own terminal. Claude never records one (guard rails back that: the `release-audit` skill). A risk acceptance and a move to post-v1 carry a reason and the residual risk; a move to post-v1 is a risk acceptance for v1.
         - The run lives in `project_system/Audits/Beta8/release-audit/` (gitignored, local only).
-        - `wfl audit:check 0.1.0-beta8 --gate` is the evidence for exit gate #4, and `wfl pre-release --all` holds the tag on it.
+        - `wfl audit:check 0.1.0-beta8 --gate` is the evidence for exit gate #4: every run of beta8 complete and reconciled, every finding decided, every fix fix-checked and released, the surface covered. `wfl pre-release --all` holds the tag on it.
 
-    - *Pilot run, 2026-11-06 (`queue` + `serializer`, profile `balanced`):* 42 candidates, 40 confirmed and 2 plausible by blind verification, none refuted, merged into 31 findings (0 CRITICAL, 0 HIGH, 5 MEDIUM, 25 LOW, 1 INFO). The maintainer decided all 31 as *fix in beta8* in `/audit` on 2026-11-06. Archive: `project_system/Audits/Beta8/pilot/` (local, gitignored); one ticket each in `.scratch/release-audit-0.1.0-beta8/issues/`. A calibration on the pre-fix code of three beta6 `[FIX-01]` items raised 3 of the 4 known defects, and all three fixes still hold. The full-surface run (every other repository, the gateway, the AG lens) is still to come.
+    - *Pilot run, set up on 2026-11-05 and decided on 2026-11-06 (`queue` + `serializer`):* the security finders ran under the session's own settings, the rest under profile `balanced`. 42 candidates, 40 confirmed and 2 plausible by blind verification, none refuted, merged into 31 findings (0 CRITICAL, 0 HIGH, 5 MEDIUM, 25 LOW, 1 INFO). The maintainer decided all 31 as *fix in beta8* in `/audit` on 2026-11-06. Archive: `project_system/Audits/Beta8/pilot/` (local, gitignored); one ticket each in `.scratch/release-audit-0.1.0-beta8/issues/`, which keeps each finding's description and location until its fix ships. A hand-run calibration on the pre-fix code of three beta6 `[FIX-01]` items, made before the calibration step existed and kept outside that archive, raised 3 of the 4 known defects, and all three fixes still hold. The beta8 gate reads the pilot's run as well: its 31 fixes must be fix-checked and released before the tag. The full-surface run covers every other repository, the gateway, the AG and WA lenses and the calibration step.
 
-        | # | Finding | Severity | What | Where | Size |
-        |---|---|---|---|---|---|
-        | 1 | `M-api-async-01` | MEDIUM | Compiled and interpreted encoders disagree on list elements an application-built DTO holds | `serializer/src/Compiler/NormalizerCompiler.php` | M |
-        | 2 | `S-B1-02` | MEDIUM | Component CI runs third-party code by mutable reference: actions by tag, the igor binary unverified | `queue/.github/workflows/main.yml` | M |
-        | 3 | `S-B2-01` | MEDIUM | A delivery that kills its worker is redelivered forever and never dead-lettered | `queue/src/RedisStreams/RedisStreamsQueue.php` | M |
-        | 4 | `S-B2-04` | MEDIUM | Reclaim drops the XAUTOCLAIM cursor, so ten stuck deliveries starve every later reclaim | `queue/src/RedisStreams/RedisStreamsQueue.php` | S |
-        | 5 | `S-B3-02` | MEDIUM | Unreadable queue entries are set aside with no log, metric or reason | `queue/src/RedisStreams/RedisStreamsQueue.php` | M |
-        | 6 | `M-api-async-03` | LOW | Request-body parameters lack #[\SensitiveParameter]: a rejected body's password stays in the serializer's frames | `serializer/src/Serializer.php` | S |
-        | 7 | `M-api-async-04` | LOW | JsonCodec's limits are a docblock only: depth 0 fails at the first request with a ValueError | `serializer/src/Json/JsonCodec.php` | S |
-        | 8 | `M-api-async-05` | LOW | EnvelopeCodec::milliseconds() is 1000 ms off before the epoch | `queue/src/Envelope/EnvelopeCodec.php` | S |
-        | 9 | `M-api-async-06` | LOW | NormalizerCompiler and ShapeNormalizer each fuse the encode and decode halves | `serializer/src/Compiler/NormalizerCompiler.php` | L |
-        | 10 | `M-api-async-07` | LOW | RedisStreamsQueue fuses the dispatcher and the consumer; the telemetry pair serves dispatch() alone | `queue/src/RedisStreams/RedisStreamsQueue.php` | M |
-        | 11 | `M-api-async-09` | LOW | "Is a #[Dto]" is decided three ways: one #[Dto] enum aborts serializer:compile | `serializer/src/Command/CompileCommand.php` | S |
-        | 12 | `M-api-async-10` | LOW | The temp-then-rename writer is hand-rolled again, without DX-01's unpredictable name or the clean-up | `serializer/src/Command/CompileCommand.php` | M |
-        | 13 | `M-api-async-13` | LOW | Multi-key writes are atomic in release() only | `queue/src/RedisStreams/RedisStreamsQueue.php` | S |
-        | 14 | `M-api-async-14` | LOW | The Redis lease sequence is written out seven times, its helpers copied verbatim | `queue/src/RedisStreams/RedisStreamsQueue.php` | S |
-        | 15 | `S-B1-01` | LOW | The serializer writes every public property, and its docs model a password hash going out | `serializer/src/Normalizer/ShapeNormalizer.php` | S |
-        | 16 | `S-B1-03` | LOW | A received envelope is trusted beyond its field types: its queue, attempts and id are never bound | `queue/src/RedisStreams/RedisStreamsQueue.php` | S |
-        | 17 | `S-B1-04` | LOW | Any InvalidArgumentException from a DTO constructor reaches the production 422 body, past LEAK-03 | `serializer/src/Normalizer/Payload.php` | S |
-        | 18 | `S-B1-05` | LOW | The AOT normalizer loader executes every PHP file in its directory, not only the generated ones | `serializer/src/Normalizer/CompiledNormalizerLoader.php` | S |
-        | 19 | `S-B1-06` | LOW | Queue names share keys with the dead-letter store and with other queues' internals | `queue/src/RedisStreams/RedisFailedMessageStore.php` | S |
-        | 20 | `S-B1-07` | LOW | `php: ^8.5` admits the PHP releases PHP2Shell affects | `queue/composer.json` | S |
-        | 21 | `S-B1-08` | LOW | No private route for vulnerability reports in queue and serializer | `queue/SECURITY.md` | S |
-        | 22 | `S-B2-02` | LOW | Queue envelopes carry no integrity check | `queue/src/Envelope/EnvelopeCodec.php` | M |
-        | 23 | `S-B2-03` | LOW | The interpreted normalizer reflects on the DTO again for every nested value | `serializer/src/Normalizer/ShapeNormalizer.php` | S |
-        | 24 | `S-B2-05` | LOW | An entry without an envelope field is neither settled nor set aside | `queue/src/RedisStreams/RedisStreamsQueue.php` | S |
-        | 25 | `S-B2-07` | LOW | Dispatch accepts payloads every worker refuses, and they are set aside silently | `queue/src/Envelope/EnvelopeCodec.php` | S |
-        | 26 | `S-B2-09` | LOW | Dead letters and set-aside entries are kept in full, forever | `queue/src/RedisStreams/RedisFailedMessageStore.php` | M |
-        | 27 | `S-B2-10` | LOW | serializer:compile embeds its --namespace option unchecked and skips the Maker's code-generation safeguards | `serializer/src/Command/CompileCommand.php` | S |
-        | 28 | `S-B3-04` | LOW | Settling ignores XACK's count, so a delivery already settled elsewhere is re-queued | `queue/src/RedisStreams/RedisStreamsQueue.php` | S |
-        | 29 | `S-B3-05` | LOW | A RedisException raised while leasing escapes the queue unmapped | `queue/src/RedisStreams/RedisStreamsQueue.php` | S |
-        | 30 | `S-B3-07` | LOW | The queue readiness probe has no timeout of its own | `queue/src/Health/StreamsHealthCheck.php` | S |
-        | 31 | `M-api-async-15` | INFO | The compiler names its own classes as strings | `serializer/src/Compiler/NormalizerCompiler.php` | S |
+        | # | Finding | Severity | Component | Size |
+        |---|---|---|---|---|
+        | 1 | `M-api-async-01` | MEDIUM | `serializer` | M |
+        | 2 | `S-B1-02` | MEDIUM | `queue` | M |
+        | 3 | `S-B2-01` | MEDIUM | `queue` | M |
+        | 4 | `S-B2-04` | MEDIUM | `queue` | S |
+        | 5 | `S-B3-02` | MEDIUM | `queue` | M |
+        | 6 | `M-api-async-03` | LOW | `serializer` | S |
+        | 7 | `M-api-async-04` | LOW | `serializer` | S |
+        | 8 | `M-api-async-05` | LOW | `queue` | S |
+        | 9 | `M-api-async-06` | LOW | `serializer` | L |
+        | 10 | `M-api-async-07` | LOW | `queue` | M |
+        | 11 | `M-api-async-09` | LOW | `serializer` | S |
+        | 12 | `M-api-async-10` | LOW | `serializer` | M |
+        | 13 | `M-api-async-13` | LOW | `queue` | S |
+        | 14 | `M-api-async-14` | LOW | `queue` | S |
+        | 15 | `S-B1-01` | LOW | `serializer` | S |
+        | 16 | `S-B1-03` | LOW | `queue` | S |
+        | 17 | `S-B1-04` | LOW | `serializer` | S |
+        | 18 | `S-B1-05` | LOW | `serializer` | S |
+        | 19 | `S-B1-06` | LOW | `queue` | S |
+        | 20 | `S-B1-07` | LOW | `queue` | S |
+        | 21 | `S-B1-08` | LOW | `queue` | S |
+        | 22 | `S-B2-02` | LOW | `queue` | M |
+        | 23 | `S-B2-03` | LOW | `serializer` | S |
+        | 24 | `S-B2-05` | LOW | `queue` | S |
+        | 25 | `S-B2-07` | LOW | `queue` | S |
+        | 26 | `S-B2-09` | LOW | `queue` | M |
+        | 27 | `S-B2-10` | LOW | `serializer` | S |
+        | 28 | `S-B3-04` | LOW | `queue` | S |
+        | 29 | `S-B3-05` | LOW | `queue` | S |
+        | 30 | `S-B3-07` | LOW | `queue` | S |
+        | 31 | `M-api-async-15` | INFO | `serializer` | S |
         
 
 ## 📚 AXE 5: DOCUMENTATION & ONBOARDING COMPLETION
