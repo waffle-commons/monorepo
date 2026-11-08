@@ -41,8 +41,33 @@
 /** PHP tools that must run inside `waffle-dev`. */
 const HOST_PHP = new Set(['php', 'composer', 'phpunit', 'mago', 'igor-php', 'pie'])
 
-/** Words that run the command after them (and their own options). */
-const WRAPPERS = new Set(['env', 'command', 'exec', 'time', 'nohup', 'nice', 'builtin'])
+/**
+ * Words that run the command after them, each with its options that take a separate value
+ * (`nice -n 5`, `env -u NAME`, `timeout -s KILL 60`). An option that holds its value (`-n5`,
+ * `--adjustment=5`, `-oL`) is one word.
+ */
+const WRAPPERS: Readonly<Record<string, ReadonlySet<string>>> = {
+  env: new Set(['-u', '--unset', '-C', '--chdir', '-S', '--split-string']),
+  command: new Set(),
+  exec: new Set(['-a']),
+  time: new Set(['-f', '--format', '-o', '--output']),
+  nohup: new Set(),
+  nice: new Set(['-n', '--adjustment']),
+  builtin: new Set(),
+  timeout: new Set(['-s', '--signal', '-k', '--kill-after']),
+  gtimeout: new Set(['-s', '--signal', '-k', '--kill-after']),
+  stdbuf: new Set(['-i', '-o', '-e', '--input', '--output', '--error']),
+  gstdbuf: new Set(['-i', '-o', '-e', '--input', '--output', '--error']),
+  caffeinate: new Set(['-t', '-w']),
+  xargs: new Set(['-I', '-i', '-L', '-l', '-n', '-P', '-s', '-E', '-e', '-d', '-a', '--arg-file', '--delimiter', '--max-args', '--max-procs', '--max-chars', '--replace']),
+  sudo: new Set(['-u', '--user', '-g', '--group', '-C', '-h', '--host', '-p', '--prompt', '-U', '--other-user', '-r', '--role', '-t', '--type', '-D', '--chdir']),
+  doas: new Set(['-u', '-C']),
+  unbuffer: new Set(),
+  chronic: new Set(),
+}
+
+/** Wrappers whose first plain word is their own argument, not the command: `timeout 60 git push`. */
+const WRAPPER_TAKES_ONE = new Set(['timeout', 'gtimeout'])
 
 /** Shells whose `-c` argument is itself a command line. */
 const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash'])
@@ -172,16 +197,29 @@ export function simpleCommandsOf(line: string): string[][] {
   return commands
 }
 
-/** The words after leading `VAR=value` assignments and wrapper commands. */
+/**
+ * The words after leading `VAR=value` assignments and wrapper commands, with each wrapper's
+ * options and their values skipped; `env -S '<words>'` runs the words it splits.
+ */
 function commandWordsOf(words: string[]): string[] {
   let i = 0
   while (i < words.length) {
     const w = words[i] ?? ''
+    const name = w.slice(w.lastIndexOf('/') + 1)
+    const valued = WRAPPERS[name]
     if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(w)) {
       i++
-    } else if (WRAPPERS.has(w)) {
+    } else if (valued !== undefined) {
       i++
-      while (i < words.length && (words[i] ?? '').startsWith('-')) i++
+      while (i < words.length && (words[i] ?? '').startsWith('-') && words[i] !== '--') {
+        const option = words[i] ?? ''
+        if (name === 'env' && (option === '-S' || option === '--split-string')) {
+          return commandWordsOf([...(simpleCommandsOf(words[i + 1] ?? '')[0] ?? []), ...words.slice(i + 2)])
+        }
+        i += valued.has(option) ? 2 : 1
+      }
+      if (words[i] === '--') i++
+      if (WRAPPER_TAKES_ONE.has(name) && i < words.length) i++
     } else {
       break
     }
