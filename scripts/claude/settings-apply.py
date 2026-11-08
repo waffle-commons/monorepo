@@ -13,10 +13,10 @@ Team settings (.claude/settings.json, committed):
   * allow rules for the waffle-cockpit tools (mcp__waffle-cockpit__dod, xref,
     coverage_gaps, dod_history), which only run wfl and read the cockpit state.
   * the release audit (the release-audit skill): allow the commands a run
-    needs (`wfl audit:init|evidence|status|claims|check|fixed`), so dozens of
-    agents do not prompt, and deny `wfl audit:sign` and the script behind it:
-    a decision on a finding is the maintainer's, recorded in /audit or in
-    their own terminal.
+    needs (`wfl audit:init|evidence|calibrate|status|claims|check|fixed`), so
+    dozens of agents do not prompt, and deny `wfl audit:sign` and the script
+    behind it: a decision on a finding is the maintainer's, recorded in /audit
+    or typed in their own terminal.
 
 Personal opt-ins (.claude/settings.local.json, gitignored), only when asked:
   --telemetry     Claude Code's OpenTelemetry metrics on a local Prometheus
@@ -72,7 +72,7 @@ COCKPIT_ALLOW = [
 
 AUDIT_ALLOW = [
     f"Bash({prefix}wfl audit:{sub}{rest})"
-    for sub in ("init", "evidence", "status", "claims", "check", "fixed")
+    for sub in ("init", "evidence", "calibrate", "status", "claims", "check", "fixed")
     for prefix in ("./bin/", "bin/", "")
     for rest in ("", " *")
 ]

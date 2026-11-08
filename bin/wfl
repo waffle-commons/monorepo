@@ -172,13 +172,14 @@ ${C_DIM}DIAGNOSTICS / AGENT HELPERS${C_RST}
   ai:telemetry [--raw]  digest of Claude Code's own metrics (cost, tokens, lines, commits) from localhost:9464
 
 ${C_DIM}RELEASE AUDIT${C_RST}  (the release-audit skill drives the agents; files in project_system/Audits/<release>/<run>/)
-  audit:init <ver> [--only a,b] [--run R] [--profile P]   manifest: each repository's commit, the toolchain, the split across finders
+  audit:init <ver> [--only a,b [--base <ver>]] [--run R] [--profile P] [--force]   manifest: each repository's commit, the toolchain, the split across finders (--force moves the old run aside)
   audit:evidence <ver>|--latest [repo…]   automated tools once per repository: Mago metrics, Psalm taint, composer audit, igor, SEC-03
+  audit:calibrate <ver>   the calibration snapshots: known beta6 defects on their pre-fix trees
   audit:status <ver>|--latest [--json]   what is done and the next step
-  audit:claims <ver> <S-A05>   a candidates file's claims without the finder's reasoning (blind verification)
-  audit:check <ver>|--latest [--gate] [--render]   validate ledger.json; --gate: every finding decided, every fix landed
-  audit:sign <ver> <ID> fix|accept|post-v1 ["reason"]   the maintainer's decision (refused when an AI agent runs it)
-  audit:fixed <ver> <ID> <repo>@<sha>   record the commit that fixed a finding
+  audit:claims <ver> <S-A05> [--ids a,b]   a candidates file's claims without the finder's reasoning (blind verification)
+  audit:check <ver>|--latest [--gate [--for <release>]] [--render]   the ledger against the run; --gate: complete, decided, fixed, released, covered
+  audit:sign <ver> <ID> fix|accept|post-v1 ["reason"] [--residual "risk"]   the maintainer's decision, typed in their own terminal (or /audit)
+  audit:fixed <ver> <ID> <repo>@<sha>   record the commit that fixed a finding, once its fix-check HOLDS
   audit:profile <ver> [--profile thorough|balanced|economy] [--model r=m] [--effort r=e] [--wave N]   who runs the agents from now on
 
 ${C_DIM}SUPPLY CHAIN / INDEPENDENCE${C_RST}
@@ -1170,6 +1171,7 @@ main() {
     wf-report)     cmd_wf_report     "$@" ;;
     audit:init)      cmd_script release-audit.py init "$@" ;;
     audit:evidence)  cmd_script release-audit.py evidence "$@" ;;
+    audit:calibrate) cmd_script release-audit.py calibrate "$@" ;;
     audit:status)    cmd_script release-audit.py status "$@" ;;
     audit:claims)    cmd_script release-audit.py claims "$@" ;;
     audit:check)     cmd_script release-audit.py check "$@" ;;
