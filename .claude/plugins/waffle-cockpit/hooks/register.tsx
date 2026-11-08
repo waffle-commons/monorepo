@@ -605,6 +605,7 @@ async function loadAudit($: EngineInterface, root: string, version: string, run:
       ? 'No release audit run yet: the release-audit skill starts one (wfl audit:init <version>).'
       : `No audit run for ${version}${run === '' ? '' : ` (${run})`}.`
   }
+  if (report.phase === 'unreadable') return `The audit run in ${report.dir} does not read: run wfl audit:status ${report.version} to see why.`
   const text = await $.fs.read(`${root}/${report.dir}/ledger.json`).catch(() => undefined)
   if (text === undefined) return `The audit of ${report.version} (${report.run}) has no ledger yet (phase: ${report.phase}): nothing to decide.`
   const findings = findingsOf(text)
@@ -633,22 +634,31 @@ async function reloadAudit($: EngineInterface, message: string, toNext = false):
 
 /**
  * Records the maintainer's decision on the selected finding through `wfl audit:sign`, from the pane: the
- * person's own action, never a model turn. Accepting the risk or moving to post-v1 needs a reason.
+ * person's own action, never a model turn. Accepting the risk or moving to post-v1 needs a reason and the
+ * residual risk.
  */
-async function recordDecision($: EngineInterface, reason: string): Promise<void> {
+async function recordDecision($: EngineInterface, typed: { reason?: string; residual?: string } = {}): Promise<void> {
   const root = await rootOf($)
+  // A field's Enter hands over its text; the other field's is read from the view, never from the drawn tree.
+  await update($, auditView, was => (was === null ? was : { ...was, ...typed }))
   const view = await read($, auditView)
   if (root === undefined || view === null || view.isBusy || view.selected === '') return
-  const why = reason.trim()
+  const why = (view.reason ?? '').trim()
+  const risk = (view.residual ?? '').trim()
+  const what = view.choice === 'accept' ? 'Accepting the risk' : 'Moving it to post-v1'
   if (view.choice !== 'fix' && why === '') {
-    const what = view.choice === 'accept' ? 'Accepting the risk' : 'Moving it to post-v1'
     await update($, auditView, was => (was === null ? was : { ...was, message: `✗ ${what} needs a reason: type it, then Enter.` }))
+    return
+  }
+  if (view.choice !== 'fix' && risk === '') {
+    await update($, auditView, was => (was === null ? was : { ...was, message: `✗ ${what} also needs its residual risk: what stays exposed, and to whom. Type it, then Enter.` }))
     return
   }
   await update($, auditView, was => (was === null ? was : { ...was, isBusy: true, message: `recording ${view.selected} ${view.choice}…` }))
   const argv = [
     `${root}/bin/wfl`, 'audit:sign', view.version, view.selected, view.choice,
     ...(why === '' ? [] : [why]),
+    ...(view.choice === 'fix' ? [] : ['--residual', risk]),
     ...(view.run === 'release-audit' ? [] : ['--run', view.run]),
   ]
   const done = await collect($, argv, root, { WFL_AUDIT_SIGNER: 'cockpit' }).catch((error: unknown) => ({
@@ -658,7 +668,7 @@ async function recordDecision($: EngineInterface, reason: string): Promise<void>
   const last = done.output.trim().split('\n').filter(line => line.trim() !== '').pop() ?? ''
   if (done.code === 0) {
     const entry = `${view.selected} ${view.choice}`
-    await update($, auditView, was => (was === null ? was : { ...was, recorded: [...was.recorded, entry], reason: '' }))
+    await update($, auditView, was => (was === null ? was : { ...was, recorded: [...was.recorded, entry], reason: '', residual: '' }))
     await reloadAudit($, `✓ ${last.replace(/^✓\s*/, '')}`, true)
     $.ui.toast(`Recorded ${entry}`)
   } else {
@@ -1164,15 +1174,16 @@ export const register: Register = (on, options) => {
       void update($, auditView, was => {
         if (was === null) return was
         const picked = was.findings.find(f => f.id === id)
-        return picked === undefined ? was : { ...was, selected: id, choice: choiceOf(picked.proposal), reason: '', message: '' }
+        return picked === undefined ? was : { ...was, selected: id, choice: choiceOf(picked.proposal), reason: '', residual: '', message: '' }
       }).catch(ignoreFailure)
     const choose = (value: string) =>
       void update($, auditView, was =>
         was === null || !isChoice(value)
           ? was
-          : { ...was, choice: value, message: `decision: ${value}${value === 'fix' ? '' : ' (a reason is required)'} · press Record decision (d) to record it` },
+          : { ...was, choice: value, message: `decision: ${value}${value === 'fix' ? '' : ' (a reason and the residual risk are required)'} · press Record decision (d) to record it` },
       ).catch(ignoreFailure)
     const typed = (value: string) => void update($, auditView, was => (was === null ? was : { ...was, reason: value })).catch(ignoreFailure)
+    const typedRisk = (value: string) => void update($, auditView, was => (was === null ? was : { ...was, residual: value })).catch(ignoreFailure)
 
     return (
       <Box flexDirection="column">
@@ -1206,9 +1217,20 @@ export const register: Register = (on, options) => {
               submitLabel="record"
               value={view.reason ?? ''}
               onInput={typed}
-              onSubmit={reason => void recordDecision($, reason).catch(ignoreFailure)}
+              onSubmit={reason => void recordDecision($, { reason }).catch(ignoreFailure)}
             />
-            <Button key="audit-record" label={view.isBusy ? 'Recording…' : 'Record decision'} hotkey="d" onPress={() => void recordDecision($, view.reason ?? '').catch(ignoreFailure)} />
+            {view.choice !== 'fix' && (
+              <Input
+                key="audit-residual"
+                label="Residual risk "
+                placeholder="required · what stays exposed, and to whom · then Record decision (d), or Enter here"
+                submitLabel="record"
+                value={view.residual ?? ''}
+                onInput={typedRisk}
+                onSubmit={residual => void recordDecision($, { residual }).catch(ignoreFailure)}
+              />
+            )}
+            <Button key="audit-record" label={view.isBusy ? 'Recording…' : 'Record decision'} hotkey="d" onPress={() => void recordDecision($).catch(ignoreFailure)} />
           </Box>
         )}
         {view.message !== '' && <Text color={view.message.startsWith('✓') ? 'green' : view.message.startsWith('✗') ? 'red' : undefined}>{view.message}</Text>}

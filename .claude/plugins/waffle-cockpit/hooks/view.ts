@@ -109,12 +109,14 @@ export function localGroup(localOnly: number | null, backupAgeS: number | null, 
 
 /**
  * The release audit: `audit beta8 · 5/12 finders · 1 HIGH`, red with an open CRITICAL, `not started` when the
- * release needs one and has none, a tick once its gate passes; nothing when there is no audit to show.
+ * release needs one and has none, `✗ unreadable` when its files do not parse, a tick once its gate passes;
+ * nothing when there is no audit to show.
  */
 export function auditGroup(audit: AuditStatus | null | undefined): Line {
   if (audit === null || audit === undefined) return []
   const name: Segment = { text: `audit ${shortVersion(audit.version)}${audit.run === 'release-audit' ? '' : ` (${audit.run})`}`, tone: 'plain' }
   if (audit.phase === 'not-started') return [name, { text: ' not started', tone: 'yellow' }]
+  if (audit.phase === 'unreadable') return [name, { text: ' ✗ unreadable', tone: 'red' }]
   if (audit.phase === 'done') return [name, audit.gate === 'pass' ? { text: ' ✓', tone: 'green' } : { text: ' ✗ gate', tone: 'red' }]
   const group: Line = [name]
   if (audit.profile !== '' && audit.profile !== 'balanced') group.push({ text: ` · ${audit.profile}`, tone: 'magenta' })

@@ -26,7 +26,10 @@ export type AuditStatus = {
   run: string
   /** Who runs its agents: `balanced`, `economy`, `thorough`, `custom`, `inherited`; empty before a run exists. */
   profile: string
-  /** `not-started`, `evidence`, `finders`, `verification`, `triage`, `decisions`, `integration`, `closure` or `done`. */
+  /**
+   * `not-started`, `evidence`, `calibration`, `finders`, `verification`, `triage`, `decisions`, `integration`,
+   * `closure`, `done`, or `unreadable` when the run's files do not parse.
+   */
   phase: string
   /** One short progress text for the phase (`5/12 finders`, `decided 3/40`); empty when none. */
   progress: string
@@ -75,6 +78,8 @@ export type AuditView = {
   isBusy: boolean
   /** What the Reason field holds, so the Record button can send it; absent in a view stored before 0.5.1. */
   reason?: string
+  /** What the Residual risk field holds (accept and post-v1 need it); absent in a view stored before 0.6.0. */
+  residual?: string
 }
 
 /** Which components changed since their last green DoD: `$.clock.now()` of the last edit and of the last pass. */

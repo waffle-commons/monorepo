@@ -1,19 +1,83 @@
 {
   "name": "waffle-cockpit",
-  "version": "0.5.1",
-  "description": "Waffle-Commons cockpit: status lines under the prompt (model, effort, context, cache, cost, limits, repo, PR, Waffle phase, local-only commits and backup age, running commands, background shells / monitors / subagents), /dod in a pane with no model turn and the last verdict per component, /audit to decide a release audit's findings in a pane (and the audit's progress on the status line), model-callable dod / xref / coverage_gaps / dod_history tools, a Bash guard (host-side PHP, cd, heredoc continuations, secret files, submodule --remote syncs, release-tag pushes but the releaseTag option's, v-prefixed or moved tags, squash merges, forced pushes, ref deletes not spelled --delete), Edit/Write checks (new mixed, secrets, an audit ledger's decisions), the maintainer-only wfl audit:sign, an instant Mago check after each PHP edit, and a done-means-evidence reminder at the end of a turn.",
-  "author": { "name": "Waffle-Commons" },
+  "version": "0.6.0",
+  "description": "Waffle-Commons cockpit: status lines under the prompt (model, effort, context, cache, cost, limits, repo, PR, Waffle phase, local-only commits and backup age, running commands, background shells / monitors / subagents), /dod in a pane with no model turn and the last verdict per component, /audit to decide a release audit's findings in a pane (and the audit's progress on the status line), model-callable dod / xref / coverage_gaps / dod_history tools, a Bash guard (host-side PHP, cd, heredoc continuations, secret files, submodule --remote syncs, release-tag pushes but the releaseTag option's, v-prefixed or moved tags, squash merges, forced pushes, ref deletes not spelled --delete), Edit/Write checks (new mixed, secrets, an audit ledger's decisions and decided findings), guard rails around the maintainer's wfl audit:sign (whatever wraps it) and around ledger writes through the shell, an instant Mago check after each PHP edit, and a done-means-evidence reminder at the end of a turn.",
+  "author": {
+    "name": "Waffle-Commons"
+  },
   "license": "MIT",
   "types": "./types/index.d.ts",
   "userConfig": {
-    "contextWarn": { "type": "number", "title": "Context: yellow from (%)", "description": "The context bar turns yellow from this percent.", "default": 60, "min": 1, "max": 99 },
-    "contextAlert": { "type": "number", "title": "Context: red from (%)", "description": "The context bar turns red from this percent.", "default": 80, "min": 2, "max": 100 },
-    "jobLingerSeconds": { "type": "number", "title": "Ended jobs stay (s)", "description": "How long an ended background job stays on its line, ticked or crossed.", "default": 60, "min": 0, "max": 3600 },
-    "instantLint": { "type": "string", "title": "Instant Mago check", "description": "Mago on each PHP file Claude edits, its findings handed to Claude: off, lint (fast), or lint+analyze (about 3 s).", "default": "lint+analyze", "options": ["off", "lint", "lint+analyze"] },
-    "evidenceAtStop": { "type": "boolean", "title": "Done means evidence", "description": "Before a turn ends, remind Claude once of components edited since their last green wfl dod.", "default": true },
-    "guard": { "type": "string", "title": "Guard strictness", "description": "strict: also refuses cd on the host, a backslash after a heredoc start and new mixed in PHP. standard: host PHP, submodule --remote, release tags and secrets only.", "default": "strict", "options": ["strict", "standard"] },
-    "secretScan": { "type": "boolean", "title": "Secret scan", "description": "Refuse an Edit or Write that adds a secret, and Read or shell reads of secret files (.env, keys).", "default": true },
-    "backupWarnHours": { "type": "number", "title": "Backup warning (h)", "description": "With local-only commits, the backup segment turns yellow past this many hours (red past three times).", "default": 24, "min": 1, "max": 720 },
-    "releaseTag": { "type": "string", "title": "Release tag Claude may push", "description": "The one release tag (0.1.0-beta7, no v) Claude may push and release by name when asked; it fires the LIVE wave. Empty: every release-tag push is refused. Clear it once the wave has shipped.", "default": "" }
+    "contextWarn": {
+      "type": "number",
+      "title": "Context: yellow from (%)",
+      "description": "The context bar turns yellow from this percent.",
+      "default": 60,
+      "min": 1,
+      "max": 99
+    },
+    "contextAlert": {
+      "type": "number",
+      "title": "Context: red from (%)",
+      "description": "The context bar turns red from this percent.",
+      "default": 80,
+      "min": 2,
+      "max": 100
+    },
+    "jobLingerSeconds": {
+      "type": "number",
+      "title": "Ended jobs stay (s)",
+      "description": "How long an ended background job stays on its line, ticked or crossed.",
+      "default": 60,
+      "min": 0,
+      "max": 3600
+    },
+    "instantLint": {
+      "type": "string",
+      "title": "Instant Mago check",
+      "description": "Mago on each PHP file Claude edits, its findings handed to Claude: off, lint (fast), or lint+analyze (about 3 s).",
+      "default": "lint+analyze",
+      "options": [
+        "off",
+        "lint",
+        "lint+analyze"
+      ]
+    },
+    "evidenceAtStop": {
+      "type": "boolean",
+      "title": "Done means evidence",
+      "description": "Before a turn ends, remind Claude once of components edited since their last green wfl dod.",
+      "default": true
+    },
+    "guard": {
+      "type": "string",
+      "title": "Guard strictness",
+      "description": "strict: also refuses cd on the host, a backslash after a heredoc start and new mixed in PHP. standard: host PHP, submodule --remote, release tags and secrets only.",
+      "default": "strict",
+      "options": [
+        "strict",
+        "standard"
+      ]
+    },
+    "secretScan": {
+      "type": "boolean",
+      "title": "Secret scan",
+      "description": "Refuse an Edit or Write that adds a secret, and Read or shell reads of secret files (.env, keys).",
+      "default": true
+    },
+    "backupWarnHours": {
+      "type": "number",
+      "title": "Backup warning (h)",
+      "description": "With local-only commits, the backup segment turns yellow past this many hours (red past three times).",
+      "default": 24,
+      "min": 1,
+      "max": 720
+    },
+    "releaseTag": {
+      "type": "string",
+      "title": "Release tag Claude may push",
+      "description": "The one release tag (0.1.0-beta7, no v) Claude may push and release by name when asked; it fires the LIVE wave. Empty: every release-tag push is refused. Clear it once the wave has shipped.",
+      "default": ""
+    }
   }
 }

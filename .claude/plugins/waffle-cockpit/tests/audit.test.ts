@@ -47,8 +47,9 @@ function ledgerText(...findings: object[]): string {
 
 describe('reading the audit', () => {
   test('which releases wait for their audit, as wfl pre-release --all holds them', () => {
-    expect(['0.1.0-beta8', '0.1.0-beta12', '1.0.0-RC1', '1.0.0', '1.1.0', '2.0.0-RC2'].every(requiresAudit)).toBe(true)
-    expect(['0.1.0-beta7', '1.0.1', '1.2.3'].some(requiresAudit)).toBe(false)
+    // The same vectors as scripts/tests/test_release_audit.py: the shell gate asks the script, the line asks this.
+    expect(['0.1.0-beta8', '0.1.0-beta12', '1.0.0-RC1', '1.0.0', '1.1.0', '1.1.0-RC2', '2.0.0', '2.0.0-RC2'].every(requiresAudit)).toBe(true)
+    expect(['0.1.0-beta7', '0.1.0-beta', '0.1.0-beta8.1', '1.0.1', '1.2.3', '1.1.0-beta1'].some(requiresAudit)).toBe(false)
     expect(branchVersionOf('pre-release/0.1.0-beta8')).toBe('0.1.0-beta8')
     expect(branchVersionOf('main')).toBeUndefined()
     expect([shortVersion('0.1.0-beta8'), shortVersion('1.0.0-RC1'), shortVersion('1.1.0')]).toEqual(['beta8', 'RC1', '1.1.0'])
@@ -64,6 +65,7 @@ describe('reading the audit', () => {
     expect(auditGroup({ ...seen!, phase: 'not-started' }).map(s => s.text).join('')).toBe('audit beta8 not started')
     expect(auditGroup({ ...seen!, phase: 'done', gate: 'pass' }).map(s => s.text).join('')).toBe('audit beta8 ✓')
     expect(auditGroup({ ...seen!, profile: 'economy' }).map(s => s.text).join('')).toBe('audit beta8 · economy · decided 1/3 · 1 HIGH')
+    expect(auditGroup(auditStatusOf(JSON.stringify({ version: '0.1.0-beta8', run: 'release-audit', dir: DIR, phase: 'unreadable', error: 'x' }))).map(s => s.text).join('')).toBe('audit beta8 ✗ unreadable')
     expect(auditGroup(null)).toEqual([])
   })
 
@@ -97,6 +99,49 @@ describe('only the maintainer decides', () => {
     }
   })
 
+  test('whatever wraps the sign command, and the ways around it through the shell', () => {
+    const V = '0.1.0-beta8 S-A05-01 accept "demo"'
+    const LEDGER = `${DIR}/ledger.json`
+    for (const command of [
+      `timeout 60 wfl audit:sign ${V}`,
+      `nice -n 5 wfl audit:sign ${V}`,
+      `xargs wfl audit:sign ${V} < /dev/null`,
+      `env -u AI_AGENT wfl audit:sign ${V}`,
+      `eval "wfl audit:sign ${V}"`,
+      `python3 -X utf8 scripts/release-audit.py sign ${V}`,
+      `bash -o posix bin/wfl audit:sign ${V}`,
+      `uv run scripts/release-audit.py sign ${V}`,
+      `find . -maxdepth 0 -exec wfl audit:sign ${V} \\;`,
+      `docker exec waffle-dev wfl audit:sign ${V}`,
+    ]) {
+      expect(verdictOf(command)).toContain("maintainer's decision")
+    }
+    for (const command of ['export WFL_AUDIT_SIGNER=cockpit', `WFL_AUDIT_SIGNER=cockpit python3 -W ignore x.py sign ${V}`]) {
+      expect(verdictOf(command)).toContain('WFL_AUDIT_SIGNER')
+    }
+    for (const command of [
+      `python3 -c "import subprocess; subprocess.run(['wfl', 'audit:sign'])"`,
+      `node -e "require('child_process').execFileSync('wfl', ['audit:sign'])"`,
+      `python3 -c "open('${LEDGER}', 'w').write('{}')"`,
+    ]) {
+      expect(verdictOf(command)).toContain('inline code')
+    }
+    for (const command of [
+      `sed -i '' 's/a/b/' ${LEDGER}`,
+      `jq '.findings[0].decision = 1' x.json > ${LEDGER}`,
+      `echo '{}' >${LEDGER}`,
+      `tee ${DIR}/Ledger.JSON < /tmp/x`,
+      `cp /tmp/x ${LEDGER}`,
+      `mv ${LEDGER} /tmp/`,
+      `rm ${LEDGER}`,
+    ]) {
+      expect(verdictOf(command)).toContain("a release audit's ledger changes only through")
+    }
+    for (const command of [`jq '.findings | length' ${LEDGER}`, `cat ${LEDGER}`, `cp ${LEDGER} /tmp/ledger-backup.json`, 'rg -n "audit:sign" .claude', 'git commit -m "docs: the maintainer runs wfl audit:sign"']) {
+      expect(verdictOf(command)).toBeUndefined()
+    }
+  })
+
   test("a ledger edit that writes, changes or erases a decision is refused; the rest is Claude's", () => {
     const open = ledgerText(finding('S-A05-01', 'HIGH'))
     const decided = ledgerText(finding('S-A05-01', 'HIGH', SIGNED))
@@ -106,9 +151,19 @@ describe('only the maintainer decides', () => {
     expect(ledgerVerdictOf(LEDGER_PATH, open, decided)).toContain('S-A05-01')
     expect(ledgerVerdictOf(LEDGER_PATH, decided, open)).toContain('S-A05-01') // erasing a sign-off
     expect(ledgerVerdictOf(LEDGER_PATH, decided, ledgerText())).toContain('S-A05-01') // dropping the finding
-    expect(ledgerVerdictOf(LEDGER_PATH, decided, decided.replace('"roadmap"', '"roadmap"').replace('"summary of S-A05-01"', '"a better summary"'))).toBeUndefined()
-    expect(ledgerVerdictOf(LEDGER_PATH, open, `${open.slice(0, -2)} "choice": "fix"`)).toContain('decision') // broken JSON, one more decision field
+    // A decided finding keeps what was decided; its roadmap and ticket stay Claude's (integration).
+    expect(ledgerVerdictOf(LEDGER_PATH, decided, decided.replace('"summary of S-A05-01"', '"a better summary"'))).toContain('S-A05-01')
+    expect(ledgerVerdictOf(LEDGER_PATH, decided, decided.replace('"severity": "HIGH"', '"severity": "CRITICAL"'))).toContain('S-A05-01')
+    expect(ledgerVerdictOf(LEDGER_PATH, decided, decided.replace('"status": "accepted"', '"status": "accepted", "roadmap": "[AUD-01]", "ticket": "01-x.md"'))).toBeUndefined()
+    expect(ledgerVerdictOf(LEDGER_PATH, open, open.replace('"summary of S-A05-01"', '"a better summary"'))).toBeUndefined()
+    // An edit that leaves the ledger broken is refused, so a two-step edit cannot change a decision unseen.
+    expect(ledgerVerdictOf(LEDGER_PATH, decided, decided.replace('"accept"', '"fix"').slice(0, -1))).toContain('unreadable as JSON')
+    expect(ledgerVerdictOf(LEDGER_PATH, open, `${open.slice(0, -2)} "choice": "fix"`)).toContain('unreadable as JSON')
     expect(ledgerVerdictOf(`${ROOT}/notes/ledger.json`, open, decided)).toBeUndefined()
+    for (const spelling of [`${ROOT}/${DIR}/./ledger.json`, `${ROOT}/project_system/Audits/Beta8//release-audit/ledger.json`,
+      `${ROOT}/project_system/Audits/Beta8/x/../release-audit/ledger.json`, `${ROOT}/project_system/audits/Beta8/release-audit/Ledger.json`]) {
+      expect(isLedgerPath(spelling)).toBe(true)
+    }
   })
 })
 
@@ -164,10 +219,15 @@ describe('the /audit pane', () => {
     expect(seen).toHaveLength(0)
     expect((await ui.find({ type: 'Text', text: /needs a reason/ }))?.text).toContain('Accepting the risk')
 
+    // A reason alone is not enough: accepting the risk names the residual risk too.
     await $.ui.input({ plugin: 'waffle-cockpit', key: 'audit-reason', text: 'demo code path only' })
+    expect(seen).toHaveLength(0)
+    expect((await ui.find({ type: 'Text', text: /residual risk/ }))?.text).toContain('Accepting the risk')
+
+    await $.ui.input({ plugin: 'waffle-cockpit', key: 'audit-residual', text: 'the demo route stays exposed in dev' })
     await until(world, () => world.toasts.some(t => t.startsWith('Recorded')))
 
-    expect(seen[0]?.argv).toEqual([`${ROOT}/bin/wfl`, 'audit:sign', '0.1.0-beta8', 'S-A05-01', 'accept', 'demo code path only'])
+    expect(seen[0]?.argv).toEqual([`${ROOT}/bin/wfl`, 'audit:sign', '0.1.0-beta8', 'S-A05-01', 'accept', 'demo code path only', '--residual', 'the demo route stays exposed in dev'])
     expect(seen[0]?.env?.WFL_AUDIT_SIGNER).toBe('cockpit')
     expect(world.toasts).toContain('Recorded S-A05-01 accept')
     // The pane moves on to the next undecided finding.

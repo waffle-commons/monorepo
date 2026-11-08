@@ -2,7 +2,8 @@
  * What the cockpit checks in a file before an Edit or Write lands: `mixed`
  * added to waffle-commons PHP (AGENTS.md §1, an absolute rule), secrets
  * written into any file, and a release audit's decisions, which only the
- * maintainer records. Pure, so it is tested without an engine.
+ * maintainer records (a guard rail, not a sandbox: the release-audit skill).
+ * Pure, so it is tested without an engine.
  *
  * Both checks look at what the change adds, never at what the file already
  * holds: an edit next to a PSR-forced `mixed`, or beside a test fixture's key,
@@ -86,19 +87,33 @@ export function secretVerdictOf(before: string, after: string, path: string): st
 }
 
 /** A release audit's ledger, which the maintainer signs: `project_system/Audits/<release>/<run>/ledger.json`. */
-const LEDGER = /(^|\/)project_system\/Audits\/[^/]+\/[^/]+\/ledger\.json$/
+const LEDGER = /(^|\/)project_system\/audits\/[^/]+\/[^/]+\/ledger\.json$/i
 
-/** Whether a path is a release audit's ledger. */
-export function isLedgerPath(path: string): boolean {
-  return LEDGER.test(path)
+/** A path with `.`, `..` and repeated slashes resolved, as the file system reads it. */
+export function normalizedPath(path: string): string {
+  const parts: string[] = []
+  for (const part of path.split('/')) {
+    if (part === '..') parts.pop()
+    else if (part !== '' && part !== '.') parts.push(part)
+  }
+  return (path.startsWith('/') ? '/' : '') + parts.join('/')
 }
 
-/** What no decision looks like: no decision, no history. */
-const UNDECIDED = JSON.stringify([null, []])
+/** Whether a path is a release audit's ledger, however it is spelled (macOS volumes ignore case). */
+export function isLedgerPath(path: string): boolean {
+  return LEDGER.test(normalizedPath(path))
+}
+
+/** What only `wfl audit:*` writes about a decided finding: what was decided, its status, its fix. */
+const DECIDED_KEYS = ['title', 'severity', 'where', 'summary', 'fix', 'status', 'fixed_by']
+
+/** What an undecided finding looks like here: no decision, no history, nothing frozen. */
+const UNDECIDED = JSON.stringify([null, [], {}])
 
 /**
- * Each finding's decision and decision history, by id, as one JSON text: what only `wfl audit:sign`
- * writes. An empty text is an empty ledger; undefined when the text does not parse.
+ * Each finding, by id, as one JSON text of what only `wfl audit:*` writes: its decision and decision
+ * history and, once it is decided, the fields the decision is about. An empty text is an empty ledger;
+ * undefined when the text does not parse.
  */
 function decisionsOf(text: string): Map<string, string> | undefined {
   if (text.trim() === '') return new Map()
@@ -113,25 +128,30 @@ function decisionsOf(text: string): Map<string, string> | undefined {
   for (const finding of Array.isArray(findings) ? findings : []) {
     if (typeof finding !== 'object' || finding === null) continue
     const id: unknown = Reflect.get(finding, 'id')
-    out.set(typeof id === 'string' ? id : '', JSON.stringify([Reflect.get(finding, 'decision') ?? null, Reflect.get(finding, 'decision_history') ?? []]))
+    const decision: unknown = Reflect.get(finding, 'decision') ?? null
+    const frozen = decision === null ? {} : Object.fromEntries(DECIDED_KEYS.map(key => [key, Reflect.get(finding, key) ?? null]))
+    out.set(typeof id === 'string' ? id : '', JSON.stringify([decision, Reflect.get(finding, 'decision_history') ?? [], frozen]))
   }
   return out
 }
 
 /**
- * Why an Edit or Write of a release audit's ledger is refused: it writes, changes or erases a decision.
- * Everything else in the ledger (roadmap, ticket, summary fields) stays Claude's to edit. A text that does
- * not parse is judged by how many decision fields it holds.
+ * Why an Edit or Write of a release audit's ledger is refused: it writes, changes or erases a decision,
+ * changes a decided finding, or leaves the ledger unreadable. Everything else (roadmap, ticket, notes, and
+ * every field of a finding still undecided) stays Claude's to edit.
  *
  * @param before the whole file before the change ('' when it does not exist)
  * @param after the whole file as the change leaves it
  */
 export function ledgerVerdictOf(path: string, before: string, after: string): string | undefined {
   if (!isLedgerPath(path)) return undefined
-  const was = decisionsOf(before)
   const now = decisionsOf(after)
+  if (now === undefined) {
+    return `the change leaves ${path} unreadable as JSON, which hides whether a decision changed. Write the ledger whole and valid, in one change (the release-audit skill).`
+  }
+  const was = decisionsOf(before)
   const changed: string[] = []
-  if (was === undefined || now === undefined) {
+  if (was === undefined) {
     const fields = (text: string) => (text.match(/"(choice|decision_history)"\s*:/g) ?? []).length
     if (fields(after) !== fields(before)) changed.push('a finding')
   } else {
@@ -140,5 +160,5 @@ export function ledgerVerdictOf(path: string, before: string, after: string): st
     }
   }
   if (changed.length === 0) return undefined
-  return `the change writes, changes or erases the maintainer's decision on ${changed.join(', ')} in ${path}. Decisions are recorded only by the maintainer, through /audit in the cockpit or \`wfl audit:sign\` in their own terminal (the release-audit skill): leave \`decision\` and \`decision_history\` as they are.`
+  return `the change writes, changes or erases the maintainer's decision on ${changed.join(', ')} in ${path}, or changes what was decided (${DECIDED_KEYS.join(', ')}). Decisions are recorded only by the maintainer, through /audit in the cockpit or \`wfl audit:sign\` typed in their own terminal, and fixes through \`wfl audit:fixed\` (the release-audit skill): leave those fields as they are.`
 }

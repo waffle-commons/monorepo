@@ -28,11 +28,14 @@
  * - Secret files (`.env`, keys, certificates' private halves) are never read
  *   through the shell: a Read deny rule does not cover `cat`.
  * - A release audit's decisions are the maintainer's: `wfl audit:sign`, and the
- *   script behind it, are never Claude's to run (the release-audit skill). The
- *   person decides in /audit, or runs it in their own terminal.
+ *   script behind it, are never Claude's to run, whatever wraps them; Claude
+ *   never sets the pane's `WFL_AUDIT_SIGNER`, never writes a ledger through the
+ *   shell, and never names either in inline code (the release-audit skill). The
+ *   person decides in /audit, or types it in their own terminal.
  *
  * The guard only ever denies. Everything it lets through still meets the
- * permission rules in .claude/settings.json.
+ * permission rules in .claude/settings.json. It is a guard rail, not a sandbox:
+ * it reads words, and a determined program can still spell around it.
  */
 
 /** PHP tools that must run inside `waffle-dev`. */
@@ -317,27 +320,86 @@ function dockerExecCommandOf(args: string[]): string[] | undefined {
   return args.slice(i + 1) // past the container name
 }
 
-/** `wfl audit:sign`, or the script behind it (`release-audit.py sign`), run directly or by an interpreter. */
-function isAuditSign(name: string, args: string[]): boolean {
-  const signs = (script: string, rest: string[]) =>
-    (basenameOf(script) === 'wfl' && rest[0] === 'audit:sign') || (basenameOf(script) === 'release-audit.py' && rest[0] === 'sign')
-  if (signs(name, args)) return true
-  // `python3 -I scripts/release-audit.py sign …`, `bash bin/wfl audit:sign …`: the first word that is no option is the script.
-  if (/^python[\d.]*$/.test(name) || SHELLS.has(name)) {
-    const at = args.findIndex(a => !a.startsWith('-'))
-    return at !== -1 && signs(args[at] ?? '', args.slice(at + 1))
+const SIGN_REFUSAL =
+  "`wfl audit:sign` records the maintainer's decision on a release-audit finding, so Claude never runs it (the release-audit skill). Ask the person to decide in /audit, or to type it in their own terminal."
+
+/** Interpreters whose `-c` / `-e` argument is code, and the flags that carry it. */
+const INLINE_CODE = /^(python[\d.]*|node|deno|bun|perl|ruby|osascript)$/
+const INLINE_FLAGS = new Set(['-c', '-e', '-E', '--eval', '-p', '--print'])
+
+/** What inline code may not name: the sign-off, its script, a ledger, the pane's marker. */
+const AUDIT_WORDS = /audit:sign|release-audit|ledger\.json|WFL_AUDIT_SIGNER/i
+
+/** A release audit's ledger, however it is spelled: only `wfl audit:*` and the checked Write/Edit tools change one. */
+const LEDGER_FILE = /(^|[/=@])ledger\.json$/i
+
+/** Commands that write, move or delete every file they name; and those that write only their last one. */
+const LEDGER_CLOBBERS = new Set(['tee', 'mv', 'rm', 'truncate', 'touch', 'patch', 'shred', 'unlink'])
+const LEDGER_TARGETS = new Set(['cp', 'ln', 'install', 'rsync', 'ditto', 'scp'])
+
+/**
+ * `wfl audit:sign`, or the script behind it (`release-audit.py … sign`), wherever its words sit: behind
+ * `timeout`, `nice -n 5`, `xargs`, `env -u`, `find -exec`, an interpreter's options or `uv run`.
+ */
+function signsAudit(words: string[]): boolean {
+  const wfl = words.findIndex(w => basenameOf(w) === 'wfl')
+  if (wfl !== -1 && words.slice(wfl + 1).includes('audit:sign')) return true
+  const script = words.findIndex(w => basenameOf(w) === 'release-audit.py')
+  return script !== -1 && words.slice(script + 1).includes('sign')
+}
+
+/** The ledger a simple command writes, moves or deletes, as it read it, or undefined. */
+function ledgerWriteOf(words: string[]): string | undefined {
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i] ?? ''
+    if (!w.includes('>')) continue
+    const target = w.slice(w.lastIndexOf('>') + 1) || (words[i + 1] ?? '')
+    if (LEDGER_FILE.test(target)) return w.endsWith('>') ? `${w} ${target}` : w
   }
-  return false
+  const cmd = commandWordsOf(words)
+  const name = basenameOf(cmd[0] ?? '')
+  const args = cmd.slice(1)
+  const named = args.find(w => LEDGER_FILE.test(w))
+  if (named === undefined) return undefined
+  if (LEDGER_CLOBBERS.has(name)) return `${name} ${named}`
+  if (LEDGER_TARGETS.has(name) && LEDGER_FILE.test(args.filter(w => !w.startsWith('-')).pop() ?? '')) return `${name} … ${named}`
+  if ((name === 'sed' || name === 'gsed' || name === 'perl') && args.some(w => /^-[A-Za-z]*i/.test(w) || w.startsWith('--in-place'))) return `${name} -i ${named}`
+  if (name === 'dd' && args.some(w => w.startsWith('of=') && LEDGER_FILE.test(w))) return `dd ${named}`
+  return undefined
+}
+
+/** Why a command that would record, forge or bypass a release audit's sign-off is refused, or undefined. */
+function auditVerdictOf(words: string[]): string | undefined {
+  if (signsAudit(words)) return SIGN_REFUSAL
+  if (words.some(w => /^WFL_AUDIT_SIGNER=/.test(w))) {
+    return "`WFL_AUDIT_SIGNER` marks the cockpit's own /audit pane, the maintainer's way to record a decision: Claude never sets it."
+  }
+  for (let i = 0; i + 2 < words.length; i++) {
+    if (INLINE_CODE.test(basenameOf(words[i] ?? '')) && INLINE_FLAGS.has(words[i + 1] ?? '') && AUDIT_WORDS.test(words[i + 2] ?? '')) {
+      return "inline code that names the release audit's sign-off, its script or a ledger: read a ledger with the Read tool, `jq` or `wfl audit:status|check`. A decision is the maintainer's (/audit)."
+    }
+  }
+  const write = ledgerWriteOf(words)
+  if (write !== undefined) {
+    return `\`${write}\`: a release audit's ledger changes only through \`wfl audit:*\` and the Write and Edit tools, which check its decisions; the shell would go around that check (the release-audit skill).`
+  }
+  return undefined
 }
 
 /** Why one simple command is refused, or undefined. */
 function verdictOfWords(words: string[], depth: number, isInContainer: boolean, isStrict: boolean, releaseTag: string): string | undefined {
+  const audit = auditVerdictOf(words)
+  if (audit !== undefined) return audit
+
   const cmd = commandWordsOf(words)
   const head = cmd[0]
   if (head === undefined) return undefined
 
   const name = basenameOf(head)
   const args = cmd.slice(1)
+
+  // `eval` runs its words as a command line of their own.
+  if (name === 'eval' && depth < 3) return verdictOf(args.join(' '), depth + 1, isInContainer, isStrict, releaseTag)
 
   if (!isInContainer && (HOST_PHP.has(name) || /(^|\/)vendor\/bin\//.test(head))) {
     return `\`${name}\` would run on the host, and PHP never runs on the host here: ${DOCKER_HINT}.`
@@ -357,10 +419,6 @@ function verdictOfWords(words: string[], depth: number, isInContainer: boolean, 
   // PHP belongs in the container; git and release rules apply there all the same.
   const inner = name === 'docker' ? dockerExecCommandOf(args) : undefined
   if (inner !== undefined && depth < 3) return verdictOfWords(inner, depth + 1, true, isStrict, releaseTag)
-
-  if (isAuditSign(name, args)) {
-    return "`wfl audit:sign` records the maintainer's decision on a release-audit finding, so Claude never runs it (the release-audit skill). Ask the person to decide in /audit, or to run it in their own terminal."
-  }
 
   if (name === 'git') return gitVerdictOf(args, releaseTag)
 
