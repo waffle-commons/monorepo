@@ -7,9 +7,10 @@
 #
 # Steps (each one skips what is already done, so a re-run is safe):
 #   1. host prerequisites                 (scripts/doctor.sh --prereqs)
-#   2. submodules: only the uninitialised ones. A checked-out submodule is never
-#      touched, so a re-run cannot detach a pre-release branch. A submodule you
-#      cannot read (the private academy) is skipped with a note.
+#   2. submodules: the uninitialised ones, and any clone left without a checkout.
+#      A checked-out submodule is never touched, so a re-run cannot detach a
+#      pre-release branch. A submodule you cannot read (the private academy) is
+#      skipped with a note.
 #   3. the Docker dev stack               (docker compose up --build -d)
 #   4. composer install in every component whose vendor/ is missing or stale
 #   5. git hooks                          (scripts/install-git-hooks.sh)
@@ -91,9 +92,7 @@ while IFS= read -r path; do
   [ -n "$path" ] && uninit+=("$path")
 done < <(git submodule status | awk '/^-/ {print $2}')
 
-if [ "${#uninit[@]}" -eq 0 ]; then
-  ok "all $(git submodule status | grep -c .) submodules already initialised (left untouched)"
-else
+if [ "${#uninit[@]}" -gt 0 ]; then
   info "initialising ${#uninit[@]} submodule(s): ${uninit[*]}"
   git ${GIT_URL[@]+"${GIT_URL[@]}"} submodule update --init --recursive --jobs "$JOBS" -- "${uninit[@]}" || true
   skipped=()
@@ -107,23 +106,36 @@ else
   if [ "${#skipped[@]}" -gt 0 ]; then
     warn "skipped (no access, or the network failed): ${skipped[*]} — the academy is private; everything else works without it"
   fi
-  # One failed clone makes git abort before it checks the other new clones out at
-  # their pinned commits, leaving them on the remote's default branch. Pin them now:
-  # they were cloned by this run, so there is no local work to lose.
-  unpinned=()
-  for path in "${uninit[@]}"; do
-    git submodule status -- "$path" | grep -q '^+' && unpinned+=("$path")
-  done
-  if [ "${#unpinned[@]}" -gt 0 ]; then
-    git ${GIT_URL[@]+"${GIT_URL[@]}"} submodule update --recursive --jobs "$JOBS" -- "${unpinned[@]}" >/dev/null 2>&1 || true
-    still=()
-    for path in "${unpinned[@]}"; do
-      git submodule status -- "$path" | grep -q '^+' && still+=("$path")
-    done
-    if [ "${#still[@]}" -gt 0 ]; then
-      warn "not at the commit the umbrella pins (is the umbrella ahead of what was pushed?): ${still[*]}"
+fi
+
+# One failed clone makes git abort before it checks out any of the new clones. Each
+# one stays empty, with HEAD on its remote's default branch, so `git submodule status`
+# reports the right commit for every clone pinned at that branch's tip. A clone whose
+# index is empty was never checked out and holds no local work: check it out at its
+# pin, with --force, because git skips a submodule whose HEAD already matches. A
+# re-run repairs a clone an earlier run left empty the same way.
+never_checked_out() { [ -z "$(git -C "$1" ls-files 2>/dev/null | head -n 1)" ]; }
+empty=()
+while IFS= read -r path; do
+  [ -n "$path" ] && never_checked_out "$path" && empty+=("$path")
+done < <(git submodule status | awk '!/^-/ {print $2}')
+if [ "${#empty[@]}" -gt 0 ]; then
+  info "checking out ${#empty[@]} submodule(s) cloned but never checked out: ${empty[*]}"
+  git ${GIT_URL[@]+"${GIT_URL[@]}"} submodule update --force --recursive --jobs "$JOBS" -- "${empty[@]}" >/dev/null 2>&1 || true
+  still=()
+  for path in "${empty[@]}"; do
+    if never_checked_out "$path" || git submodule status -- "$path" | grep -q '^+'; then
+      still+=("$path")
     fi
+  done
+  if [ "${#still[@]}" -gt 0 ]; then
+    warn "not checked out at the commit the umbrella pins (is the umbrella ahead of what was pushed?): ${still[*]}"
   fi
+fi
+
+if [ "${#uninit[@]}" -eq 0 ] && [ "${#empty[@]}" -eq 0 ]; then
+  ok "all $(git submodule status | grep -c .) submodules already initialised (left untouched)"
+else
   ok "submodules ready"
   if [ "$HTTPS" -eq 1 ]; then
     info "to keep using HTTPS for fetches inside the submodules: git config --global url.https://github.com/.insteadOf git@github.com:"
