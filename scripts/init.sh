@@ -157,13 +157,25 @@ else
   [ -f "$COMPOSE_FILE" ] || die "compose file missing: $COMPOSE_FILE (is the workspace submodule checked out?)"
   info "building and starting the stack (the first build takes a few minutes)…"
   (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" up --build -d) || die "docker compose up failed"
-  for _ in $(seq 1 60); do
-    [ "$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null)" = "running" ] && break
-    sleep 2
+  # Wait for 'healthy', not just 'running': on a fresh clone the entrypoint runs its own
+  # composer install for workspace before it starts FrankenPHP, and the composer runs of
+  # step 4 share its download cache — started alongside it, they corrupt its archives
+  # and the container exits (fresh-install run 42816586212). /health answers only once
+  # the entrypoint is done. 'unhealthy' is not final here: the healthcheck's short start
+  # period runs out during a cold install, and the status flips once the server is up.
+  waited=0 limit="${WFL_INIT_HEALTH_TIMEOUT:-900}"
+  info "waiting for $CONTAINER to report healthy (a fresh clone installs workspace's vendor first)…"
+  while :; do
+    st="$(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$CONTAINER" 2>/dev/null || printf 'absent')"
+    [ "$st" = "running healthy" ] && break
+    if [ "${st%% *}" != "running" ] && [ "${st%% *}" != "created" ] || [ "$waited" -ge "$limit" ]; then
+      printf -- '--- %s is %s after %ss; its log (last 40 lines) ---\n' "$CONTAINER" "$st" "$waited" >&2
+      docker logs --tail 40 "$CONTAINER" >&2 2>&1 || true
+      die "$CONTAINER did not become healthy (docker compose -f $COMPOSE_FILE logs waffle)"
+    fi
+    sleep 5; waited=$((waited + 5))
   done
-  [ "$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null)" = "running" ] \
-    || die "$CONTAINER did not reach 'running' (docker compose -f $COMPOSE_FILE logs waffle)"
-  ok "$CONTAINER running"
+  ok "$CONTAINER running and healthy"
 fi
 
 # --- 4. composer install ----------------------------------------------------
