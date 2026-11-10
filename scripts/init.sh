@@ -200,7 +200,16 @@ else
       if [ -f "$logdir/$comp.ok" ]; then ok "$comp"; else failed+=("$comp"); fi
     done
     if [ "${#failed[@]}" -gt 0 ]; then
-      warn "composer install failed in: ${failed[*]} (logs: $logdir)"
+      # The cause is in the first failed log, or in the container's own log when it
+      # stopped mid-install (every later exec then fails the same way).
+      printf -- '--- %s (last 20 lines) ---\n' "${failed[0]}" >&2
+      tail -n 20 "$logdir/${failed[0]}.log" >&2
+      state="$(docker inspect -f '{{.State.Status}} exit={{.State.ExitCode}}' "$CONTAINER" 2>/dev/null || printf 'absent')"
+      if [ "${state%% *}" != "running" ]; then
+        printf -- '--- %s is %s; its log (last 40 lines) ---\n' "$CONTAINER" "$state" >&2
+        docker logs --tail 40 "$CONTAINER" >&2 2>&1 || true
+      fi
+      die "composer install failed in: ${failed[*]} (logs: $logdir)"
     else
       rm -rf "$logdir"
     fi
