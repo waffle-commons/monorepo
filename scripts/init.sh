@@ -27,6 +27,13 @@ COMPOSE_FILE="$REPO_ROOT/workspace/docker-compose.yml"
 CONTAINER="waffle-dev"
 JOBS="${WFL_INIT_JOBS:-4}"
 
+# The dev image's user must own the bind-mounted clone on Linux (GitHub runners are
+# uid 1001, the image default is 1000): pass the host uid/gid to the compose build.
+# Docker Desktop (macOS) hides ownership, so it keeps the default; root keeps it too.
+if [ "$(uname -s)" = "Linux" ] && [ "$(id -u)" -ne 0 ]; then
+  export WAFFLE_UID="${WAFFLE_UID:-$(id -u)}" WAFFLE_GID="${WAFFLE_GID:-$(id -g)}"
+fi
+
 HTTPS=0; SKIP_DOCKER=0; SKIP_COMPOSER=0; SKIP_AI=0; NO_LINK=0
 for arg in "$@"; do
   case "$arg" in
