@@ -35,6 +35,14 @@ jobs:
       - name: bin/wfl init (HTTPS, no MCP warm-up, no PATH link)
         run: bin/wfl init --https --skip-ai --no-link
 
+      - name: Dev stack diagnostics (on failure)
+        if: failure()
+        run: |
+          docker compose -f workspace/docker-compose.yml ps -a || true
+          docker compose -f workspace/docker-compose.yml logs --no-color waffle || true
+          docker inspect waffle-dev --format '{{.State.Status}} exit={{.State.ExitCode}} err={{.State.Error}}' || true
+          id; stat -c '%u:%g %n' workspace workspace/var 2>/dev/null || true
+
       - name: The private academy was skipped, every public submodule initialised
         run: |
           set -euo pipefail
