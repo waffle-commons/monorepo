@@ -155,6 +155,19 @@ if [ "$SKIP_DOCKER" -eq 1 ]; then
   info "skipped (--skip-docker)"
 else
   [ -f "$COMPOSE_FILE" ] || die "compose file missing: $COMPOSE_FILE (is the workspace submodule checked out?)"
+  # workspace/.env is gitignored, so a clone has only .env.example. Without it APP_ENV is
+  # unset, the app boots as production and refuses to start without APP_SECRET
+  # (fresh-install run 42820415177). Create it once, with a random APP_SECRET; an
+  # existing .env is never touched.
+  envfile="$REPO_ROOT/workspace/.env"
+  if [ ! -f "$envfile" ] && [ -f "$envfile.example" ]; then
+    secret="$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')"
+    [ "${#secret}" -eq 64 ] || die "could not generate APP_SECRET for workspace/.env (needs openssl or python3)"
+    ( umask 077; awk -v s="$secret" '/^APP_SECRET=/ { print "APP_SECRET=" s; next } { print }' \
+        "$envfile.example" >"$envfile" ) || die "could not write $envfile"
+    grep -q "^APP_SECRET=$secret\$" "$envfile" || die "$envfile has no APP_SECRET line to fill (check .env.example)"
+    ok "workspace/.env created from .env.example, with a random APP_SECRET"
+  fi
   info "building and starting the stack (the first build takes a few minutes)…"
   (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" up --build -d) || die "docker compose up failed"
   # Wait for 'healthy', not just 'running': on a fresh clone the entrypoint runs its own
