@@ -14,6 +14,72 @@ export type CockpitStatus = {
   localOnly: number | null
   /** Seconds since the last `wfl backup`; null when none is recorded. */
   backupAgeS: number | null
+  /** The release audit the line shows (`wfl audit:status --json`); absent or null when there is none to show. */
+  audit?: AuditStatus | null
+}
+
+/** A release audit's progress, as the status line draws it. */
+export type AuditStatus = {
+  /** The release audited, e.g. `0.1.0-beta8`. */
+  version: string
+  /** The run's name, `release-audit` unless a rehearsal. */
+  run: string
+  /** Who runs its agents: `balanced`, `economy`, `thorough`, `custom`, `inherited`; empty before a run exists. */
+  profile: string
+  /**
+   * `not-started`, `evidence`, `calibration`, `finders`, `verification`, `triage`, `decisions`, `integration`,
+   * `closure`, `done`, or `unreadable` when the run's files do not parse.
+   */
+  phase: string
+  /** One short progress text for the phase (`5/12 finders`, `decided 3/40`); empty when none. */
+  progress: string
+  /** Findings of that severity whose status is still open. */
+  openCritical: number
+  openHigh: number
+  /** `wfl audit:check --gate` as the status report reads it; null before the ledger exists. */
+  gate: 'pass' | 'fail' | null
+}
+
+/** One ledger finding, as the /audit pane lists it. */
+export type AuditFinding = {
+  id: string
+  severity: string
+  title: string
+  where: string
+  lens: string
+  verdict: string
+  moscow: string
+  /** The triager's proposal: `fix`, `accept` or `post-v1`. */
+  proposal: string
+  summary: string
+  fix: string
+  /** `open`, `fixed`, `accepted` or `deferred`. */
+  status: string
+  /** The maintainer's decision as one line (`accept · Leslie Petrimaux · 2026-11-20 · demo only`); empty while undecided. */
+  decision: string
+}
+
+/** What the /audit pane draws. */
+export type AuditView = {
+  version: string
+  run: string
+  /** The run folder, relative to the umbrella root. */
+  dir: string
+  findings: AuditFinding[]
+  /** The id of the finding the controls act on; empty when the ledger has none. */
+  selected: string
+  /** The decision the reason field records on Enter. */
+  choice: 'fix' | 'accept' | 'post-v1'
+  /** The last action's outcome, under the controls; empty before any. */
+  message: string
+  /** The decisions recorded from this pane, `<id> <choice>`, for "Send decisions to Claude". */
+  recorded: string[]
+  /** True while a decision is being recorded. */
+  isBusy: boolean
+  /** What the Reason field holds, so the Record button can send it; absent in a view stored before 0.5.1. */
+  reason?: string
+  /** What the Residual risk field holds (accept and post-v1 need it); absent in a view stored before 0.6.0. */
+  residual?: string
 }
 
 /** Which components changed since their last green DoD: `$.clock.now()` of the last edit and of the last pass. */
@@ -150,6 +216,8 @@ declare module 'claude-code' {
       evidence: Evidence
       history: Record<string, DodRecord>
       isHidden: boolean
+      /** The /audit pane's ledger and controls; null until /audit opens it. */
+      auditView: AuditView | null
     }
   }
 }

@@ -4,7 +4,7 @@ description: "Security audit of one component: statelessness, fail-closed ABAC, 
 when_to_use: >-
   Auditing a component's security, #[PublicAccess] or #[Voter] reviews, SSRF (SEC-02), timing-safe
   comparisons (SEC-03, wfl compare-audit), CORS, path traversal, superglobals or sessions in worker
-  mode, the beta8 final re-audit [AUD-01].
+  mode, one component's depth inside a release audit.
 argument-hint: "[component]"
 ---
 
@@ -71,13 +71,23 @@ Re-run the complete audit against the **final** surface.
 | `/waffle-metrics`, connection pooling, WebAuthn | re-check under the final wiring |
 | EcoShield proxy path | header smuggling; hop-by-hop handling, including `Connection`-named fields; request smuggling (CL/TE ambiguity); `Host` / `X-Forwarded-*` trust; cache confidentiality (no shared caching of `Authorization` or `Cookie` responses); egress pinning. The gateway's perimeter campaign (280 assertions) is the regression baseline (`[[ecoshield]]`) |
 
-**Method (the beta6 precedent):** more than one independent engine; every candidate re-verified by a
-reviewer told to refute before confirming; one consolidated triage ledger (dedupe, reconcile severity,
-adjudicate disagreements with code evidence).
+**Method:** the `release-audit` skill runs the whole audit (`/release-audit 0.1.0-beta8`), with Claude
+Code doing every phase. Since 2026-11-05 that replaces the beta6 rule of "more than one independent
+engine". Independence now comes from five things:
+- tool evidence read before any code;
+- a separate finder per lens;
+- blind, refute-first verifiers that see the claim but never the finder's reasoning;
+- two verdicts on every HIGH or CRITICAL, majority verdicts, and a third verifier on a tie;
+- a calibration on known defects.
 
-**Disposition:** every finding is fixed in beta8 or formally **risk-accepted with sign-off** in the
-report (who, when, why, residual risk). The report goes under `project_system/Audits/Beta8/`. `Audits/`
-is gitignored, so the archive is local: say where it lives in `Roadmap_Beta8.md`.
+One `ledger.json` holds the triage.
 
-Dispatch the `security-auditor` agent per component, `auth-bridge-audit` and the `webauthn-auditor`
-agent for `auth`.
+**Disposition:** every finding is fixed in beta8, or formally **risk-accepted with sign-off** (who, when,
+why, residual risk). The maintainer records it through `/audit` or `wfl audit:sign`, never Claude. The
+run lives in `project_system/Audits/Beta8/release-audit/`. `Audits/` is gitignored, so the archive is
+local: say where it lives in `Roadmap_Beta8.md`. `wfl audit:check 0.1.0-beta8 --gate` is the evidence for
+exit gate #4.
+
+For depth on one component, the `security-auditor` agent still grades it against the checklist above.
+`auth` also gets `auth-bridge-audit`. Inside an audit run its passkeys are the `WA` unit: the
+`webauthn-auditor` agent applies fixes, so it stays outside a run.

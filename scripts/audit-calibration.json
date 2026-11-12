@@ -1,0 +1,9 @@
+{
+  "_comment": "The release audit's calibration (the release-audit skill): defects fixed in beta6 [FIX-01] (Roadmap_Beta6.md), replayed on the tree before their fix to measure what the finders raise unprompted. `wfl audit:calibrate` snapshots each fix's parent and takes the expected lines from the fix's own diff of `files`. A calibration finder reads its snapshot only, never this file.",
+  "defects": [
+    {"id": "FIX-01-1", "repo": "data", "fix": "34ef8d2", "lens": "A05", "files": ["src/Compiler/SQLDialect.php"]},
+    {"id": "FIX-01-14", "repo": "data", "fix": "34ef8d2", "lens": "A05", "files": ["src/Compiler/CassandraCompiler.php", "src/Repository/CassandraRepository.php"]},
+    {"id": "FIX-01-3", "repo": "http", "fix": "70a2959", "lens": "A01", "files": ["src/Factory/GlobalsFactory.php", "src/Factory/UploadedFilesNormalizer.php", "src/UploadedFile.php"]},
+    {"id": "FIX-01-7", "repo": "auth", "fix": "9adec27", "lens": "W2", "files": ["src/Authenticator/BasicAuthenticator.php"]}
+  ]
+}

@@ -30,6 +30,9 @@ December 2026 work.
 - **`[RC-01]` Exit-gate re-verification.** Re-run the 7-point beta8 freeze exit gate
   (`[[api-freeze]]`) on the RC tree. A failure is a freeze regression, and its fix is the only
   permitted change. Collect the evidence with the `acceptance-verifier` agent.
+  - Point 4: a `[[release-audit]]` diff-scoped run covers the RC delta (`wfl audit:init 1.0.0-RC1 --only
+    <changed> --base 0.1.0-beta8`). Its `wfl audit:check 1.0.0-RC1 --gate` re-checks the beta8 gate with
+    it, and must pass before the tag.
 - **`[RC-02]` Deprecation removal.** Delete every symbol deprecated in beta8, in both forms
   (`#[\Deprecated]` attribute and `@deprecated` docblock). Skeleton, workspace, Academy and EcoShield must
   compile and pass against the post-removal tree.
@@ -54,14 +57,15 @@ December 2026 work.
 ## RC2 contingency — triggered, never planned
 - **Trigger:** a **critical** defect during the soak — security, data corruption, crash, memory drift.
   Cosmetic and minor issues ride to `1.0.1`.
-- **If triggered:** the fix plus targeted regression tests only; re-tag `1.0.0-RC2`; **restart the
-  four-week clock**. Gold moves by ~5 weeks — acceptable; shipping the defect is not.
+- **If triggered:** the fix plus targeted regression tests only; a release-audit run over the RC1 → RC2
+  delta (`--base 1.0.0-RC1`) passes its gate; re-tag `1.0.0-RC2`; **restart the four-week clock**. Gold moves by ~5 weeks — acceptable; shipping the defect is not.
 
 ## Gold entry gate (`Roadmap_RC1.md`)
 1. Soak completed uninterrupted: ≥4 weeks, zero criticals.
 2. All components pass gates on the **exact RC SHA set** (no post-tag drift).
 3. Wave rehearsal green end to end; Packagist pages verified for every `RELEASE_INCLUDE` repo.
 4. Benchmark and audit reports archived; launch numbers sourced from RC bits.
+   `WFL_AUDIT_VERSION=<the soaked RC> wfl pre-release --all` holds Gold on that RC's audit run.
 5. `Roadmap_v1_Gold.md` launch checklist unblocked.
 
 Gold is `1.0.0` on the soaked SHA set with **zero code delta**; any delta means RC2, not Gold.

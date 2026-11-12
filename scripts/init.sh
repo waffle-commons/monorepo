@@ -7,9 +7,10 @@
 #
 # Steps (each one skips what is already done, so a re-run is safe):
 #   1. host prerequisites                 (scripts/doctor.sh --prereqs)
-#   2. submodules: only the uninitialised ones. A checked-out submodule is never
-#      touched, so a re-run cannot detach a pre-release branch. A submodule you
-#      cannot read (the private academy) is skipped with a note.
+#   2. submodules: the uninitialised ones, and any clone left without a checkout.
+#      A checked-out submodule is never touched, so a re-run cannot detach a
+#      pre-release branch. A submodule you cannot read (the private academy) is
+#      skipped with a note.
 #   3. the Docker dev stack               (docker compose up --build -d)
 #   4. composer install in every component whose vendor/ is missing or stale
 #   5. git hooks                          (scripts/install-git-hooks.sh)
@@ -25,6 +26,13 @@ REPO_ROOT="$(cd -P -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 COMPOSE_FILE="$REPO_ROOT/workspace/docker-compose.yml"
 CONTAINER="waffle-dev"
 JOBS="${WFL_INIT_JOBS:-4}"
+
+# The dev image's user must own the bind-mounted clone on Linux (GitHub runners are
+# uid 1001, the image default is 1000): pass the host uid/gid to the compose build.
+# Docker Desktop (macOS) hides ownership, so it keeps the default; root keeps it too.
+if [ "$(uname -s)" = "Linux" ] && [ "$(id -u)" -ne 0 ]; then
+  export WAFFLE_UID="${WAFFLE_UID:-$(id -u)}" WAFFLE_GID="${WAFFLE_GID:-$(id -g)}"
+fi
 
 HTTPS=0; SKIP_DOCKER=0; SKIP_COMPOSER=0; SKIP_AI=0; NO_LINK=0
 for arg in "$@"; do
@@ -91,9 +99,7 @@ while IFS= read -r path; do
   [ -n "$path" ] && uninit+=("$path")
 done < <(git submodule status | awk '/^-/ {print $2}')
 
-if [ "${#uninit[@]}" -eq 0 ]; then
-  ok "all $(git submodule status | grep -c .) submodules already initialised (left untouched)"
-else
+if [ "${#uninit[@]}" -gt 0 ]; then
   info "initialising ${#uninit[@]} submodule(s): ${uninit[*]}"
   git ${GIT_URL[@]+"${GIT_URL[@]}"} submodule update --init --recursive --jobs "$JOBS" -- "${uninit[@]}" || true
   skipped=()
@@ -107,23 +113,36 @@ else
   if [ "${#skipped[@]}" -gt 0 ]; then
     warn "skipped (no access, or the network failed): ${skipped[*]} — the academy is private; everything else works without it"
   fi
-  # One failed clone makes git abort before it checks the other new clones out at
-  # their pinned commits, leaving them on the remote's default branch. Pin them now:
-  # they were cloned by this run, so there is no local work to lose.
-  unpinned=()
-  for path in "${uninit[@]}"; do
-    git submodule status -- "$path" | grep -q '^+' && unpinned+=("$path")
-  done
-  if [ "${#unpinned[@]}" -gt 0 ]; then
-    git ${GIT_URL[@]+"${GIT_URL[@]}"} submodule update --recursive --jobs "$JOBS" -- "${unpinned[@]}" >/dev/null 2>&1 || true
-    still=()
-    for path in "${unpinned[@]}"; do
-      git submodule status -- "$path" | grep -q '^+' && still+=("$path")
-    done
-    if [ "${#still[@]}" -gt 0 ]; then
-      warn "not at the commit the umbrella pins (is the umbrella ahead of what was pushed?): ${still[*]}"
+fi
+
+# One failed clone makes git abort before it checks out any of the new clones. Each
+# one stays empty, with HEAD on its remote's default branch, so `git submodule status`
+# reports the right commit for every clone pinned at that branch's tip. A clone whose
+# index is empty was never checked out and holds no local work: check it out at its
+# pin, with --force, because git skips a submodule whose HEAD already matches. A
+# re-run repairs a clone an earlier run left empty the same way.
+never_checked_out() { [ -z "$(git -C "$1" ls-files 2>/dev/null | head -n 1)" ]; }
+empty=()
+while IFS= read -r path; do
+  [ -n "$path" ] && never_checked_out "$path" && empty+=("$path")
+done < <(git submodule status | awk '!/^-/ {print $2}')
+if [ "${#empty[@]}" -gt 0 ]; then
+  info "checking out ${#empty[@]} submodule(s) cloned but never checked out: ${empty[*]}"
+  git ${GIT_URL[@]+"${GIT_URL[@]}"} submodule update --force --recursive --jobs "$JOBS" -- "${empty[@]}" >/dev/null 2>&1 || true
+  still=()
+  for path in "${empty[@]}"; do
+    if never_checked_out "$path" || git submodule status -- "$path" | grep -q '^+'; then
+      still+=("$path")
     fi
+  done
+  if [ "${#still[@]}" -gt 0 ]; then
+    warn "not checked out at the commit the umbrella pins (is the umbrella ahead of what was pushed?): ${still[*]}"
   fi
+fi
+
+if [ "${#uninit[@]}" -eq 0 ] && [ "${#empty[@]}" -eq 0 ]; then
+  ok "all $(git submodule status | grep -c .) submodules already initialised (left untouched)"
+else
   ok "submodules ready"
   if [ "$HTTPS" -eq 1 ]; then
     info "to keep using HTTPS for fetches inside the submodules: git config --global url.https://github.com/.insteadOf git@github.com:"
@@ -136,15 +155,40 @@ if [ "$SKIP_DOCKER" -eq 1 ]; then
   info "skipped (--skip-docker)"
 else
   [ -f "$COMPOSE_FILE" ] || die "compose file missing: $COMPOSE_FILE (is the workspace submodule checked out?)"
+  # workspace/.env is gitignored, so a clone has only .env.example. Without it APP_ENV is
+  # unset, the app boots as production and refuses to start without APP_SECRET
+  # (fresh-install run 42820415177). Create it once, with a random APP_SECRET; an
+  # existing .env is never touched.
+  envfile="$REPO_ROOT/workspace/.env"
+  if [ ! -f "$envfile" ] && [ -f "$envfile.example" ]; then
+    secret="$(openssl rand -hex 32 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(32))')"
+    [ "${#secret}" -eq 64 ] || die "could not generate APP_SECRET for workspace/.env (needs openssl or python3)"
+    ( umask 077; awk -v s="$secret" '/^APP_SECRET=/ { print "APP_SECRET=" s; next } { print }' \
+        "$envfile.example" >"$envfile" ) || die "could not write $envfile"
+    grep -q "^APP_SECRET=$secret\$" "$envfile" || die "$envfile has no APP_SECRET line to fill (check .env.example)"
+    ok "workspace/.env created from .env.example, with a random APP_SECRET"
+  fi
   info "building and starting the stack (the first build takes a few minutes)…"
   (cd "$REPO_ROOT/workspace" && docker compose -f "$COMPOSE_FILE" up --build -d) || die "docker compose up failed"
-  for _ in $(seq 1 60); do
-    [ "$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null)" = "running" ] && break
-    sleep 2
+  # Wait for 'healthy', not just 'running': on a fresh clone the entrypoint runs its own
+  # composer install for workspace before it starts FrankenPHP, and the composer runs of
+  # step 4 share its download cache — started alongside it, they corrupt its archives
+  # and the container exits (fresh-install run 42816586212). /health answers only once
+  # the entrypoint is done. 'unhealthy' is not final here: the healthcheck's short start
+  # period runs out during a cold install, and the status flips once the server is up.
+  waited=0 limit="${WFL_INIT_HEALTH_TIMEOUT:-900}"
+  info "waiting for $CONTAINER to report healthy (a fresh clone installs workspace's vendor first)…"
+  while :; do
+    st="$(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$CONTAINER" 2>/dev/null || printf 'absent')"
+    [ "$st" = "running healthy" ] && break
+    if [ "${st%% *}" != "running" ] && [ "${st%% *}" != "created" ] || [ "$waited" -ge "$limit" ]; then
+      printf -- '--- %s is %s after %ss; its log (last 40 lines) ---\n' "$CONTAINER" "$st" "$waited" >&2
+      docker logs --tail 40 "$CONTAINER" >&2 2>&1 || true
+      die "$CONTAINER did not become healthy (docker compose -f $COMPOSE_FILE logs waffle)"
+    fi
+    sleep 5; waited=$((waited + 5))
   done
-  [ "$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null)" = "running" ] \
-    || die "$CONTAINER did not reach 'running' (docker compose -f $COMPOSE_FILE logs waffle)"
-  ok "$CONTAINER running"
+  ok "$CONTAINER running and healthy"
 fi
 
 # --- 4. composer install ----------------------------------------------------
@@ -181,7 +225,16 @@ else
       if [ -f "$logdir/$comp.ok" ]; then ok "$comp"; else failed+=("$comp"); fi
     done
     if [ "${#failed[@]}" -gt 0 ]; then
-      warn "composer install failed in: ${failed[*]} (logs: $logdir)"
+      # The cause is in the first failed log, or in the container's own log when it
+      # stopped mid-install (every later exec then fails the same way).
+      printf -- '--- %s (last 20 lines) ---\n' "${failed[0]}" >&2
+      tail -n 20 "$logdir/${failed[0]}.log" >&2
+      state="$(docker inspect -f '{{.State.Status}} exit={{.State.ExitCode}}' "$CONTAINER" 2>/dev/null || printf 'absent')"
+      if [ "${state%% *}" != "running" ]; then
+        printf -- '--- %s is %s; its log (last 40 lines) ---\n' "$CONTAINER" "$state" >&2
+        docker logs --tail 40 "$CONTAINER" >&2 2>&1 || true
+      fi
+      die "composer install failed in: ${failed[*]} (logs: $logdir)"
     else
       rm -rf "$logdir"
     fi
