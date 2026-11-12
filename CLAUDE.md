@@ -77,7 +77,7 @@ messages. Native-first fixes; never a baseline or suppression.
 3. **`project_system/`** — the source of truth for project **direction**: `RFCs/` (RFC-001…024) and
    `Roadmaps/` (`Roadmap_Alpha5 → Roadmap_v1_Gold` and `Roadmap_Post_v1`, plus `Roadmap_v1_Master`). Consult it before
    planning roadmap work; see the `roadmap-steward` skill.
-4. **The release phase** — beta7 build → beta8 freeze → RC1 certification. What each phase allows is in
+4. **The release phase** — beta7 build (shipped) → beta8 freeze (current) → RC1 certification. What each phase allows is in
    `AGENTS.md` §5b; `tech-lead` routes by phase.
 
 Hard invariants: components depend **only** on `waffle-commons/contracts` (plus `waffle-commons/utils`,

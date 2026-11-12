@@ -84,9 +84,9 @@ Services must be **stateless and resettable** across requests (resident-memory w
   with `scripts/list-components.sh` (parsed from `.gitmodules`), never a hardcoded count.
   - **Framework:** `contracts`, `utils`, `waffle`, `runtime`, `pipeline`, `routing`, `http`,
     `http-client`, `security`, `auth`, `data`, `cache`, `container`, `config`, `console`, `log`,
-    `event-dispatcher`, `error-handler`, `telemetry`, `telemetry-otel`, `async`. Beta7 adds `queue`,
-    `openapi`, `serializer`, `testing`: scaffolded from `component-template` (`component-scaffold`
-    skill), their code lands this release, tests and coverage switch on with their first class.
+    `event-dispatcher`, `error-handler`, `telemetry`, `telemetry-otel`, `async`, and `queue`,
+    `openapi`, `serializer`, `testing`, scaffolded from `component-template` (`component-scaffold`
+    skill) and first released with beta7.
   - **Template / docs:** `skeleton`, `workspace`, `academy`, `documentation`, `component-template`.
   - The `ecoshield-gateway` POC is its own repository (`contributions/ecoshield-gateway/`, gitignored
     here), outside the release wave: the v1 adoption dogfood (`ecoshield` skill).
@@ -127,11 +127,11 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
 | `0.1.0-beta4` | Security & stability (shipped) | `Roadmap_Beta4.md` |
 | `0.1.0-beta5` | AOT · pooling · async · telemetry · WebAuthn (shipped) | `Roadmap_Beta5.md` |
 | `0.1.0-beta6` | Stabilization & audit (shipped) — multi-engine audits · Diátaxis docs · EcoShield POC · K6 benchmarking | `Roadmap_Beta6.md` |
-| `0.1.0-beta7` | **Production surface (current work)** — `queue` · `openapi` · `serializer` · `testing` · NET · OPS | `Roadmap_Beta7.md` |
-| `0.1.0-beta8` | Consolidation & API freeze (last feature release) | `Roadmap_Beta8.md` |
+| `0.1.0-beta7` | Production surface (shipped) — `queue` · `openapi` · `serializer` · `testing` · NET · OPS | `Roadmap_Beta7.md` |
+| `0.1.0-beta8` | **Consolidation & API freeze (current work)** — the last feature release | `Roadmap_Beta8.md` |
 | `1.0.0-RC1` → `1.0.0` | Freeze cert + EcoShield-Gateway soak → Gold | `Roadmap_RC1.md` / `Roadmap_v1_Gold.md` |
 
-- **Dates:** beta6 **Sep 2026** · beta7 **Nov** (tag targeted 5 November, re-dated 2026-10-21) ·
+- **Dates:** beta6 **Sep 2026** · beta7 **Nov** (shipped 5 Nov, on the date set on 2026-10-21) ·
   beta8 **Dec** (~3 Dec) · RC1 **Dec** (~12 Dec) · Gold **late Jan 2027** (the post-BBL pivot of 2026-07 pulled the audit into
   beta6; the train slipped one month on 2026-09-06).
 - **Version stamps:** `0.1.0-betaN` — **no `v` prefix** (the tag gate rejects it). Fix the *current*
@@ -143,12 +143,11 @@ FrankenPHP keeps services resident, so state that leaks across requests is a bug
   tag pushed to the remote → dispatch **dry-run on the pushed tag** (`ref:<tag>` must already exist) →
   LIVE wave. Per-component steps live in `release-manager`; the orchestration lives in `release-wave`.
 - **What each phase allows** (binding guards from `Roadmap_v1_Master.md`):
-  - **beta7 (build):** the `Roadmap_Beta7.md` items.
-    - Full scope (decided 2026-10-21): nothing is cut, the stretch tier (`[DXP-01]`, `[GATE-02]`)
-      included. The mid-October checkpoint was met on 2026-10-17, so the release does not split.
-    - The freeze is still what is protected: the later rows moved by the same week on 2026-10-21,
-      never compressed.
-  - **beta8 (freeze):** the tag *is* the feature freeze. The release holds the spike verdicts, the
+  - **beta7 (build), shipped in November 2026:** the `Roadmap_Beta7.md` items, full scope (decided
+    2026-10-21: nothing cut, the stretch tier `[DXP-01]`, `[GATE-02]` included). The freeze stays what
+    is protected: when the train moved on 2026-10-21, the later rows moved by the same week, never
+    compressed.
+  - **beta8 (freeze), the current phase:** the tag *is* the feature freeze. The release holds the spike verdicts, the
     contracts BC review + `contracts/BC-POLICY.md`, deprecations, the naming pass, the 72 h soak, the
     final security re-audit and the docs. After the tag, bug fixes only; an item that slips leaves v1
     (`api-freeze` skill).
