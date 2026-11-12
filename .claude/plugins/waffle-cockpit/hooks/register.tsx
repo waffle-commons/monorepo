@@ -1050,11 +1050,14 @@ export const register: Register = (on, options) => {
       repo: await read($, repo),
       waffle: await read($, status),
       now,
-      hint: e.props.hint,
+      // The engine's own line is drawn beneath ours, live (its pills, `esc to interrupt`).
+      hint: '',
       jobs: pruned(await read($, jobs), now, local.options.jobLingerSeconds * 1000),
       contextLevels: [local.options.contextWarn, local.options.contextAlert],
       backupWarnHours: local.options.backupWarnHours,
     })
+    // What every mod beneath draws here, then the engine's line: kept, whatever the mods' order.
+    const beneath = await next(e)
 
     return (
       <Box flexDirection="column">
@@ -1067,6 +1070,7 @@ export const register: Register = (on, options) => {
             ))}
           </Box>
         ))}
+        {beneath}
       </Box>
     )
   })

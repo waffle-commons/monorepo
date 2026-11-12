@@ -6,7 +6,10 @@
  *   1. model · effort │ repo ⎇ branch ●dirty │ phase · waffle-dev · igor
  *   2. context bar, tokens │ prompt cache │ cost · duration · diff
  *   3. work: the running commands, background shells, monitors, subagents, the next wakeup (always drawn, idle when there is none)
- *   4. 5h / 7d limits │ PR │ the engine's own hint (shortcuts, esc to interrupt)
+ *   4. 5h / 7d limits │ PR
+ *
+ * Under them, the hook draws what other mods put there and then the engine's
+ * own line (shortcuts, esc to interrupt), so `hint` is empty in the session.
  */
 import type { AuditStatus, CockpitStatus, Job, RepoInfo, SessionInfo } from '../types'
 import { shortVersion } from './audit'
