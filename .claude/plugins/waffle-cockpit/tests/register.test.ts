@@ -55,7 +55,7 @@ describe('the guard', () => {
 })
 
 describe('the lines under the prompt', () => {
-  test('/cockpit refreshes them: model, repo, Waffle, context, cache, cost, limits, PR, hint', async ($, on) => {
+  test('/cockpit refreshes them: model, repo, Waffle, context, cache, cost, limits, PR', async ($, on) => {
     inUmbrella(on)
     await $.session.start(SESSION)
 
@@ -77,7 +77,20 @@ describe('the lines under the prompt', () => {
     expect(drawn).toContain('5h ')
     expect(drawn).toContain('7d ')
     expect(drawn).toContain('PR #12 ✓ approved')
-    expect(drawn).toContain('? for shortcuts')
+  })
+
+  test('keep what other mods and the engine draw beneath them, after the cockpit lines', async ($, on) => {
+    inUmbrella(on)
+    await $.session.start(SESSION)
+    await $.command.run(commandOf('cockpit'))
+
+    const drawn = textOf(await $.ui.render(HINT))
+
+    // inUmbrella's ui.render hook stands for everything beneath: another mod's lines, then the engine's own.
+    expect(drawn).toContain('Opus 5.5')
+    expect(drawn.endsWith('engine')).toBe(true)
+    // The engine draws its hint itself, live: the cockpit no longer copies it into line 4.
+    expect(drawn).not.toContain('? for shortcuts')
   })
 
   test('a stopped container is drawn as stopped', async ($, on) => {

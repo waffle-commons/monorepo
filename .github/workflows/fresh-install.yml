@@ -49,3 +49,15 @@ jobs:
 
       - name: Prove one component green (wfl dod contracts)
         run: bin/wfl dod contracts
+
+      # Last, so it runs whichever step failed (the runner and its containers are gone after the job).
+      - name: Dev stack diagnostics (on failure)
+        if: failure()
+        run: |
+          docker compose -f workspace/docker-compose.yml ps -a || true
+          for c in waffle-dev waffle-downstream; do
+            echo "--- $c"
+            docker inspect "$c" --format '{{.State.Status}} exit={{.State.ExitCode}} err={{.State.Error}}' || true
+            docker logs --tail 200 "$c" 2>&1 || true
+          done
+          id; stat -c '%u:%g %n' workspace workspace/var workspace/vendor 2>/dev/null || true

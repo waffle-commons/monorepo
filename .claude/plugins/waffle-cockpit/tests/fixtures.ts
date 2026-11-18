@@ -71,7 +71,18 @@ export type World = { runs: string[][]; toasts: string[]; opened: string[]; cloc
  * What the machine answers, where a test needs something else than the defaults. `sizes` are the
  * container's `stat -c %s` answers, one per look, before it shows the host's size.
  */
-export type Answers = { branch?: string; container?: string; changed?: string; mago?: string; dod?: string; sizes?: string[] }
+export type Answers = {
+  branch?: string
+  container?: string
+  changed?: string
+  mago?: string
+  dod?: string
+  sizes?: string[]
+  /** What `wfl audit:status … --json` prints; empty (no run) when absent. */
+  auditStatus?: string
+  /** File contents by absolute path, for `fs.read`; every other file reads '0.9.7\n'. Mutable, so a mock can change one. */
+  files?: Record<string, string>
+}
 
 /** The size of every file `fs.read` answers ('0.9.7\n'), as the container reports it once in sync. */
 const SYNCED_SIZE = '6\n'
@@ -83,6 +94,7 @@ function stdoutOf(argv: readonly string[], answers: Answers): string {
   if (line.includes('local-only.sh')) return 'local-only 91\nbackup-age-s 7200\n'
   if (argv.includes('vendor/bin/mago')) return answers.mago ?? ' INFO No issues found.\n'
   if (argv[0]?.endsWith('/bin/wfl') && argv[1] === 'dod') return answers.dod ?? ''
+  if (argv[0]?.endsWith('/bin/wfl') && argv[1] === 'audit:status') return answers.auditStatus ?? ''
   if (line.includes('--show-toplevel')) return `${ROOT}\n`
   if (line.includes('--abbrev-ref')) return answers.branch ?? 'pre-release/0.1.0-beta7\n'
   if (line.includes('status --porcelain')) return ' M AGENTS.md\n M README.md\n?? notes.md\n'
@@ -108,7 +120,7 @@ export function inUmbrella(on: On, answers: Answers = {}): World {
   on('session.model', () => ({ value: 'claude-opus-5-5' }))
   on('session.usage', () => ({ value: USAGE }))
   on('fs.exists', ($, e) => ({ value: e.path === `${ROOT}/bin/wfl` || e.path === `${ROOT}/.gitmodules` }))
-  on('fs.read', () => ({ value: '0.9.7\n' }))
+  on('fs.read', ($, e) => ({ value: answers.files?.[e.path] ?? '0.9.7\n' }))
   on('process.run', ($, e) => {
     world.runs.push([...e.argv])
     return { value: ok(stdoutOf(e.argv, answers)) }

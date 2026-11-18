@@ -214,3 +214,31 @@ describe('simpleCommandsOf', () => {
     ])
   })
 })
+
+describe('wrappers', () => {
+  test('a wrapper, its options and their values never hide the command they run', () => {
+    for (const command of [
+      'timeout 60 git push origin --tags',
+      'timeout -s KILL 60 git push --tags',
+      'gtimeout 60 git push --tags',
+      'nice -n 5 git push --force origin main',
+      'nice -n5 git push --force origin main',
+      'env -u FOO git push -f origin main',
+      '/usr/bin/env git push --tags',
+      "env -S 'git push --tags'",
+      'stdbuf -oL git push --tags',
+      'sudo -u root git push --tags',
+      'xargs -n1 git push --tags',
+      'timeout 60 git tag -d 0.1.0-beta7',
+      'timeout 600 git submodule update --remote',
+      'timeout 60 gh pr merge 12 --squash',
+      'timeout 5 cat .env',
+      'nice -n 5 composer install',
+    ]) {
+      expect(verdictOf(command)).toBeDefined()
+    }
+    for (const command of ['timeout 60 git push origin pre-release/0.1.0-beta8', 'nice -n 5 git status', 'xargs -n1 echo', 'timeout 5 cat README.md']) {
+      expect(verdictOf(command)).toBeUndefined()
+    }
+  })
+})

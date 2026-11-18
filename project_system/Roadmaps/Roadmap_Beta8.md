@@ -1,7 +1,7 @@
 ---
 title: "Waffle Ecosystem Roadmap: (Beta 8)"
 date_created: 2026-06-07
-date_updated: 2026-10-21
+date_updated: 2026-11-08
 type: project
 status: pending
 tags:
@@ -101,6 +101,54 @@ _The three beta5 research spikes get their final verdict. "Go" means landing the
     - Re-run the complete audit (the one that produced the beta4 findings) against the **final** surface: everything beta4 fixed (regression check) plus the new beta5/beta6/beta7 attack surface — `/waffle-metrics`, connection pooling, rate limiter storage, queue payload handling, OpenAPI/Swagger dev routes, health endpoints, WebAuthn (if landed), the gateway proxy path (header smuggling, hop-by-hop handling, request smuggling).
         
     - Every finding is fixed in beta8 or formally risk-accepted with sign-off in the audit report. RC1 inherits zero open criticals.
+
+    - *Decision 2026-11-05, the method:* the `release-audit` skill runs the audit end to end with Claude Code (`/release-audit 0.1.0-beta8`). It replaces the zipped payload sent to Google AI Studio and beta6's rule of "more than one independent engine" (the maintainer: "You will handle everything"). Independence now comes from:
+        - tool evidence read before any code (`wfl audit:evidence`: Mago metrics, Psalm taint, `composer audit`, igor, SEC-03);
+        - one finder per lens: the OWASP Top 10:2025 categories, worker-state leaks, timing-safe comparisons, and the repository's AI layer against OWASP's Top 10 for Agentic Applications 2026;
+        - blind, refute-first verifiers, two on every HIGH or CRITICAL, majority verdicts and a third on a tie;
+        - a calibration on known beta6 defects (`wfl audit:calibrate`).
+
+      The sweep includes dated threat notes: PHP2Shell (CVE-2026-109618, CVE-2026-109619), CVE-2026-115560 and the Symfony security releases of 2026-11-04.
+
+    - *Sign-off:* the decision on each finding (fix, accept the risk, post-v1) is the maintainer's, recorded in the cockpit's `/audit` pane or with `wfl audit:sign` in their own terminal. Claude never records one (guard rails back that: the `release-audit` skill). A risk acceptance and a move to post-v1 carry a reason and the residual risk; a move to post-v1 is a risk acceptance for v1.
+        - The run lives in `project_system/Audits/Beta8/release-audit/` (gitignored, local only).
+        - `wfl audit:check 0.1.0-beta8 --gate` is the evidence for exit gate #4: every run of beta8 complete and reconciled, every finding decided, every fix fix-checked and released, the surface covered. `wfl pre-release --all` holds the tag on it.
+
+    - *Pilot run, set up on 2026-11-05 and decided on 2026-11-06 (`queue` + `serializer`):* the security finders ran under the session's own settings, the rest under profile `balanced`. 42 candidates, 40 confirmed and 2 plausible by blind verification, none refuted, merged into 31 findings (0 CRITICAL, 0 HIGH, 5 MEDIUM, 25 LOW, 1 INFO). The maintainer decided all 31 as *fix in beta8* in `/audit` on 2026-11-06. Archive: `project_system/Audits/Beta8/pilot/` (local, gitignored); one ticket each in `.scratch/release-audit-0.1.0-beta8/issues/`, which keeps each finding's description and location until its fix ships. A hand-run calibration on the pre-fix code of three beta6 `[FIX-01]` items, made before the calibration step existed and kept outside that archive, raised 3 of the 4 known defects, and all three fixes still hold. The beta8 gate reads the pilot's run as well: its 31 fixes must be fix-checked and released before the tag. The full-surface run covers every other repository, the gateway, the AG and WA lenses and the calibration step.
+
+        | # | Finding | Severity | Component | Size |
+        |---|---|---|---|---|
+        | 1 | `M-api-async-01` | MEDIUM | `serializer` | M |
+        | 2 | `S-B1-02` | MEDIUM | `queue` | M |
+        | 3 | `S-B2-01` | MEDIUM | `queue` | M |
+        | 4 | `S-B2-04` | MEDIUM | `queue` | S |
+        | 5 | `S-B3-02` | MEDIUM | `queue` | M |
+        | 6 | `M-api-async-03` | LOW | `serializer` | S |
+        | 7 | `M-api-async-04` | LOW | `serializer` | S |
+        | 8 | `M-api-async-05` | LOW | `queue` | S |
+        | 9 | `M-api-async-06` | LOW | `serializer` | L |
+        | 10 | `M-api-async-07` | LOW | `queue` | M |
+        | 11 | `M-api-async-09` | LOW | `serializer` | S |
+        | 12 | `M-api-async-10` | LOW | `serializer` | M |
+        | 13 | `M-api-async-13` | LOW | `queue` | S |
+        | 14 | `M-api-async-14` | LOW | `queue` | S |
+        | 15 | `S-B1-01` | LOW | `serializer` | S |
+        | 16 | `S-B1-03` | LOW | `queue` | S |
+        | 17 | `S-B1-04` | LOW | `serializer` | S |
+        | 18 | `S-B1-05` | LOW | `serializer` | S |
+        | 19 | `S-B1-06` | LOW | `queue` | S |
+        | 20 | `S-B1-07` | LOW | `queue` | S |
+        | 21 | `S-B1-08` | LOW | `queue` | S |
+        | 22 | `S-B2-02` | LOW | `queue` | M |
+        | 23 | `S-B2-03` | LOW | `serializer` | S |
+        | 24 | `S-B2-05` | LOW | `queue` | S |
+        | 25 | `S-B2-07` | LOW | `queue` | S |
+        | 26 | `S-B2-09` | LOW | `queue` | M |
+        | 27 | `S-B2-10` | LOW | `serializer` | S |
+        | 28 | `S-B3-04` | LOW | `queue` | S |
+        | 29 | `S-B3-05` | LOW | `queue` | S |
+        | 30 | `S-B3-07` | LOW | `queue` | S |
+        | 31 | `M-api-async-15` | INFO | `serializer` | S |
         
 
 ## 📚 AXE 5: DOCUMENTATION & ONBOARDING COMPLETION
@@ -128,7 +176,7 @@ Beta8 tags only when **all** of the following hold; this checklist is re-verifie
 1. Zero open spike decisions; post-v1 backlog updated with every cut.
 2. `contracts/` BC review 100% complete; `BC-POLICY.md` published; zero TODO/FIXME in contracts.
 3. 72h soak: zero memory drift, zero leaked connections/transactions, zero un-injected 5xx.
-4. Security audit: zero open criticals; report archived in `project_system/`.
+4. Security audit: zero open criticals; report archived in `project_system/` (`[AUD-01]`: `wfl audit:check 0.1.0-beta8 --gate` passes).
 5. EcoShield-Gateway benchmark report produced; RAM factor documented.
 6. Docs complete for all components; Academy labs green against beta8.
 7. Standard gates everywhere: `composer mago && composer tests`, $\geq 95\%$ coverage, zero baselines, `wfl igor` 0 KO.

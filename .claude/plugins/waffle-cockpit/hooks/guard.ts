@@ -27,16 +27,47 @@
  *   subject once). One heredoc command per line, chained with `set -e`.
  * - Secret files (`.env`, keys, certificates' private halves) are never read
  *   through the shell: a Read deny rule does not cover `cat`.
+ * - A release audit's decisions are the maintainer's: `wfl audit:sign`, and the
+ *   script behind it, are never Claude's to run, whatever wraps them; Claude
+ *   never sets the pane's `WFL_AUDIT_SIGNER`, never writes a ledger through the
+ *   shell, and never names either in inline code (the release-audit skill). The
+ *   person decides in /audit, or types it in their own terminal.
  *
  * The guard only ever denies. Everything it lets through still meets the
- * permission rules in .claude/settings.json.
+ * permission rules in .claude/settings.json. It is a guard rail, not a sandbox:
+ * it reads words, and a determined program can still spell around it.
  */
 
 /** PHP tools that must run inside `waffle-dev`. */
 const HOST_PHP = new Set(['php', 'composer', 'phpunit', 'mago', 'igor-php', 'pie'])
 
-/** Words that run the command after them (and their own options). */
-const WRAPPERS = new Set(['env', 'command', 'exec', 'time', 'nohup', 'nice', 'builtin'])
+/**
+ * Words that run the command after them, each with its options that take a separate value
+ * (`nice -n 5`, `env -u NAME`, `timeout -s KILL 60`). An option that holds its value (`-n5`,
+ * `--adjustment=5`, `-oL`) is one word.
+ */
+const WRAPPERS: Readonly<Record<string, ReadonlySet<string>>> = {
+  env: new Set(['-u', '--unset', '-C', '--chdir', '-S', '--split-string']),
+  command: new Set(),
+  exec: new Set(['-a']),
+  time: new Set(['-f', '--format', '-o', '--output']),
+  nohup: new Set(),
+  nice: new Set(['-n', '--adjustment']),
+  builtin: new Set(),
+  timeout: new Set(['-s', '--signal', '-k', '--kill-after']),
+  gtimeout: new Set(['-s', '--signal', '-k', '--kill-after']),
+  stdbuf: new Set(['-i', '-o', '-e', '--input', '--output', '--error']),
+  gstdbuf: new Set(['-i', '-o', '-e', '--input', '--output', '--error']),
+  caffeinate: new Set(['-t', '-w']),
+  xargs: new Set(['-I', '-i', '-L', '-l', '-n', '-P', '-s', '-E', '-e', '-d', '-a', '--arg-file', '--delimiter', '--max-args', '--max-procs', '--max-chars', '--replace']),
+  sudo: new Set(['-u', '--user', '-g', '--group', '-C', '-h', '--host', '-p', '--prompt', '-U', '--other-user', '-r', '--role', '-t', '--type', '-D', '--chdir']),
+  doas: new Set(['-u', '-C']),
+  unbuffer: new Set(),
+  chronic: new Set(),
+}
+
+/** Wrappers whose first plain word is their own argument, not the command: `timeout 60 git push`. */
+const WRAPPER_TAKES_ONE = new Set(['timeout', 'gtimeout'])
 
 /** Shells whose `-c` argument is itself a command line. */
 const SHELLS = new Set(['sh', 'bash', 'zsh', 'dash'])
@@ -166,16 +197,29 @@ export function simpleCommandsOf(line: string): string[][] {
   return commands
 }
 
-/** The words after leading `VAR=value` assignments and wrapper commands. */
+/**
+ * The words after leading `VAR=value` assignments and wrapper commands, with each wrapper's
+ * options and their values skipped; `env -S '<words>'` runs the words it splits.
+ */
 function commandWordsOf(words: string[]): string[] {
   let i = 0
   while (i < words.length) {
     const w = words[i] ?? ''
+    const name = w.slice(w.lastIndexOf('/') + 1)
+    const valued = WRAPPERS[name]
     if (/^[A-Za-z_][A-Za-z0-9_]*=/.test(w)) {
       i++
-    } else if (WRAPPERS.has(w)) {
+    } else if (valued !== undefined) {
       i++
-      while (i < words.length && (words[i] ?? '').startsWith('-')) i++
+      while (i < words.length && (words[i] ?? '').startsWith('-') && words[i] !== '--') {
+        const option = words[i] ?? ''
+        if (name === 'env' && (option === '-S' || option === '--split-string')) {
+          return commandWordsOf([...(simpleCommandsOf(words[i + 1] ?? '')[0] ?? []), ...words.slice(i + 2)])
+        }
+        i += valued.has(option) ? 2 : 1
+      }
+      if (words[i] === '--') i++
+      if (WRAPPER_TAKES_ONE.has(name) && i < words.length) i++
     } else {
       break
     }
@@ -314,14 +358,86 @@ function dockerExecCommandOf(args: string[]): string[] | undefined {
   return args.slice(i + 1) // past the container name
 }
 
+const SIGN_REFUSAL =
+  "`wfl audit:sign` records the maintainer's decision on a release-audit finding, so Claude never runs it (the release-audit skill). Ask the person to decide in /audit, or to type it in their own terminal."
+
+/** Interpreters whose `-c` / `-e` argument is code, and the flags that carry it. */
+const INLINE_CODE = /^(python[\d.]*|node|deno|bun|perl|ruby|osascript)$/
+const INLINE_FLAGS = new Set(['-c', '-e', '-E', '--eval', '-p', '--print'])
+
+/** What inline code may not name: the sign-off, its script, a ledger, the pane's marker. */
+const AUDIT_WORDS = /audit:sign|release-audit|ledger\.json|WFL_AUDIT_SIGNER/i
+
+/** A release audit's ledger, however it is spelled: only `wfl audit:*` and the checked Write/Edit tools change one. */
+const LEDGER_FILE = /(^|[/=@])ledger\.json$/i
+
+/** Commands that write, move or delete every file they name; and those that write only their last one. */
+const LEDGER_CLOBBERS = new Set(['tee', 'mv', 'rm', 'truncate', 'touch', 'patch', 'shred', 'unlink'])
+const LEDGER_TARGETS = new Set(['cp', 'ln', 'install', 'rsync', 'ditto', 'scp'])
+
+/**
+ * `wfl audit:sign`, or the script behind it (`release-audit.py … sign`), wherever its words sit: behind
+ * `timeout`, `nice -n 5`, `xargs`, `env -u`, `find -exec`, an interpreter's options or `uv run`.
+ */
+function signsAudit(words: string[]): boolean {
+  const wfl = words.findIndex(w => basenameOf(w) === 'wfl')
+  if (wfl !== -1 && words.slice(wfl + 1).includes('audit:sign')) return true
+  const script = words.findIndex(w => basenameOf(w) === 'release-audit.py')
+  return script !== -1 && words.slice(script + 1).includes('sign')
+}
+
+/** The ledger a simple command writes, moves or deletes, as it read it, or undefined. */
+function ledgerWriteOf(words: string[]): string | undefined {
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i] ?? ''
+    if (!w.includes('>')) continue
+    const target = w.slice(w.lastIndexOf('>') + 1) || (words[i + 1] ?? '')
+    if (LEDGER_FILE.test(target)) return w.endsWith('>') ? `${w} ${target}` : w
+  }
+  const cmd = commandWordsOf(words)
+  const name = basenameOf(cmd[0] ?? '')
+  const args = cmd.slice(1)
+  const named = args.find(w => LEDGER_FILE.test(w))
+  if (named === undefined) return undefined
+  if (LEDGER_CLOBBERS.has(name)) return `${name} ${named}`
+  if (LEDGER_TARGETS.has(name) && LEDGER_FILE.test(args.filter(w => !w.startsWith('-')).pop() ?? '')) return `${name} … ${named}`
+  if ((name === 'sed' || name === 'gsed' || name === 'perl') && args.some(w => /^-[A-Za-z]*i/.test(w) || w.startsWith('--in-place'))) return `${name} -i ${named}`
+  if (name === 'dd' && args.some(w => w.startsWith('of=') && LEDGER_FILE.test(w))) return `dd ${named}`
+  return undefined
+}
+
+/** Why a command that would record, forge or bypass a release audit's sign-off is refused, or undefined. */
+function auditVerdictOf(words: string[]): string | undefined {
+  if (signsAudit(words)) return SIGN_REFUSAL
+  if (words.some(w => /^WFL_AUDIT_SIGNER=/.test(w))) {
+    return "`WFL_AUDIT_SIGNER` marks the cockpit's own /audit pane, the maintainer's way to record a decision: Claude never sets it."
+  }
+  for (let i = 0; i + 2 < words.length; i++) {
+    if (INLINE_CODE.test(basenameOf(words[i] ?? '')) && INLINE_FLAGS.has(words[i + 1] ?? '') && AUDIT_WORDS.test(words[i + 2] ?? '')) {
+      return "inline code that names the release audit's sign-off, its script or a ledger: read a ledger with the Read tool, `jq` or `wfl audit:status|check`. A decision is the maintainer's (/audit)."
+    }
+  }
+  const write = ledgerWriteOf(words)
+  if (write !== undefined) {
+    return `\`${write}\`: a release audit's ledger changes only through \`wfl audit:*\` and the Write and Edit tools, which check its decisions; the shell would go around that check (the release-audit skill).`
+  }
+  return undefined
+}
+
 /** Why one simple command is refused, or undefined. */
 function verdictOfWords(words: string[], depth: number, isInContainer: boolean, isStrict: boolean, releaseTag: string): string | undefined {
+  const audit = auditVerdictOf(words)
+  if (audit !== undefined) return audit
+
   const cmd = commandWordsOf(words)
   const head = cmd[0]
   if (head === undefined) return undefined
 
   const name = basenameOf(head)
   const args = cmd.slice(1)
+
+  // `eval` runs its words as a command line of their own.
+  if (name === 'eval' && depth < 3) return verdictOf(args.join(' '), depth + 1, isInContainer, isStrict, releaseTag)
 
   if (!isInContainer && (HOST_PHP.has(name) || /(^|\/)vendor\/bin\//.test(head))) {
     return `\`${name}\` would run on the host, and PHP never runs on the host here: ${DOCKER_HINT}.`

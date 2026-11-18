@@ -12,6 +12,11 @@ Team settings (.claude/settings.json, committed):
     guard covers the shell (`cat .env`) and the same files.
   * allow rules for the waffle-cockpit tools (mcp__waffle-cockpit__dod, xref,
     coverage_gaps, dod_history), which only run wfl and read the cockpit state.
+  * the release audit (the release-audit skill): allow the commands a run
+    needs (`wfl audit:init|evidence|calibrate|status|claims|check|fixed`), so
+    dozens of agents do not prompt, and deny `wfl audit:sign` and the script
+    behind it: a decision on a finding is the maintainer's, recorded in /audit
+    or typed in their own terminal.
 
 Personal opt-ins (.claude/settings.local.json, gitignored), only when asked:
   --telemetry     Claude Code's OpenTelemetry metrics on a local Prometheus
@@ -63,6 +68,27 @@ COCKPIT_ALLOW = [
     "mcp__waffle-cockpit__xref",
     "mcp__waffle-cockpit__coverage_gaps",
     "mcp__waffle-cockpit__dod_history",
+]
+
+AUDIT_ALLOW = [
+    f"Bash({prefix}wfl audit:{sub}{rest})"
+    for sub in ("init", "evidence", "calibrate", "status", "claims", "check", "fixed")
+    for prefix in ("./bin/", "bin/", "")
+    for rest in ("", " *")
+]
+
+# Deny rules take a leading wildcard without a warning; the cockpit guard covers what these spellings miss.
+AUDIT_DENY = [
+    "Bash(wfl audit:sign)",
+    "Bash(wfl audit:sign *)",
+    "Bash(bin/wfl audit:sign *)",
+    "Bash(./bin/wfl audit:sign *)",
+    "Bash(*/bin/wfl audit:sign *)",
+    "Bash(scripts/release-audit.py sign *)",
+    "Bash(./scripts/release-audit.py sign *)",
+    "Bash(*/scripts/release-audit.py sign *)",
+    "Bash(python3 scripts/release-audit.py sign *)",
+    "Bash(python3 -I scripts/release-audit.py sign *)",
 ]
 
 TELEMETRY_ENV = {
@@ -131,8 +157,8 @@ def main() -> int:
     team_before = load(TEAM)
     team = copy.deepcopy(team_before)
     perms = team.setdefault("permissions", {})
-    perms["deny"] = merged_rules(perms.get("deny", []), SECRET_DENY)
-    perms["allow"] = merged_rules(perms.get("allow", []), COCKPIT_ALLOW)
+    perms["deny"] = merged_rules(perms.get("deny", []), SECRET_DENY + AUDIT_DENY)
+    perms["allow"] = merged_rules(perms.get("allow", []), COCKPIT_ALLOW + AUDIT_ALLOW)
 
     local_before = load(LOCAL)
     local = copy.deepcopy(local_before)

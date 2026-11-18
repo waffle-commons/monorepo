@@ -11,6 +11,7 @@ What it checks:
   runtimes    no opencode / Antigravity left in the live files (history excluded)
   plugins     the repo marketplace, the vendored mattpocock-skills pin and curation
   settings    .claude/settings.json enables what the marketplace lists
+  scripts     scripts/tests/test_*.py, the unit tests of the wfl helpers, pass
   claude      `claude plugin validate --strict` + `claude plugin test` (skipped with
               --no-claude or when the CLI is absent, e.g. in CI)
 
@@ -39,7 +40,10 @@ AGENT_KEYS = {
 }
 # Tool policy: what each agent's body promises, enforced by its frontmatter.
 READ_ONLY = {'acceptance-verifier', 'aot-verifier', 'bc-reviewer', 'flake-hunter', 'gate-runner'}
-REPORT_WRITERS = {'benchmark-runner', 'chaos-runner', 'soak-analyst'}
+REPORT_WRITERS = {'benchmark-runner', 'chaos-runner', 'soak-analyst',
+                  'owasp-finder', 'modernization-finder', 'finding-verifier', 'audit-triager'}
+# AGENTS.md §8: `model` only for mechanical runners. A release audit passes its agents' model at dispatch.
+MECHANICAL = {'contracts-sync', 'gate-runner'}
 # Skills the vendored plugin must never ship (see its VENDORED.md).
 MP_EXCLUDED = {'implement', 'implement-spec', 'triage', 'wayfinder', 'prototype', 'setup-matt-pocock-skills', 'code-review'}
 # Paths that live outside this checkout on purpose.
@@ -114,6 +118,8 @@ for path in sorted(glob.glob('.claude/skills/*/SKILL.md')):
         err(path, 'description + when_to_use exceed the 1,536-character listing cap')
     for k in set(fm) - SKILL_KEYS:
         err(path, f"unknown frontmatter key '{k}'")
+    if 'allowed-tools' in fm:
+        err(path, 'allowed-tools: permissions belong in .claude/settings.json, never in a skill (AGENTS.md §8)')
     if body.count('\n') > 500:
         err(path, f'body is {body.count(chr(10))} lines (keep SKILL.md under 500; move detail to a reference file)')
 
@@ -132,6 +138,9 @@ for path in sorted(glob.glob('.claude/agents/*.md')):
         err(path, 'description should start with "Use …" (Claude delegates on it)')
     for k in set(fm) - AGENT_KEYS:
         err(path, f"unknown frontmatter key '{k}'" + (' (an opencode key)' if k in ('mode', 'hidden') else ''))
+    if 'model' in fm and name not in MECHANICAL:
+        err(path, 'pins a model: AGENTS.md §8 keeps `model` for mechanical runners (MECHANICAL in scripts/ai-check.py); '
+                  'a release audit passes the model at dispatch')
     for s in fm.get('skills') or []:
         if s not in skills:
             err(path, f"preloads unknown skill '{s}'")
@@ -260,6 +269,16 @@ if os.path.isfile(settings):
         err(settings, f'invalid JSON ({e})')
 else:
     notes.append(f'{settings} not present yet (apply the team settings)')
+
+# --- script tests -------------------------------------------------------------------
+if os.path.isdir('scripts/tests'):
+    run = subprocess.run([sys.executable, '-m', 'unittest', 'discover', '-s', 'scripts/tests'],
+                         capture_output=True, text=True)
+    tail = [l for l in (run.stdout + run.stderr).strip().splitlines() if l.strip()]
+    if run.returncode != 0:
+        err('scripts/tests', ' / '.join(tail[-3:]) or f'exit {run.returncode}')
+    else:
+        notes.append('script tests: ' + next((l for l in reversed(tail) if l.startswith('Ran ')), 'ok'))
 
 # --- claude CLI ---------------------------------------------------------------------
 if '--no-claude' not in sys.argv:
