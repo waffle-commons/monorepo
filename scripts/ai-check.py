@@ -171,8 +171,12 @@ def checked_out(path):
 def git_ignored(path):
     # A gitignored path (`bench/results/`, `.claude/settings.local.json`) exists only where someone created it:
     # a fresh clone or CI never has it, so checking it would pass on one machine and fail on the next.
-    return subprocess.run(['git', 'check-ignore', '-q', '--', path], check=False,
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+    # A directory-only pattern (`results/`) matches a missing path only when it ends with a slash, so a path
+    # cited without one (`bench/results`) is also tried as a directory.
+    candidates = [path] if path.endswith('/') else [path, path + '/']
+    return any(subprocess.run(['git', 'check-ignore', '-q', '--', c], check=False,
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+               for c in candidates)
 
 
 def check_refs(path, text):
