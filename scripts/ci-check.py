@@ -21,8 +21,14 @@ and, for the umbrella:
   pin         every `uses:` in every workflow (template, libraries, umbrella) names a full commit
               SHA with its version as a comment; the template and library workflows declare a
               top-level read-only `permissions:` block (S-B1-02)
-  trufflehog  TruffleHog's `version:` input equals the version its pinned `uses:` names (the
-              action otherwise runs the `latest` image)
+  trufflehog  TruffleHog's `version:` input is the version its pinned `uses:` names plus the image's
+              digest, `X.Y.Z@sha256:<digest>`: the action runs `ghcr.io/trufflesecurity/trufflehog:<version>`,
+              `latest` by default, and a tag alone is mutable
+  images      every container image a workflow runs (`docker://` steps, `image:` of services and
+              containers) is pinned by `@sha256:` digest
+  checkout    every actions/checkout of the component workflows, umbrella-ci and fresh-install sets
+              `persist-credentials: false`, so no later step finds the token in `.git/config`
+              (release-wave keeps its own token handling)
   php floor   every composer.json of the ecosystem requires php ^8.5.12 or later, and the
               component CI (template, libraries, umbrella-ci) asserts PHP_VERSION_ID >= 80512
               before it installs anything (S-B1-07)
@@ -128,25 +134,42 @@ UMBRELLA_WORKFLOWS = [".github/workflows/umbrella-ci.yml", ".github/workflows/re
 COMPONENT_WORKFLOWS = [f"{TEMPLATE}/.github/workflows/main.yml"] + [f"{c}/.github/workflows/main.yml" for c in libraries]
 PINNED = re.compile(r"uses:\s*[\w.-]+/[\w./-]+@[0-9a-f]{40}\s+#\s*v?\d+\.\d+\.\d+\s*$")
 TRUFFLEHOG = re.compile(r"uses:\s*trufflesecurity/trufflehog@[0-9a-f]{40}\s+#\s*v?(\d+\.\d+\.\d+)\s*$")
+DIGEST = re.compile(r"@sha256:[0-9a-f]{64}$")
+CHECKOUT_WORKFLOWS = COMPONENT_WORKFLOWS + [".github/workflows/umbrella-ci.yml", ".github/workflows/fresh-install.yml"]
+
+
+def step_lines(lines, n):
+    """The lines of the step whose `uses:` sits on line n (1-based), up to the next step or job."""
+    step = []
+    for following in lines[n:]:
+        if re.match(r"\s*- ", following) or not following.startswith(" " * 8):
+            break
+        step.append(following)
+    return step
+
+
 igor_hashes = set()
 for wf in COMPONENT_WORKFLOWS + UMBRELLA_WORKFLOWS:
     lines = read(wf).splitlines()
     for n, line in enumerate(lines, 1):
         ref = re.search(r"uses:\s*(\S+)", line)
-        if ref and not ref.group(1).startswith(("./", "docker://")) and not PINNED.search(line):
+        if ref and ref.group(1).startswith("docker://") and not DIGEST.search(ref.group(1)):
+            problems.append((wf, "images", f"line {n}: {ref.group(1)} is not pinned by digest"))
+        elif ref and not ref.group(1).startswith(("./", "docker://")) and not PINNED.search(line):
             problems.append((wf, "pin", f"line {n}: {ref.group(1)} is not a commit SHA with a # version comment"))
+        image = re.match(r"\s+image:\s*(\S+)\s*$", line)
+        if image and not DIGEST.search(image.group(1).strip("'\"")):
+            problems.append((wf, "images", f"line {n}: image {image.group(1)} is not pinned by digest"))
+        if ref and ref.group(1).startswith("actions/checkout@") and wf in CHECKOUT_WORKFLOWS:
+            if not any(re.match(r"\s+persist-credentials:\s*false\s*$", s) for s in step_lines(lines, n)):
+                problems.append((wf, "checkout", f"line {n}: actions/checkout without persist-credentials: false"))
         pinned_trufflehog = TRUFFLEHOG.search(line)
         if pinned_trufflehog:
-            step = []
-            for following in lines[n:]:
-                if re.match(r"\s*- ", following) or not following.startswith(" " * 8):
-                    break
-                step.append(following)
-            given = [v.strip("'\"").removeprefix("v")
-                     for v in re.findall(r"^\s+version:\s*(\S+)\s*$", "\n".join(step), re.MULTILINE)]
-            if given != [pinned_trufflehog.group(1)]:
-                problems.append((wf, "trufflehog", f"line {n}: version input {given or 'missing'}, "
-                                                   f"the pinned action is v{pinned_trufflehog.group(1)}"))
+            given = [v.strip("'\"") for v in re.findall(r"^\s+version:\s*(\S+)\s*$", "\n".join(step_lines(lines, n)), re.MULTILINE)]
+            want = re.compile(re.escape(pinned_trufflehog.group(1)) + r"@sha256:[0-9a-f]{64}")
+            if len(given) != 1 or not want.fullmatch(given[0]):
+                problems.append((wf, "trufflehog", f"line {n}: version input {given or 'missing'}, needs "
+                                                   f"{pinned_trufflehog.group(1)}@sha256:<the image's digest>"))
     text = "\n".join(lines)
     if "IGOR_VERSION:" in text:
         found = re.findall(r"IGOR_SHA256_LINUX_AMD64:\s*'([0-9a-f]{64})'", text)
