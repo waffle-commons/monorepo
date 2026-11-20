@@ -3,7 +3,7 @@ name: tech-lead
 description: "Entry point for non-trivial work: phase-aware orchestration of coding, test, review and acceptance"
 when_to_use: >-
   Any non-trivial, multi-skill, multi-component or ambiguous request; deciding what the current
-  release phase (beta7 build, beta8 freeze, RC1) allows; when unsure which skill applies.
+  release phase (beta8 freeze, then RC1) allows; when unsure which skill applies.
 ---
 
 ## What I do
@@ -12,20 +12,21 @@ without passing Dockerized tests, strict Mago analysis, the worker-safety audit 
 review — and I check that the work is allowed in the current release phase.
 
 ## 0. Which phase are we in?
-Read `AGENTS.md` §5b and the status line of the current roadmap first.
+Read `AGENTS.md` §5b and the status line of the current roadmap first. Beta7 shipped in November 2026;
+beta8, the freeze, has been the current phase since its branches were cut on 2026-11-20.
 
 | Phase | Branch | What is allowed | Skills |
 |---|---|---|---|
-| **beta7 — production surface** (November 2026 — tag targeted 5 November, current) | `pre-release/0.1.0-beta7` | the `Roadmap_Beta7.md` items: NET, QUEUE, OPS, API, TEST, the `[CARRY-*]` follow-ups, the stretch tier (in scope since 2026-10-21) last | `resilience-net`, `queue-worker`, `k8s-ops`, `api-surface`, `testing-bridge`, `ecoshield` |
-| **beta8 — consolidation & API freeze** (December 2026, ~3 Dec) | `pre-release/0.1.0-beta8` | spike verdicts, BC fixes, deprecations, the naming pass, soak and audit fixes, docs — **no new capability** | `api-freeze`, `soak-endurance`, `release-audit`, `security-audit`, `diataxis-doc`, `ecoshield` |
-| **RC1 — certification** (December 2026, ~12 Dec) | `pre-release/1.0.0-RC1` | bug fixes only, deprecation removal, packaging | `rc-certification`, `soak-endurance`, `release-audit` |
+| **beta8 — consolidation & API freeze** (current) | `pre-release/0.1.0-beta8` | spike verdicts, BC fixes, deprecations, the naming pass, soak and audit fixes, docs — **no new capability** | `api-freeze`, `soak-endurance`, `release-audit`, `security-audit`, `diataxis-doc`, `ecoshield` |
+| **after the beta8 tag: RC1 — certification** | `pre-release/1.0.0-RC1` | bug fixes with regression tests, security fixes, docs; then `[RC-02]` deprecation removal and `[RC-03]` packaging | `rc-certification`, `soak-endurance`, `release-audit` |
 
-Work that belongs to an earlier phase is never squeezed in. In beta7 nothing is cut (2026-10-21): the stretch tier
-(`[DXP-01]`, `[GATE-02]`) lands last. After the beta8 tag, a feature is post-v1 (`Roadmap_Post_v1.md`).
+**Beta8 guard:** every beta8 item is must-ship. An item that slips leaves v1 for `Roadmap_Post_v1.md`; it
+never slides into RC1. Raise the risk early; the decision is the maintainer's.
 
-**Beta7 capacity guard:** unless `[API-01]`, `[API-02]` and `[TEST-01]` have **code landed and green on
-their own gates by mid-October**, the release splits: NET + OPS + QUEUE tag as beta7, and API + TEST
-fold into the beta8 window. Raise the risk early; the decision is the maintainer's.
+**Dates:** the beta8 tag lands no earlier than ~8 December 2026. The maintainer sets the date at the
+audit's triage (~26–28 November); plan on the central case, ~21 December. RC1 and Gold move by the same
+amount (central case: RC1 ~30 December, Gold ~mid-February 2027). `AGENTS.md` §5b keeps "~3 Dec" until
+the date is set.
 
 ## Orchestration protocol
 1. **Triage:** decide whether the task needs `coding`, `refactoring` or `test`, plus the capability

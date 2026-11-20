@@ -33,10 +33,13 @@ item tagged *benchmark-gated*.
 - **Beta6 BENCH-01..05 (shipped)** — `bench/BENCH-GATE-RESULT.md`. The flat "5–10× RAM vs PHP-FPM" claim
   did not survive: false below ~12 concurrent requests, crossover at 12–16, 2.37× at 128. The defensible
   claim is the growth **slope**: memory grows 10.5× slower per concurrent request than PHP-FPM.
-- **Beta7 `[CARRY-01]`** — make the pool's ping-before-dispense skippable within a freshness window. The
-  beta6 benchmark traced Waffle's early saturation knee to that doubled DB round trip. Baseline = the
-  beta6 knee. Proceed only if the knee moves **and** stale connections are still caught (the fail-safe
-  stays). Contracts-first if the pool contract changes.
+- **Beta7 `[CARRY-01]`, `[CARRY-02]` (done, history):**
+  - `[CARRY-01]`, the pool's ping freshness window, passed its gate on 2026-10-22
+    (`data/benchmarks/CARRY-01-GATE-RESULT.md`): the `dbread` knee rose from 1200 to 1500 and ≥ 1600 rps
+    in two repeats, and dead connections are still caught.
+  - `[CARRY-02]` hardened the rig on 2026-10-22. Its clean full run (`carry02-20261101T015247Z`) is the
+    current series, published in `bench/BENCH-GATE-RESULT.md` since 2026-11-02.
+  - The method rules they set live in the protocol and the traps below.
 - **Beta8 `[GATE-03]`** — the EcoShield FinOps benchmark: k6 ≥1000 rps, legacy PHP-FPM direct vs
   through the gateway — RAM ceiling, latency, breaking point (`[[ecoshield]]`).
 - **RC1 `[RC-05]`** — the same benchmark re-run on the RC bits. Launch numbers come from the RC.
@@ -44,31 +47,29 @@ item tagged *benchmark-gated*.
   slope ~10× lower per concurrent request than PHP-FPM, published **with** the measured total-RAM factor
   and the crossover point. Never a bare "5–10×".
 
-## Before any new public number — `[CARRY-02]` harness hardening
-- **Run-unique result files.** `bench/scripts/run-bench.sh` names results
-  `<engine>-<scenario>-<workload>`, so a re-run overwrites a series. The beta6 pool-size sweep survives
-  only as numbers in `BENCH-GATE-RESULT.md`.
-- **A fair Engine C:** symfony/runtime 7.4's native `FrankenPhpWorkerRunner` with
-  `FRANKENPHP_LOOP_MAX=1000000` and no `APP_RUNTIME` override (its 500-request default invalidated the
-  beta6 soak comparison). Engine C also runs the memory test.
-- **An equivalent-features Symfony engine** (security + CSRF + transaction subscriber) next to the bare
-  one, so framework overhead is compared like for like.
-- **Host hardware recorded with every run**; least-squares slopes published with their uncertainty.
-- **Re-measure after `[CARRY-08]`:** the beta6 numbers ran a skeleton image whose preload never fully
-  worked.
-
 ## Method traps (each one invalidated a whole campaign)
 - **Measure the production image,** never the dev image (bind mounts + opcache revalidation measure the
   file system).
 - **Give the baseline the capacity its curve assumes.** `pm.max_children = 5` measured a queue;
   `pm = static` pre-allocates and hides the memory slope; `pm = ondemand` with a high ceiling tracks
   concurrency.
-- **A leak is a positive slope,** measured from a settled baseline.
+- **Compare like for like.** Next to a bare comparator, run one doing the subject's per-request work
+  (Engine D: security, CSRF, one transaction per unsafe request). Pin every image by digest, and run the
+  baseline on the subject's PHP.
+- **A leak is a positive slope** (least squares), measured from a settled baseline.
 - **Publish the 95 % bound, not just the value.**
-- **Worker recycling (`MAX_REQUESTS`) masks leaks:** pin it above the run's total and record it.
+- **Worker recycling masks leaks:** pin `MAX_REQUESTS`, and each comparator's own limit (Symfony's
+  `FRANKENPHP_LOOP_MAX`), above the run's total, and record them. Engine C's 500-request default
+  invalidated the beta6 soak comparison.
 - **A laptop cannot measure capacity.** When the generator shares vCPUs with the subject, throughput
   past ~16 concurrent describes contention; quadrupling workers moving throughput <5 % is the tell.
-- **Keep the invalidated series.** A bench that archives only its flattering runs proves nothing.
+- **Check that the host stayed idle** against its power log (`pmset -g log`) for the whole window. Two
+  beta7 runs overlapped work and media on the laptop: both are kept as invalidated, nothing published.
+- **Keep every series, invalidated ones included.** `bench/scripts/run-bench.sh` puts a `RUN_ID` in
+  each file name and refuses to overwrite a series. A bench that archives only its flattering runs
+  proves nothing.
+- **A re-measurement is a new series.** Publish it beside the old one, keep the old one as written, and
+  quote only the current one. A fix to what was measured calls for one (`[CARRY-08]`'s preload did).
 
 ## Publishing rules
 - A number travels with its method, scope and uncertainty: engine, image, concurrency or rate, window
@@ -81,11 +82,16 @@ item tagged *benchmark-gated*.
   unmeasured environmental claim (`[[ecoshield]]`).
 
 ## Protocol
-1. **Capture the baseline before any change** (numbers, not vibes). Without a baseline there is no gate.
+1. **Capture the baseline before any change** (numbers, not vibes), on today's rig: re-measure an
+   inherited one (in `[CARRY-01]`, the beta6 knee no longer reproduced). Without a baseline there is no
+   gate.
 2. **Run under representative load** — phpbench for micro/CPU; the worker-mode sandbox + `wfl igor`
-   replay for memory/GC drift; k6 for end-to-end rps.
-3. **Decide against the stated threshold**, not intuition. If the gate fails, the item is **deferred,
-   not implemented** — that is a valid, expected outcome.
+   replay for memory/GC drift; k6 for end-to-end rps. Interleave the compared settings on one image, and
+   repeat.
+3. **Fix the threshold before the comparison runs, then decide against it**, not intuition. When the
+   change relaxes a safety check, the gate also proves the check still holds (`[CARRY-01]`: stale
+   connections still caught). If the gate fails, the item is **deferred, not implemented** — that is a
+   valid, expected outcome.
 4. **Write `…-GATE-RESULT.md`**: baseline, method, raw numbers, threshold, verdict (**proceed** /
    **deferred**), and — if deferred — the constraint that justifies it (e.g. PSR-7 immutability erodes
    pooling wins; pooling mutable messages violates statelessness).

@@ -33,13 +33,14 @@ jobs:
       workspace:  ${{ steps.filter.outputs.workspace }}
     steps:
       - name: Checkout umbrella
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 0
 
       - name: Filter changed paths
         id: filter
-        uses: dorny/paths-filter@v4
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         with:
           list-files: none
           filters: |
@@ -102,6 +103,11 @@ jobs:
         component: ${{ fromJSON(needs.detect-changes.outputs.components) }}
     env:
       COMPONENT: ${{ matrix.component }}
+    # The auditor pin, for every step of the job: the bootstrapper takes its version from
+    # IGOR_VERSION, else from composer.lock. Keep it equal to .igor-version, and the hash equal
+    # to the release's linux_amd64 archive (wfl ci:check enforces both).
+      IGOR_VERSION: '0.11.0'
+      IGOR_SHA256_LINUX_AMD64: 'c799c02830eeb3e91cb9fcfeb6a2ec8da34ebcade27d6d55496f93253cc866c5'
     # The data and queue suites talk to a real Redis (WAFFLE_TEST_REDIS_HOST); without one they skip.
     # Same image and pin as the workspace job below.
     services:
@@ -117,8 +123,9 @@ jobs:
 
     steps:
       - name: Checkout umbrella (no submodules)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 1
 
       # Init ONLY the component under test — never the private 'academy' submodule
@@ -140,15 +147,22 @@ jobs:
           fi
 
       - name: Setup PHP 8.5 + Xdebug
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
-          tools: composer:v2
+          tools: composer:2.11.2@sha256:dd158c0afd41d15fac89e1b4e47b5d42911fe316c3687cd5edac98319b25d028
           coverage: xdebug
           extensions: mbstring, intl, opcache, xml, dom, tokenizer
 
+      # composer.json requires php ^8.5.12: stop here, before anything installs, when
+      # setup-php resolves an older 8.5 release.
+      - name: Assert the PHP floor
+        run: |
+          php -r 'exit(PHP_VERSION_ID >= 80512 ? 0 : 1);' \
+            || { echo "::error::PHP 8.5.12 or later is required; setup-php gave $(php -r 'echo PHP_VERSION;')"; exit 1; }
+
       - name: Cache composer
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ matrix.component }}/vendor
           key:  composer-${{ runner.os }}-${{ matrix.component }}-${{ hashFiles(format('{0}/composer.lock', matrix.component)) }}
@@ -179,22 +193,24 @@ jobs:
         working-directory: ${{ matrix.component }}
         run: composer audit
 
-      # The composer package is only a bootstrapper: bin/igor-php resolves
-      # releases/latest from the GitHub API and downloads THAT binary, so the
-      # composer constraint and composer.lock pin nothing. vendor/ is cached
-      # above, so a restored binary of any version may already sit there: drop
-      # it, seed the version file, then assert against the BINARY's own banner
-      # (`--version` prints to stderr; the bootstrapper's download message also
-      # contains the version, so only an exact-line match proves it).
-      # Keep IGOR_VERSION equal to .igor-version (wfl ci:check enforces it).
-      - name: Pin the Igor auditor
+      # The composer package is only a bootstrapper: vendor/bin/igor-php runs the binary in
+      # resources/bin/<x-y-z>_<os>_<arch>/ and, when that is missing, downloads it unverified.
+      # So drop whatever a cache or an earlier run left there, fetch the release archive,
+      # check it against the committed SHA-256, and extract it where the bootstrapper looks.
+      # Then assert the binary's own banner: `--version` prints to stderr, so only an
+      # exact-line match on the merged stream proves the version.
+      - name: Pin and verify the Igor auditor
         working-directory: ${{ matrix.component }}
-        env:
-          IGOR_VERSION: '0.10.1'
         run: |
+          [ "$RUNNER_OS" = Linux ] && [ "$RUNNER_ARCH" = X64 ] || { echo "::error::the pinned igor hash covers linux_amd64 only"; exit 1; }
           bin_dir=vendor/igor-php/igor-php/resources/bin
-          rm -rf "$bin_dir" && mkdir -p "$bin_dir"
-          printf '%s' "$IGOR_VERSION" > "$bin_dir/.version"
+          dest="$bin_dir/$(printf '%s' "$IGOR_VERSION" | tr . -)_linux_amd64"
+          archive="$RUNNER_TEMP/igor-php.tar.gz"
+          rm -rf "$bin_dir" && mkdir -p "$dest"
+          curl -fsSL --retry 3 -o "$archive" \
+            "https://github.com/igor-php/igor-php/releases/download/v${IGOR_VERSION}/igor-php_${IGOR_VERSION}_linux_amd64.tar.gz"
+          printf '%s  %s\n' "$IGOR_SHA256_LINUX_AMD64" "$archive" | sha256sum -c -
+          tar -xzf "$archive" -C "$dest" igor-php
           vendor/bin/igor-php --version 2>&1 | tee /dev/stderr | grep -qFx "igor-php version $IGOR_VERSION"
 
       - name: igor-php
@@ -213,8 +229,10 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: hashFiles(format('{0}/src/**/*.php', matrix.component)) != ''
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
+          # The Codecov CLI release the action downloads (it defaults to latest).
+          version: v11.3.2
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./var/data/phpunit-coverage/clover.xml
 
@@ -258,8 +276,9 @@ jobs:
           --health-retries 15
     steps:
       - name: Checkout umbrella (no submodules)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 1
 
       # workspace/composer.json declares one path repository per component it
@@ -286,15 +305,15 @@ jobs:
           git submodule update --init --depth=1 -- "${COMPONENTS[@]}"
 
       - name: Setup PHP 8.5
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
-          tools: composer:v2
+          tools: composer:2.11.2@sha256:dd158c0afd41d15fac89e1b4e47b5d42911fe316c3687cd5edac98319b25d028
           coverage: none
           extensions: mbstring, intl, opcache, xml, dom, tokenizer, yaml, redis, pdo_pgsql
 
       - name: Cache composer
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: workspace/vendor
           key:  composer-${{ runner.os }}-workspace-${{ hashFiles('workspace/composer.lock') }}
@@ -357,8 +376,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout umbrella (no submodules)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 1
 
       # 'console' holds the SensitiveComparisonScanner sources the audit require()s;
@@ -373,10 +393,10 @@ jobs:
           git submodule update --init --depth=1 -- console auth security http http-client data cache telemetry
 
       - name: Setup PHP 8.5
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.5'
-          tools: composer:v2
+          tools: composer:2.11.2@sha256:dd158c0afd41d15fac89e1b4e47b5d42911fe316c3687cd5edac98319b25d028
           extensions: mbstring, tokenizer
 
       - name: SEC-03 audit (security-sensitive components)
@@ -392,8 +412,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout umbrella (no submodules)
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 1
 
       - name: Lint skills, agents, plugins and references

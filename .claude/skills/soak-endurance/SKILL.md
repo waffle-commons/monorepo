@@ -36,18 +36,21 @@ success indicator #4, the v1 adoption criterion). See `[[ecoshield]]`, `[[benchm
    and bounds every container).
 3. **Settle, then sample.** Warm up → rest → start sampling → load. A window starting on the previous
    run's peak regresses to a large negative slope that describes nothing.
-4. **Recycling hides leaks.** Set `MAX_REQUESTS` above the campaign's requests per worker (the gateway
-   plans 10 000 000) and record it. A window containing recycles supports only "no drift over a window
-   with N recycles".
+4. **Recycling hides leaks.** Set `MAX_REQUESTS` above the run's total and record it. The gateway pins
+   10 000 000 for its 3 h soak of 3 239 963 requests; 72 h at 300 rps is about 78 M requests. A window
+   containing recycles supports only "no drift over a window with N recycles".
 5. **A leak is a positive slope, judged with its bound.** Publish `slope ± 1.96·SE` with the window
    length. The bound shrinks with samples and duration, and it is the ceiling of an undetectable leak.
 6. **Watch the instrument.** A sampling gap stretching to ~5× the nominal cadence, or subject and
    baseline collapsing together, is the host failing. Cut at the last stationary point, chosen from the
    series' shape and never from the slope it produces, and say where.
 7. **Multi-worker heap series: regress the envelopes**, not the raw alternating series.
-8. **Run-unique result files; keep invalidated series.** A re-run must never overwrite a series. The
-   umbrella `bench/scripts/run-bench.sh` still names results `<engine>-<scenario>-<workload>`
-   (`[CARRY-02]`). A campaign that archives only its good runs proves nothing.
+8. **Run-unique result files; keep invalidated series.** A re-run must never overwrite a series.
+   Fixed in the umbrella rig by `[CARRY-02]` (umbrella `34bfe84`, 2026-10-22):
+   `bench/scripts/run-bench.sh` puts a `RUN_ID` (the UTC start by default) in every file name and
+   refuses to start over an existing series. The gateway's `perf-run.sh` still writes fixed names into
+   `OUT` (default `bench/results`): give each run its own `OUT`. A campaign that archives only its good
+   runs proves nothing.
 9. **Record the environment with every run:** image digest, FrankenPHP and PHP versions, worker count,
    `MAX_REQUESTS`, pool sizes, host hardware, k6 version, UTC timestamps.
 
@@ -61,15 +64,16 @@ success indicator #4, the v1 adoption criterion). See `[[ecoshield]]`, `[[benchm
 - **File descriptors:** sample the fd count of the worker processes next to memory.
 
 ## Chaos
-The breaker, limiter, probes and drain are beta7 items (`[NET-01..03]`, `[OPS-01/02]`); the catalogue
-applies once they exist. Inject one fault at a time, with timestamps, and check the specified reaction
-(the `chaos-runner` agent carries the catalogue):
+The breaker, limiter, probes and drain shipped in beta7 (`[NET-01..03]`, `[OPS-01/02]`). Inject one
+fault at a time, with timestamps, and check the specified reaction (the `chaos-runner` agent carries the
+catalogue):
 - **Upstream outage** → the breaker opens, fails fast, half-opens after its cool-down.
 - **Redis restart** → the limiter and queue reconnect with the documented fail mode.
 - **Database restart** → heal-on-lease, zero leaked connections.
 - **Rolling restart** → zero lost in-flight requests. This needs **≥2 replicas behind a load
   balancer** (or a real cluster such as kind or k3d): restarting the only replica of a compose stack is
-  an outage, not a drain test.
+  an outage, not a drain test. `wfl rolling-restart` is that rig: two production replicas behind a
+  `/readyz` load balancer, under k6.
 
 Any 5xx outside an injection window and its recovery tail fails the campaign.
 

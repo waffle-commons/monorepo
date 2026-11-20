@@ -16,6 +16,35 @@ with composer.json and .github/workflows/main.yml, template itself excluded) thi
 and, for the umbrella:
 
   igor pin    every IGOR_VERSION in a workflow equals .igor-version
+  igor hash   every workflow that pins igor checks the downloaded archive against one committed
+              IGOR_SHA256_LINUX_AMD64 (`sha256sum -c`), the same hash everywhere
+  pin         every `uses:` in every workflow (template, libraries, umbrella) names a full commit
+              SHA with its version as a comment; the template and library workflows declare a
+              top-level read-only `permissions:` block (S-B1-02)
+  trufflehog  TruffleHog's `version:` input is the version its pinned `uses:` names plus the image's
+              digest, `X.Y.Z@sha256:<digest>`: the action runs `ghcr.io/trufflesecurity/trufflehog:<version>`,
+              `latest` by default, and a tag alone is mutable
+  images      every container image a workflow runs (`docker://` steps, `image:` of services and
+              containers, a job-level `container:` string, `docker run` / `docker pull` in a script)
+              is pinned by `@sha256:` digest
+  igor hash   ... and that hash equals `.igor-sha256` at the umbrella root
+  composer    every setup-php `tools:` names Composer as `composer:X.Y.Z@sha256:<hash>`, one value
+              in every workflow (setup-php checks the download only when the hash is given)
+  codecov     codecov-action runs a fixed CLI release (`version: vX.Y.Z`), not `latest`
+
+With `--online` (network), also: every pinned action SHA is the commit its version comment names
+(git ls-remote, tags peeled); `.igor-sha256` matches the igor release's checksums.txt; the Composer
+hash matches getcomposer.org's; the TruffleHog image digest is what its tag resolves to on ghcr.io;
+the Codecov CLI release exists.
+  checkout    every actions/checkout of the component workflows, umbrella-ci and fresh-install sets
+              `persist-credentials: false`, so no later step finds the token in `.git/config`
+              (release-wave keeps its own token handling)
+  php floor   every composer.json of the ecosystem requires php ^8.5.12 or later, and the
+              component CI (template, libraries, umbrella-ci) asserts PHP_VERSION_ID >= 80512
+              before it installs anything (S-B1-07)
+  security    component-template's SECURITY.md names both private channels, the response time
+              and the supported versions; every library carries the same file, and skeleton the
+              French policy (S-B1-08)
   filter      umbrella-ci's paths filter lists every library component
   actions     umbrella workflows use the same action versions as the template. The umbrella
               has no Dependabot config on purpose: its fork ruleset blocks branch creation
@@ -108,6 +137,169 @@ for wf in workflow_files:
     for found in re.findall(r"IGOR_VERSION:\s*'([^']+)'", read(wf)):
         if found != igor_pin:
             problems.append((wf, "igor pin", f"IGOR_VERSION {found} != .igor-version {igor_pin}"))
+
+# Third-party code runs only at a fixed commit, and the igor archive is verified (S-B1-02).
+UMBRELLA_WORKFLOWS = [".github/workflows/umbrella-ci.yml", ".github/workflows/release-wave.yml",
+                      ".github/workflows/fresh-install.yml"]
+COMPONENT_WORKFLOWS = [f"{TEMPLATE}/.github/workflows/main.yml"] + [f"{c}/.github/workflows/main.yml" for c in libraries]
+PINNED = re.compile(r"uses:\s*[\w.-]+/[\w./-]+@[0-9a-f]{40}\s+#\s*v?\d+\.\d+\.\d+\s*$")
+TRUFFLEHOG = re.compile(r"uses:\s*trufflesecurity/trufflehog@[0-9a-f]{40}\s+#\s*v?(\d+\.\d+\.\d+)\s*$")
+DIGEST = re.compile(r"@sha256:[0-9a-f]{64}$")
+CHECKOUT_WORKFLOWS = COMPONENT_WORKFLOWS + [".github/workflows/umbrella-ci.yml", ".github/workflows/fresh-install.yml"]
+
+
+def step_lines(lines, n):
+    """The lines of the step whose `uses:` sits on line n (1-based), up to the next step or job."""
+    step = []
+    for following in lines[n:]:
+        if re.match(r"\s*- ", following) or not following.startswith(" " * 8):
+            break
+        step.append(following)
+    return step
+
+
+igor_hashes = set()
+for wf in COMPONENT_WORKFLOWS + UMBRELLA_WORKFLOWS:
+    lines = read(wf).splitlines()
+    for n, line in enumerate(lines, 1):
+        ref = re.search(r"uses:\s*(\S+)", line)
+        if ref and ref.group(1).startswith("docker://") and not DIGEST.search(ref.group(1)):
+            problems.append((wf, "images", f"line {n}: {ref.group(1)} is not pinned by digest"))
+        elif ref and not ref.group(1).startswith(("./", "docker://")) and not PINNED.search(line):
+            problems.append((wf, "pin", f"line {n}: {ref.group(1)} is not a commit SHA with a # version comment"))
+        image = re.match(r"\s+image:\s*(\S+)\s*$", line)
+        if image and not DIGEST.search(image.group(1).strip("'\"")):
+            problems.append((wf, "images", f"line {n}: image {image.group(1)} is not pinned by digest"))
+        if ref and ref.group(1).startswith("actions/checkout@") and wf in CHECKOUT_WORKFLOWS:
+            if not any(re.match(r"\s+persist-credentials:\s*false\s*$", s) for s in step_lines(lines, n)):
+                problems.append((wf, "checkout", f"line {n}: actions/checkout without persist-credentials: false"))
+        pinned_trufflehog = TRUFFLEHOG.search(line)
+        if pinned_trufflehog:
+            given = [v.strip("'\"") for v in re.findall(r"^\s+version:\s*(\S+)\s*$", "\n".join(step_lines(lines, n)), re.MULTILINE)]
+            want = re.compile(re.escape(pinned_trufflehog.group(1)) + r"@sha256:[0-9a-f]{64}")
+            if len(given) != 1 or not want.fullmatch(given[0]):
+                problems.append((wf, "trufflehog", f"line {n}: version input {given or 'missing'}, needs "
+                                                   f"{pinned_trufflehog.group(1)}@sha256:<the image's digest>"))
+    text = "\n".join(lines)
+    if "IGOR_VERSION:" in text:
+        found = re.findall(r"IGOR_SHA256_LINUX_AMD64:\s*'([0-9a-f]{64})'", text)
+        if len(found) != 1 or "sha256sum -c" not in text:
+            problems.append((wf, "igor hash", "the igor archive is not checked against one committed SHA-256"))
+        igor_hashes.update(found)
+if len(igor_hashes) > 1:
+    problems.append(("workflows", "igor hash", f"{len(igor_hashes)} different igor archive hashes"))
+igor_sha256 = read(".igor-sha256").strip() if exists(".igor-sha256") else ""
+if not re.fullmatch(r"[0-9a-f]{64}", igor_sha256):
+    problems.append((".igor-sha256", "igor hash", "missing, or not a SHA-256"))
+elif igor_hashes and igor_hashes != {igor_sha256}:
+    problems.append(("workflows", "igor hash", f"IGOR_SHA256_LINUX_AMD64 differs from .igor-sha256 ({igor_sha256[:12]}…)"))
+
+# Composer and the Codecov CLI are fixed releases; images run by digest wherever they appear.
+COMPOSER = re.compile(r"composer:(\d+\.\d+\.\d+)@sha256:([0-9a-f]{64})")
+composer_specs = set()
+codecov_versions = set()
+for wf in COMPONENT_WORKFLOWS + UMBRELLA_WORKFLOWS:
+    lines = read(wf).splitlines()
+    for n, line in enumerate(lines, 1):
+        tools = re.match(r"\s+tools:\s*(.+?)\s*$", line)
+        if tools and "composer" in tools.group(1):
+            spec = next((t.strip() for t in tools.group(1).split(",") if t.strip().startswith("composer")), "")
+            if not COMPOSER.fullmatch(spec):
+                problems.append((wf, "composer", f"line {n}: {spec!r} is not composer:X.Y.Z@sha256:<hash>"))
+            else:
+                composer_specs.add(spec)
+        if re.search(r"uses:\s*codecov/codecov-action@", line):
+            given = re.findall(r"^\s+version:\s*['\"]?(\S+?)['\"]?\s*$", "\n".join(step_lines(lines, n)), re.MULTILINE)
+            if len(given) != 1 or not re.fullmatch(r"v\d+\.\d+\.\d+", given[0]):
+                problems.append((wf, "codecov", f"line {n}: the CLI version is {given or 'unset (latest)'}, needs vX.Y.Z"))
+            else:
+                codecov_versions.add(given[0])
+        job_container = re.match(r" {4}container:\s*(\S+)\s*$", line)
+        if job_container and not DIGEST.search(job_container.group(1).strip("'\"")):
+            problems.append((wf, "images", f"line {n}: container {job_container.group(1)} is not pinned by digest"))
+        docker_cli = re.search(r"\bdocker\s+(?:run|pull)\b", line)
+        if docker_cli and "@sha256:" not in line:
+            problems.append((wf, "images", f"line {n}: docker {line.strip()[:60]!r} names no digest"))
+if len(composer_specs) > 1:
+    problems.append(("workflows", "composer", f"{len(composer_specs)} different Composer pins"))
+
+if "--online" in sys.argv[1:]:
+    def fetch(url, headers=(), head=False):
+        """curl, not urllib: it uses the system's trust store (python.org's macOS build ships none)."""
+        args = ["curl", "-fsSL", "--max-time", "30"] + (["-I"] if head else [])
+        for header in headers:
+            args += ["-H", header]
+        done = subprocess.run(args + [url], capture_output=True, text=True, timeout=60)
+        return done.returncode, done.stdout
+
+    pins = set()
+    for wf in COMPONENT_WORKFLOWS + UMBRELLA_WORKFLOWS:
+        pins.update(re.findall(r"uses:\s*([\w.-]+/[\w.-]+)[\w./-]*@([0-9a-f]{40})\s+#\s*(v?\d+\.\d+\.\d+)", read(wf)))
+    for repo, sha, version in sorted(pins):
+        out = subprocess.run(["git", "ls-remote", f"https://github.com/{repo}.git", f"refs/tags/{version}",
+                              f"refs/tags/{version}^{{}}"], capture_output=True, text=True, timeout=60).stdout.split("\n")
+        refs = dict(reversed(l.split("\t")) for l in out if "\t" in l)
+        commit = refs.get(f"refs/tags/{version}^{{}}", refs.get(f"refs/tags/{version}"))
+        if commit != sha:
+            problems.append((repo, "online pin", f"{version} is {commit or 'missing'}, the workflows pin {sha[:12]}"))
+    igor_version = read(".igor-version").strip()
+    _, body = fetch(f"https://github.com/igor-php/igor-php/releases/download/v{igor_version}/checksums.txt")
+    listed = [l.split()[0] for l in body.splitlines() if l.strip().endswith(f"_{igor_version}_linux_amd64.tar.gz")]
+    if listed != [igor_sha256]:
+        problems.append((".igor-sha256", "online igor", f"checksums.txt lists {listed}, .igor-sha256 is {igor_sha256[:12]}…"))
+    for spec in composer_specs:
+        version, digest = COMPOSER.fullmatch(spec).groups()
+        _, body = fetch(f"https://getcomposer.org/download/{version}/composer.phar.sha256sum")
+        if (body.split() or [""])[0] != digest:
+            problems.append(("workflows", "online composer", f"getcomposer.org lists another hash for {version}"))
+    for wf in COMPONENT_WORKFLOWS:
+        image = re.search(r"version:\s*(\d+\.\d+\.\d+)@(sha256:[0-9a-f]{64})", read(wf))
+        if image:
+            tag, digest = image.groups()
+            _, body = fetch("https://ghcr.io/token?scope=repository:trufflesecurity/trufflehog:pull")
+            token = json.loads(body or "{}").get("token", "")
+            accept = "application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json"
+            _, headers = fetch(f"https://ghcr.io/v2/trufflesecurity/trufflehog/manifests/{tag}",
+                               [f"Authorization: Bearer {token}", f"Accept: {accept}"], head=True)
+            served = (re.findall(r"(?im)^docker-content-digest:\s*(\S+)", headers) or [None])[-1]
+            if served != digest:
+                problems.append((wf, "online image", f"trufflehog:{tag} resolves to {served}, the workflow pins {digest[:19]}…"))
+            break
+    for version in codecov_versions:
+        code, _ = fetch(f"https://cli.codecov.io/{version}/linux/codecov", head=True)
+        if code != 0:
+            problems.append(("workflows", "online codecov", f"cli.codecov.io has no {version} (curl exit {code})"))
+    print(f"online: {len(pins)} action pins, igor {igor_version}, {len(composer_specs)} Composer pin(s), "
+          f"{len(codecov_versions)} Codecov CLI version(s) checked")
+for wf in COMPONENT_WORKFLOWS:
+    if not re.search(r"^permissions:\n  contents: read\n", read(wf), re.MULTILINE):
+        problems.append((wf, "permissions", "no top-level read-only permissions block"))
+
+# The PHP floor: no release before 8.5.12 installs or runs (S-B1-07).
+PHP_FLOOR = (8, 5, 12)
+composer_repos = [TEMPLATE] + libraries + [r for r in ("skeleton", "workspace", "academy/labs", "academy/sandbox")
+                                           if exists(f"{r}/composer.json")]
+for r in composer_repos:
+    php = json.loads(read(f"{r}/composer.json")).get("require", {}).get("php", "")
+    floor = re.fullmatch(r"\^(\d+)\.(\d+)\.(\d+)", php)
+    if not floor or tuple(int(part) for part in floor.groups()) < PHP_FLOOR:
+        problems.append((f"{r}/composer.json", "php floor", f"require.php is {php!r}, needs ^8.5.12 or later"))
+for wf in COMPONENT_WORKFLOWS + [".github/workflows/umbrella-ci.yml"]:
+    if "PHP_VERSION_ID >= 80512" not in read(wf):
+        problems.append((wf, "php floor", "CI does not assert PHP_VERSION_ID >= 80512"))
+
+# One security policy with a private channel, the same file in every library (S-B1-08).
+tpl_security = read(f"{TEMPLATE}/SECURITY.md") if exists(f"{TEMPLATE}/SECURITY.md") else ""
+for needed in ("security@eightyfour.ovh", "Report a vulnerability", "within 48 hours", "## Supported versions"):
+    if needed not in tpl_security:
+        problems.append((f"{TEMPLATE}/SECURITY.md", "security", f"the policy does not state {needed!r}"))
+for c in libraries:
+    if not exists(f"{c}/SECURITY.md") or read(f"{c}/SECURITY.md") != tpl_security:
+        problems.append((f"{c}/SECURITY.md", "security", "differs from component-template's policy"))
+skeleton_security = read("skeleton/SECURITY.md") if exists("skeleton/SECURITY.md") else ""
+for needed in ("security@eightyfour.ovh", "Report a vulnerability", "sous 48 heures"):
+    if needed not in skeleton_security:
+        problems.append(("skeleton/SECURITY.md", "security", f"the French policy does not state {needed!r}"))
 
 # umbrella-ci must gate every library component.
 umbrella_ci = read(".github/workflows/umbrella-ci.yml")
