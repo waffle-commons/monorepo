@@ -115,6 +115,36 @@ aliases: []
 - **Raw evidence** (local, git-ignored): `project_system/Audits/Beta8/igor-0.11.0-trial/`, with `RESULT.md`, `summary.tsv` and the 54 logs.
 - **Next:** the maintainer's decision (D7): adopt 0.11.0, with every pin moving in one sweep inside 1.1 and 1.3, or keep 0.10.1 for beta8.
 
+### 2026-11-20 16:40–17:30 CET — the toolchain wave, 1.1: one CI sweep
+
+- **Decisions** (the maintainer, about 16:40): adopt igor-php 0.11.0 (D7), and fix `igor.sh` and `wfl dod` so they pass `IGOR_VERSION` into Docker.
+- **The change,** made once in `component-template`:
+  - **TruffleHog v3.100.0, with the action's `version:` input.** The action runs the image `ghcr.io/trufflesecurity/trufflehog:<version>`, `latest` by default, so pinning the action alone would not pin the scanner. The `3.100.0` tag was checked to exist.
+  - **igor-php 0.11.0, pinned for the whole igor job.** Only the step that checked the version had the variable. The step that ran the audit fell back to `composer.lock`, so CI audited with the lock's version. `umbrella-ci` had the same gap.
+  - **S-B1-02 (MEDIUM, M):** its fix, per its ticket.
+  - Every action stays at the commit its current major tag points to, so nothing changes in behaviour. The exact version is in a comment.
+- **Propagation:**
+  - 23 libraries were byte-identical to the template's committed workflow. Each was checked first, then copied byte for byte.
+  - `telemetry` and `telemetry-otel` carry their own extension and ini lines, so the same scripted transform ran on their own files.
+  - The umbrella's three workflows followed.
+  - All 29 workflows parse as YAML. CI first runs on the draft PRs after the first push (D6).
+- **The regression check** (D9's terms): new `wfl ci:check` rules, for S-B1-02 and for TruffleHog's version input.
+  - On the unchanged workflows: 873 findings across 30 files.
+  - With the version input still missing, the TruffleHog rule fired on its own.
+  - After the change: no drift.
+- **`igor.sh` and `wfl dod`:**
+  - Both pass `IGOR_VERSION` into `docker exec`. `igor.sh` now matches the banner as a whole line, and both remedy messages name the versioned folder. AGENTS.md §5 was corrected.
+  - `/bin/bash -n` (3.2.57) passes on both.
+  - `igor.sh --docker -s` at 0.11.0, while the lock still says 0.10.1: 27 OK, 0 ERROR (the 28th, `component-template`, is the usual exempt scaffold).
+  - An `IGOR_VERSION=0.10.1` override is still honoured. `wfl dod utils` passes, with its igor step at 0.11.0.
+- **Commits** (local):
+  - The 26 component repos, one identical change each: `component-template` `a96efd4`, `cache` `4ee5faf`, `config` `8212728`, `console` `6c997ed`, `container` `072e42b`, `contracts` `ae9590f`, `error-handler` `99f3178`, `event-dispatcher` `098b54a`, `http` `022e77a`, `log` `a45041a`, `pipeline` `6026716`, `routing` `8dfaa94`, `runtime` `6afa5e4`, `security` `1341689`, `utils` `8ad6d85`, `waffle` `24bb378`, `http-client` `f396a38`, `auth` `d488804`, `data` `6c17373`, `telemetry` `0720dea`, `telemetry-otel` `4b2f47d`, `async` `77b54e4`, `queue` `52ad36b`, `openapi` `6b9ce50`, `serializer` `36f86df`, `testing` `9caa429`.
+  - Umbrella: `6f0a4f9` (the tooling) and `62a106b` (the 26 gitlinks, each checked against its repo's HEAD).
+- **Evidence** (local, git-ignored): `project_system/Audits/Beta8/wave1-ci-sweep/`.
+- **Still to do for S-B1-02:**
+  - The maintainer's repository-settings part, after each repo's release PR (D9).
+  - `wfl dod queue` in the 1.3 sweep, then its fix-check.
+
 ## 1. Technical changelog (what changed)
 
 _Filled as the items land._
