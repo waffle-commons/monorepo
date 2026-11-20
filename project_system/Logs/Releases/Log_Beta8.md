@@ -215,6 +215,14 @@ aliases: []
   - **Commits:** 26 (queue `7d39ae5`), umbrella `c358130`.
 - **The fix-checks of S-B1-02 and S-B1-07** run from 17:58: for each finding, one `finding-verifier` writes the official verdict, and an independent read-only skeptic tries to refute the fix.
 
+### 2026-11-20 17:58–18:02 CET — the fix-checks of S-B1-07 and S-B1-02
+
+- A workflow of four agents, two per finding: the official `finding-verifier` (Opus, high effort) writes the verdict file, and an independent read-only skeptic tries to refute the fix. It took 3 min 36 s.
+- **S-B1-07 (LOW, S): HOLDS**, by both agents. Recorded: `wfl audit:fixed 0.1.0-beta8 S-B1-07 queue@0e5e675 --run pilot`, so the pilot ledger has 1 of 31 fixed.
+- **S-B1-02 (MEDIUM, M): contested.** The official verifier answers HOLDS; the skeptic answers that one part of the finding's scope is still open. The detail stays in the local evidence. S-B1-02 is not recorded until the maintainer decides.
+- **S-B1-08** waits for private vulnerability reporting, which is part of its fix (D9).
+- **Evidence** (local, git-ignored): `project_system/Audits/Beta8/wave1-fix-checks/`, and the verdict files in `project_system/Audits/Beta8/pilot/verdicts/`.
+
 ## 1. Technical changelog (what changed)
 
 _Filled as the items land._
