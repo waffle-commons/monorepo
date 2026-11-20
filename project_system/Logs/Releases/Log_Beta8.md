@@ -198,6 +198,23 @@ aliases: []
   - The fix-checks of S-B1-02, -07 and -08.
   - The first push, on the maintainer's word (D6).
 
+### 2026-11-20 17:45–17:57 CET — the toolchain wave, 1.4 (S-B1-08) and the CHANGELOG pass
+
+- **1.4, S-B1-08 (LOW, S):** its fix, per its ticket. The maintainer reviewed the text in the vault and approved it ("go with your recommendations").
+  - **One policy for every Waffle package,** written in `component-template` and copied byte for byte to the 25 libraries.
+    - waffle's own longer policy is replaced; its private list, its 48-hour acknowledgement and its six-month rule carry over.
+    - skeleton gets the French version (AGENTS.md §1), without the section on CI checks, since skeleton has no CI of its own yet.
+  - **A correction to the recommendation the maintainer accepted:** projects created from skeleton never inherited its `SECURITY.md`. `skeleton/.gitattributes` already marks it `export-ignore`, with `CONTRIBUTING.md`, `CHANGELOG.md` and `create-project.sh`. The planned placeholder in `create-project.sh` would have fixed nothing, so it was not made.
+  - **The regression check:** a new `wfl ci:check` rule. On the unchanged files it reports 8 findings (component-template, waffle and skeleton); after the change, no drift.
+  - **Commits:** 26 policy commits (queue `addfc5c`, serializer `43671c7`, waffle `3544cd9`) and skeleton `7f7dc6a`; umbrella `a81e186` (the rule) and `d2ee226` (27 gitlinks).
+  - **The maintainer's part:** private vulnerability reporting in every public repository (D9, by 2026-11-23). The API shows it still off in queue and serializer, so S-B1-08's fix-check waits for it.
+  - **Not covered:** the umbrella, workspace, academy and documentation have no `SECURITY.md`. An organisation-level policy, in the organisation's `.github` repository, would cover them; that is the maintainer's call.
+- **The CHANGELOG pass:**
+  - The legend asks each repo's first beta8 commit to open `## [Unreleased]`, and Wave 1's commits did not. One pass added the section to the 25 libraries and skeleton. `component-template`'s CHANGELOG is the new-component starter and stays as it is.
+  - Security lines name S-B1-02, -07 and -08 by ID, severity and component. cache's Predis line is marked breaking, and auth's lists the retired marks.
+  - **Commits:** 26 (queue `7d39ae5`), umbrella `c358130`.
+- **The fix-checks of S-B1-02 and S-B1-07** run from 17:58: for each finding, one `finding-verifier` writes the official verdict, and an independent read-only skeptic tries to refute the fix.
+
 ## 1. Technical changelog (what changed)
 
 _Filled as the items land._
