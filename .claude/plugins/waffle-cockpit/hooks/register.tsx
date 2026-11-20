@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register, Timer } from 'claude-code'
 
-import type { AuditStatus, AuditView, CockpitStatus, DodRecord, DodRun, DodView, Job, JobState, RepoInfo, SessionInfo } from '../types'
+import type { AuditStatus, AuditView, CockpitSession, CockpitStatus, DodRecord, DodRun, DodView, Job, JobState, RepoInfo } from '../types'
 import {
   AUDIT_RUN,
   AUDIT_VERSION,
@@ -100,7 +100,7 @@ const history = atom({ plugin: 'waffle-cockpit', key: 'history' } as const, {})
 const isHidden = atom({ plugin: 'waffle-cockpit', key: 'isHidden' } as const, false)
 const auditView = atom({ plugin: 'waffle-cockpit', key: 'auditView' } as const, null)
 
-const EMPTY_SESSION: SessionInfo = {
+const EMPTY_SESSION: CockpitSession = {
   model: '',
   effort: '',
   contextPercent: null,
@@ -340,7 +340,7 @@ async function textOf($: EngineInterface, argv: string[], cwd: string, timeoutMs
 /** Context, cost, limits and start time, as the session reports them (a free call). */
 async function refreshSession($: EngineInterface): Promise<void> {
   const usage = await $.session.usage()
-  await update($, session, (was): SessionInfo => ({
+  await update($, session, (was): CockpitSession => ({
     ...(was ?? EMPTY_SESSION),
     contextPercent: usage.context.percent ?? null,
     contextTokens: usage.context.tokens ?? null,
@@ -725,7 +725,7 @@ export const register: Register = (on, options) => {
     const started = await next(e)
     void loadHistory($).catch(ignoreFailure)
     const model = await $.session.model().catch(() => '')
-    await update($, session, (was): SessionInfo => ({ ...(was ?? EMPTY_SESSION), model }))
+    await update($, session, (was): CockpitSession => ({ ...(was ?? EMPTY_SESSION), model }))
     await $.command.register({
       name: 'cockpit',
       description: 'Refresh the cockpit lines under the prompt, show / hide them, or list the background jobs',
@@ -757,7 +757,7 @@ export const register: Register = (on, options) => {
   on('turn.step', async function* ($, e, next) {
     if (e.agentId === undefined) {
       const effort = e.effort === undefined ? '' : String(e.effort)
-      await update($, session, (was): SessionInfo => ({ ...(was ?? EMPTY_SESSION), model: e.model, effort }))
+      await update($, session, (was): CockpitSession => ({ ...(was ?? EMPTY_SESSION), model: e.model, effort }))
     }
     return yield* next(e)
   })
@@ -767,7 +767,7 @@ export const register: Register = (on, options) => {
     if (e.agentId === undefined) {
       const at = await $.clock.now()
       const usage = e.usage
-      await update($, session, (was): SessionInfo => {
+      await update($, session, (was): CockpitSession => {
         const base = was ?? EMPTY_SESSION
         if (usage === undefined) return { ...base, lastTurnAt: at }
         const input = usage.input_tokens + usage.cache_read_input_tokens + usage.cache_creation_input_tokens

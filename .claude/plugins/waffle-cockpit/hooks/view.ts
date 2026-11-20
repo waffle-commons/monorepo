@@ -11,7 +11,7 @@
  * Under them, the hook draws what other mods put there and then the engine's
  * own line (shortcuts, esc to interrupt), so `hint` is empty in the session.
  */
-import type { AuditStatus, CockpitStatus, Job, RepoInfo, SessionInfo } from '../types'
+import type { AuditStatus, CockpitSession, CockpitStatus, Job, RepoInfo } from '../types'
 import { shortVersion } from './audit'
 
 export type Tone = 'plain' | 'dim' | 'bold' | 'green' | 'yellow' | 'red' | 'cyan' | 'magenta' | 'blue'
@@ -21,7 +21,7 @@ export type Segment = { text: string; tone: Tone }
 export type Line = Segment[]
 
 export type ViewInput = {
-  session: SessionInfo | null
+  session: CockpitSession | null
   repo: RepoInfo | null
   waffle: CockpitStatus | null
   /** `$.clock.now()`, for durations and "ago". */
@@ -85,7 +85,7 @@ function joined(groups: Line[], separator: Segment): Line {
   return groups.filter(group => group.length > 0).flatMap((group, i) => (i === 0 ? group : [separator, ...group]))
 }
 
-function modelGroup(session: SessionInfo | null): Line {
+function modelGroup(session: CockpitSession | null): Line {
   const group: Line = [{ text: session?.model ? modelLabel(session.model) : 'Claude', tone: 'bold' }]
   if (session?.effort) group.push(DOT, { text: session.effort, tone: 'magenta' })
   return group
@@ -143,7 +143,7 @@ function waffleGroup(waffle: CockpitStatus | null, warnHours: number): Line {
   return group
 }
 
-function contextGroup(session: SessionInfo | null, levels: readonly [number, number]): Line {
+function contextGroup(session: CockpitSession | null, levels: readonly [number, number]): Line {
   const percent = session?.contextPercent
   if (percent === null || percent === undefined) return [{ text: 'ctx —', tone: 'dim' }]
   const group: Line = [
@@ -158,7 +158,7 @@ function contextGroup(session: SessionInfo | null, levels: readonly [number, num
   return group
 }
 
-function cacheGroup(session: SessionInfo | null, now: number): Line {
+function cacheGroup(session: CockpitSession | null, now: number): Line {
   if (session === null || session.cacheInput === 0) return []
   const ratio = Math.round((session.cacheRead / session.cacheInput) * 100)
   const group: Line = [{ text: 'cache ', tone: 'plain' }, { text: `${ratio}%`, tone: level(100 - ratio, 30, 60) }]
@@ -166,7 +166,7 @@ function cacheGroup(session: SessionInfo | null, now: number): Line {
   return group
 }
 
-function spendGroup(session: SessionInfo | null, repo: RepoInfo | null, now: number): Line {
+function spendGroup(session: CockpitSession | null, repo: RepoInfo | null, now: number): Line {
   const parts: Line[] = []
   if (session?.costUsd !== null && session?.costUsd !== undefined) parts.push([{ text: `$${session.costUsd.toFixed(2)}`, tone: 'plain' }])
   if (session?.startedAt !== null && session?.startedAt !== undefined) parts.push([{ text: duration(now - session.startedAt), tone: 'plain' }])
@@ -180,7 +180,7 @@ function spendGroup(session: SessionInfo | null, repo: RepoInfo | null, now: num
   return joined(parts, DOT)
 }
 
-function limitGroups(session: SessionInfo | null): Line[] {
+function limitGroups(session: CockpitSession | null): Line[] {
   const labels: Record<string, string> = { five_hour: '5h', seven_day: '7d', spend_limit: 'spend' }
   return (session?.limits ?? []).map(limit => {
     const group: Line = [
