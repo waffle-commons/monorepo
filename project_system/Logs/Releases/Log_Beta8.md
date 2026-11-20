@@ -261,6 +261,53 @@ aliases: []
 - **Not in this sweep, for the maintainer:** the Docker images still pin `composer:2.10.3`: the skeleton, workspace and bench Dockerfiles, and `skeleton/create-project.sh`. That version is affected by the two high advisories above and by GHSA-fm2w-xgf2-f9fh (medium).
 - **Evidence** (local, git-ignored): `project_system/Audits/Beta8/wave1-ci-hardening/`.
 
+### 2026-11-20 18:44–19:15 CET — the first push and the draft release PRs
+
+- The maintainer's word: "go with your recommendations, push and open the PRs". It also amends D6: queue and serializer go up with the other repositories.
+- **Before the push:**
+  - Every repository is clean and none is behind `main`. `documentation` has no beta8 commit, so it gets neither a push nor a PR.
+  - The 356 commit messages to publish were scanned for wording beyond finding IDs: none. The carried item `X-RETRY-CEILING` in `Roadmap_Beta8.md` repeats what `main` already says (`Retro_Beta7.md`, `Log_Beta7.md`).
+- **The push (18:44–18:48),** one branch refspec per repository and no tag:
+  - in the plan's order: academy's labs and sandbox, academy, component-template, the 25 libraries, skeleton, workspace, then the umbrella (`bdf95c9`), once every gitlink was found on its remote;
+  - each remote head equals the local one;
+  - the 28 public repositories report two rules bypassed through the maintainer's admin bypass: ref creation is restricted, and commits must have verified signatures.
+- **A gap in the pre-push gate:** it answered "no PHP changes" in every submodule, though auth's range changes 3 PHP files. Run from a submodule, the hook moves to the umbrella, then reads the submodule's range in the umbrella's repository. auth's DoD passed after that change (`0990c34`), and again below. Like the pre-commit hook's blind spot, it is recorded here, not fixed.
+- **Dependabot (18:56):** three PRs opened after the first sweep (queue#6, serializer#6, waffle#89, all TruffleHog 3.99.9) are closed with the standard comment; the branches carry v3.100.0.
+- **The DoD sweep on the pushed heads (18:57–19:05):**
+  - `wfl dod`: 27 PASS of 27 (the 25 libraries, skeleton and workspace), in 492 s;
+  - labs' answer key (`composer verify`): OK, 54 tests and 122 assertions. sandbox `composer mago`: clean. `wfl ai:check`: clean;
+  - `wfl academy:test` exits 2 by design: it runs the students' suite, which fails until the labs are solved.
+- **The draft PRs (19:07–19:11):** 32, each from `pre-release/0.1.0-beta8` into `main`.
+  - Each has the milestone `0.1.0-beta8` and the labels `release`, `dependencies` and `v1.0`, plus `breaking` on cache and `documentation` on the umbrella.
+  - Each body contains:
+    - the repository's `[Unreleased]` CHANGELOG section, or its commit subjects where it has no CHANGELOG;
+    - the sweep's gate output;
+    - the merge danger: Composer installs the release only on PHP `^8.5.12`, and cache needs `predis/predis` `^3.7.1`.
+  - The umbrella's PR, [monorepo#17](https://github.com/waffle-commons/monorepo/pull/17), lists the 31 others:
+    - academy: labs#3, sandbox#4, academy#5;
+    - component-template#15;
+    - the libraries: cache#16, config#41, console#16, container#34, contracts#75, error-handler#40, event-dispatcher#15, http#31, log#16, pipeline#38, routing#41, runtime#32, security#39, utils#38, waffle#90, http-client#19, auth#14, data#14, telemetry#11, telemetry-otel#11, async#11, queue#7, openapi#6, serializer#7, testing#7;
+    - the apps: skeleton#14, workspace#21.
+- **CI on the PRs (19:07–19:30):**
+  - **The 25 libraries: green,** each on its pushed head, with the Wave 1 workflow. That workflow pins:
+    - TruffleHog by digest;
+    - igor-php 0.11.0 and Composer 2.11.2, each checked against its hash;
+    - the Codecov CLI v11.3.2;
+    - the PHP floor check.
+  - **component-template's own run** skips every job by design (`github.repository != 'waffle-commons/component-template'`), as in beta7. Its workflow runs through the 25 byte-identical copies.
+  - **No CI of their own:** skeleton, workspace and the academy repositories.
+  - **umbrella-ci failed in one job, `wfl ai:check`**, on `bdf95c9`:
+    - **Cause:** `soak-endurance` cites `bench/results` (`937fd0c`), which `bench/.gitignore` ignores as `results/`. A directory-only pattern matches a missing path only when the path ends with a slash. The folder exists on the maintainer's machine, so the local run passed; CI's fresh checkout has none.
+    - **Fix:** `ai-check.py` also tries the path as a directory (`73317ab`).
+    - **Checks, in a fresh local clone:** the lint fails before the fix with CI's message and passes after it; a planted missing path is still caught.
+    - The other 28 jobs passed: the 25 components, workspace, the change detection and the SEC-03 gate.
+  - **umbrella-ci on `73317ab`: green** (run 44791732660).
+- **For the maintainer:**
+  - the `0.1.0-beta8` milestones still carry their first due date (the API returns 2026-12-02), set before the tag moved (D2);
+  - S-B1-02's repository-settings part, per repository once its release PR merges, the umbrella last;
+  - private vulnerability reporting (D9), by 23 November.
+- **Evidence** (local, git-ignored): `project_system/Audits/Beta8/wave1-push/`.
+
 ## 1. Technical changelog (what changed)
 
 _Filled as the items land._
