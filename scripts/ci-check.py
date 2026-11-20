@@ -26,6 +26,9 @@ and, for the umbrella:
   php floor   every composer.json of the ecosystem requires php ^8.5.12 or later, and the
               component CI (template, libraries, umbrella-ci) asserts PHP_VERSION_ID >= 80512
               before it installs anything (S-B1-07)
+  security    component-template's SECURITY.md names both private channels, the response time
+              and the supported versions; every library carries the same file, and skeleton the
+              French policy (S-B1-08)
   filter      umbrella-ci's paths filter lists every library component
   actions     umbrella workflows use the same action versions as the template. The umbrella
               has no Dependabot config on purpose: its fork ruleset blocks branch creation
@@ -168,6 +171,19 @@ for r in composer_repos:
 for wf in COMPONENT_WORKFLOWS + [".github/workflows/umbrella-ci.yml"]:
     if "PHP_VERSION_ID >= 80512" not in read(wf):
         problems.append((wf, "php floor", "CI does not assert PHP_VERSION_ID >= 80512"))
+
+# One security policy with a private channel, the same file in every library (S-B1-08).
+tpl_security = read(f"{TEMPLATE}/SECURITY.md") if exists(f"{TEMPLATE}/SECURITY.md") else ""
+for needed in ("security@eightyfour.ovh", "Report a vulnerability", "within 48 hours", "## Supported versions"):
+    if needed not in tpl_security:
+        problems.append((f"{TEMPLATE}/SECURITY.md", "security", f"the policy does not state {needed!r}"))
+for c in libraries:
+    if not exists(f"{c}/SECURITY.md") or read(f"{c}/SECURITY.md") != tpl_security:
+        problems.append((f"{c}/SECURITY.md", "security", "differs from component-template's policy"))
+skeleton_security = read("skeleton/SECURITY.md") if exists("skeleton/SECURITY.md") else ""
+for needed in ("security@eightyfour.ovh", "Report a vulnerability", "sous 48 heures"):
+    if needed not in skeleton_security:
+        problems.append(("skeleton/SECURITY.md", "security", f"the French policy does not state {needed!r}"))
 
 # umbrella-ci must gate every library component.
 umbrella_ci = read(".github/workflows/umbrella-ci.yml")
