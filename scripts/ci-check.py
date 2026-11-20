@@ -16,6 +16,13 @@ with composer.json and .github/workflows/main.yml, template itself excluded) thi
 and, for the umbrella:
 
   igor pin    every IGOR_VERSION in a workflow equals .igor-version
+  igor hash   every workflow that pins igor checks the downloaded archive against one committed
+              IGOR_SHA256_LINUX_AMD64 (`sha256sum -c`), the same hash everywhere
+  pin         every `uses:` in every workflow (template, libraries, umbrella) names a full commit
+              SHA with its version as a comment; the template and library workflows declare a
+              top-level read-only `permissions:` block (S-B1-02)
+  trufflehog  TruffleHog's `version:` input equals the version its pinned `uses:` names (the
+              action otherwise runs the `latest` image)
   filter      umbrella-ci's paths filter lists every library component
   actions     umbrella workflows use the same action versions as the template. The umbrella
               has no Dependabot config on purpose: its fork ruleset blocks branch creation
@@ -108,6 +115,43 @@ for wf in workflow_files:
     for found in re.findall(r"IGOR_VERSION:\s*'([^']+)'", read(wf)):
         if found != igor_pin:
             problems.append((wf, "igor pin", f"IGOR_VERSION {found} != .igor-version {igor_pin}"))
+
+# Third-party code runs only at a fixed commit, and the igor archive is verified (S-B1-02).
+UMBRELLA_WORKFLOWS = [".github/workflows/umbrella-ci.yml", ".github/workflows/release-wave.yml",
+                      ".github/workflows/fresh-install.yml"]
+COMPONENT_WORKFLOWS = [f"{TEMPLATE}/.github/workflows/main.yml"] + [f"{c}/.github/workflows/main.yml" for c in libraries]
+PINNED = re.compile(r"uses:\s*[\w.-]+/[\w./-]+@[0-9a-f]{40}\s+#\s*v?\d+\.\d+\.\d+\s*$")
+TRUFFLEHOG = re.compile(r"uses:\s*trufflesecurity/trufflehog@[0-9a-f]{40}\s+#\s*v?(\d+\.\d+\.\d+)\s*$")
+igor_hashes = set()
+for wf in COMPONENT_WORKFLOWS + UMBRELLA_WORKFLOWS:
+    lines = read(wf).splitlines()
+    for n, line in enumerate(lines, 1):
+        ref = re.search(r"uses:\s*(\S+)", line)
+        if ref and not ref.group(1).startswith(("./", "docker://")) and not PINNED.search(line):
+            problems.append((wf, "pin", f"line {n}: {ref.group(1)} is not a commit SHA with a # version comment"))
+        pinned_trufflehog = TRUFFLEHOG.search(line)
+        if pinned_trufflehog:
+            step = []
+            for following in lines[n:]:
+                if re.match(r"\s*- ", following) or not following.startswith(" " * 8):
+                    break
+                step.append(following)
+            given = [v.strip("'\"").removeprefix("v")
+                     for v in re.findall(r"^\s+version:\s*(\S+)\s*$", "\n".join(step), re.MULTILINE)]
+            if given != [pinned_trufflehog.group(1)]:
+                problems.append((wf, "trufflehog", f"line {n}: version input {given or 'missing'}, "
+                                                   f"the pinned action is v{pinned_trufflehog.group(1)}"))
+    text = "\n".join(lines)
+    if "IGOR_VERSION:" in text:
+        found = re.findall(r"IGOR_SHA256_LINUX_AMD64:\s*'([0-9a-f]{64})'", text)
+        if len(found) != 1 or "sha256sum -c" not in text:
+            problems.append((wf, "igor hash", "the igor archive is not checked against one committed SHA-256"))
+        igor_hashes.update(found)
+if len(igor_hashes) > 1:
+    problems.append(("workflows", "igor hash", f"{len(igor_hashes)} different igor archive hashes"))
+for wf in COMPONENT_WORKFLOWS:
+    if not re.search(r"^permissions:\n  contents: read\n", read(wf), re.MULTILINE):
+        problems.append((wf, "permissions", "no top-level read-only permissions block"))
 
 # umbrella-ci must gate every library component.
 umbrella_ci = read(".github/workflows/umbrella-ci.yml")

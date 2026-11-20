@@ -151,20 +151,20 @@ fi
 rm -f /tmp/dod-cov.$$
 
 # --- 4. igor (0 KO; "not defined" tolerated) -----------------------------
-# The bootstrapper downloads releases/latest unless its version file says
-# otherwise, so seed the pinned auditor (.igor-version, as igor.sh and CI do)
-# and refuse to trust a result produced by any other binary.
+# The bootstrapper takes its version from IGOR_VERSION, else from composer.lock,
+# so pass the pinned auditor (.igor-version, as igor.sh and CI do) into every
+# igor call and refuse to trust a result produced by any other binary.
 IGOR_VERSION="${IGOR_VERSION:-$(tr -d '[:space:]' < "$REPO_ROOT/.igor-version")}"
+dxi() { docker exec -e IGOR_VERSION="$IGOR_VERSION" -w "$WORKDIR" "$CONTAINER" "$@"; }
 info "4/6 composer igor (0 KO, auditor ${IGOR_VERSION})…"
 igor_bin_dir="vendor/igor-php/igor-php/resources/bin"
 igor_version_out=""
 if dx test -x vendor/bin/igor-php 2>/dev/null; then
-  dx sh -c "mkdir -p '$igor_bin_dir' && printf '%s' '$IGOR_VERSION' > '$igor_bin_dir/.version'" >/dev/null 2>&1
-  igor_version_out="$(dx vendor/bin/igor-php --version 2>&1 || true)"
+  igor_version_out="$(dxi vendor/bin/igor-php --version 2>&1 || true)"
 fi
-igor_out="$(dx composer igor 2>&1)"; igor_code=$?
+igor_out="$(dxi composer igor 2>&1)"; igor_code=$?
 if [ -n "$igor_version_out" ] && ! printf '%s\n' "$igor_version_out" | grep -qFx "igor-php version $IGOR_VERSION"; then
-  fail=1; warn "igor auditor is not ${IGOR_VERSION} — a stale binary sits in $igor_bin_dir (delete it to re-fetch)"
+  fail=1; warn "igor auditor is not ${IGOR_VERSION}: the binary under $igor_bin_dir/<x-y-z>_linux_<arch>/ reports another version (delete that folder to fetch it again)"
   printf '%s\n' "$igor_version_out" | sed 's/^/      /' >&2
 elif printf '%s' "$igor_out" | grep -qiE 'not defined|no such|script .* is not'; then
   ok "igor not defined for '$COMP' (tolerated — no worker-safety surface)"

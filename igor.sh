@@ -37,12 +37,13 @@ cd "$SCRIPT_DIR"
 CONTAINER_NAME="${WAFFLE_CONTAINER:-waffle-dev}"
 WORK_DIR_BASE="/waffle-commons"
 IGOR_BIN="vendor/bin/igor-php"
-# The composer package is only a BOOTSTRAPPER: vendor/bin/igor-php asks the
-# GitHub API for releases/latest and downloads that binary, so the composer
-# constraint and composer.lock pin nothing at all. Seed the version file the
-# bootstrapper reads so the audited version is deterministic and CI agrees with
-# local. The single source of truth is .igor-version at the umbrella root (CI
-# workflows repeat it; `wfl ci:check` fails if they disagree); override with
+# The composer package is only a BOOTSTRAPPER: vendor/bin/igor-php runs the
+# binary in resources/bin/<x-y-z>_<os>_<arch>/, downloading it when missing, and
+# takes the version from the IGOR_VERSION environment variable, else from
+# composer.lock. So every igor call below gets IGOR_VERSION (inside the
+# container too), and the version is proven from the binary's own banner. The
+# single source of truth is .igor-version at the umbrella root (CI workflows
+# repeat it; `wfl ci:check` fails if they disagree); override with
 # IGOR_VERSION=x.y.z to try another auditor.
 IGOR_VERSION="${IGOR_VERSION:-$(tr -d '[:space:]' < "$SCRIPT_DIR/.igor-version")}"
 IGOR_BOOTSTRAP_DIR="vendor/igor-php/igor-php/resources/bin"
@@ -154,30 +155,26 @@ igor_installed() {
     fi
 }
 
-# pin_auditor <component> — force the bootstrapper to fetch the pinned auditor,
-# then PROVE the binary it resolved is that version. A stale binary already on
-# disk is never re-downloaded by the bootstrapper, so without this assertion a
-# developer and CI can silently run different auditors against the same code.
+# pin_auditor <component> — run the pinned auditor's `--version` and PROVE the
+# binary reports exactly that version. Without IGOR_VERSION in its environment
+# the bootstrapper would follow composer.lock, and a developer and CI could
+# silently run different auditors against the same code.
 pin_auditor() {
-    local comp="$1"
-    local seed="mkdir -p '$IGOR_BOOTSTRAP_DIR' && printf '%s' '$IGOR_VERSION' > '$IGOR_BOOTSTRAP_DIR/.version'"
-
-    local reported=""
+    local comp="$1" reported=""
     if [ "$MODE" = "docker" ]; then
-        docker exec -w "$WORK_DIR_BASE/$comp" "$CONTAINER_NAME" sh -c "$seed" >/dev/null 2>&1 || return 1
-        reported="$(docker exec -w "$WORK_DIR_BASE/$comp" "$CONTAINER_NAME" \
+        reported="$(docker exec -e IGOR_VERSION="$IGOR_VERSION" -w "$WORK_DIR_BASE/$comp" "$CONTAINER_NAME" \
             "$IGOR_BIN" --version 2>&1 || true)"
     else
-        ( cd "$comp" && sh -c "$seed" ) >/dev/null 2>&1 || return 1
-        reported="$( ( cd "$comp" && "$IGOR_BIN" --version 2>&1 ) || true )"
+        reported="$( ( cd "$comp" && IGOR_VERSION="$IGOR_VERSION" "$IGOR_BIN" --version 2>&1 ) || true )"
     fi
 
     # `--version` is written to STDERR, so stderr is merged in, not discarded.
-    # Capture, never pipe: `grep -q` closes the pipe on its first match, and under
-    # `set -o pipefail` the SIGPIPE that gives the producer would read as a failed
-    # version check on every component whose binary is already downloaded.
-    case "$reported" in
-        *"$IGOR_VERSION"*) return 0 ;;
+    # Match the banner as a whole line: the bootstrapper's download message also
+    # names the version. Capture, never pipe: `grep -q` closes the pipe on its
+    # first match, and under `set -o pipefail` the SIGPIPE that gives the
+    # producer would read as a failed version check.
+    case $'\n'"$reported"$'\n' in
+        *$'\n'"igor-php version $IGOR_VERSION"$'\n'*) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -188,18 +185,18 @@ run_audit() {
     set +o errexit
     if [ "$OUTPUT_MODE" = "VERBOSE" ]; then
         if [ "$MODE" = "docker" ]; then
-            docker exec -w "$WORK_DIR_BASE/$comp" "$CONTAINER_NAME" \
+            docker exec -e IGOR_VERSION="$IGOR_VERSION" -w "$WORK_DIR_BASE/$comp" "$CONTAINER_NAME" \
                 "$IGOR_BIN" . ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} 2>&1 | tee "$logfile"
         else
-            ( cd "$comp" && "$IGOR_BIN" . ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} ) 2>&1 | tee "$logfile"
+            ( cd "$comp" && IGOR_VERSION="$IGOR_VERSION" "$IGOR_BIN" . ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} ) 2>&1 | tee "$logfile"
         fi
         rc=${PIPESTATUS[0]}
     else
         if [ "$MODE" = "docker" ]; then
-            docker exec -w "$WORK_DIR_BASE/$comp" "$CONTAINER_NAME" \
+            docker exec -e IGOR_VERSION="$IGOR_VERSION" -w "$WORK_DIR_BASE/$comp" "$CONTAINER_NAME" \
                 "$IGOR_BIN" . ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} >"$logfile" 2>&1
         else
-            ( cd "$comp" && "$IGOR_BIN" . ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} ) >"$logfile" 2>&1
+            ( cd "$comp" && IGOR_VERSION="$IGOR_VERSION" "$IGOR_BIN" . ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} ) >"$logfile" 2>&1
         fi
         rc=$?
     fi
@@ -313,7 +310,7 @@ while IFS= read -r comp; do
         FAILED_LIST="$FAILED_LIST $comp"
         printf 'ERROR\t%s\t%s\n' "$comp" "auditor-version" >>"$SUMMARY_FILE"
         if [ "$OUTPUT_MODE" = "VERBOSE" ]; then
-            warn "$comp: auditor is not v$IGOR_VERSION. The bootstrapper keeps whatever binary is already on disk — delete $comp/$IGOR_BOOTSTRAP_DIR and re-run."
+            warn "$comp: auditor is not v$IGOR_VERSION. The binary under $comp/$IGOR_BOOTSTRAP_DIR/<x-y-z>_linux_<arch>/ reports another version — delete that folder and re-run to fetch it again."
         else
             printf '\r[%2d/%2d] %-20s %s[ERROR]%s auditor != v%s\n' \
                 "$INDEX" "$TOTAL" "$comp" "$RED" "$NC" "$IGOR_VERSION"
