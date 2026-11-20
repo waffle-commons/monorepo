@@ -83,7 +83,17 @@ aliases: []
 
 - **`Roadmap_Beta8.md`:** the kickoff state, the day-0 decisions with their reasons, and the seven carried items. Umbrella `d43b8b4`, the branch's first commit. The maintainer reviews it before any push.
   - Re-checked that day before writing it: `contracts/src` holds 195 PHP files in 35 namespaces; `mixed` on 26 lines in 17 files, the six named symbols included; zero TODO/FIXME; no deprecation marker in any component's `src`; both `[FRZ-02]` candidates still present; no `BC-POLICY.md`; 24 console command names, read from the source (the plan's reader had counted 25); `.igor-version` 0.10.1; TruffleHog v3.99.7; `async`'s coverage floor 100.00 %; no gate report under `async/`.
-- **The skills the agents read (0.5):** in progress.
+- **The skills the agents read (0.5):** umbrella `937fd0c`, written by one agent and reviewed diff by diff before the commit. `wfl ai:check` is clean: 35 skills, 22 agents, 26 script tests, 148 cockpit tests.
+  - `tech-lead`: beta8 is the current phase, with the beta8 guard and the new dates. The beta7 row and its capacity guard are history.
+  - `api-freeze`: 195 files in 35 namespaces; the console baseline is the 24 names the source declares.
+  - `soak-endurance`: `MAX_REQUESTS` above the run's total (AGENTS.md §7), not per worker. Trap 8 is fixed in the umbrella rig (`34bfe84`), but not in the gateway's `perf-run.sh`. The breaker, limiter, probes and drain shipped in beta7, and `wfl rolling-restart` is the two-replica rig.
+  - `benchmark-gate`: `[CARRY-01]` and `[CARRY-02]` are history, and the method rules they set now sit in its traps and protocol.
+  - `roadmap-steward`: `[CARRY-01..10]`, this log kept from the kickoff on, and the train line.
+  - **Drift noticed and left as it is, for `[DOC-02]`:**
+    - `api-freeze` gives a spike no-go as "removal before RC1", without the `[FRZ-02]` deprecation step that `Roadmap_Beta8.md` now records; it also says "verified on PHP 8.5.11".
+    - `benchmark-gate` quotes the beta6 figures (10.5×, crossover 12–16, 2.37× at 128) where the current series reads 12.5×, about 14 and 2.81×. It still triggers on `[CARRY-01]`, and it calls the four-engine rig "tri-engine", as `soak-endurance` does.
+    - `roadmap-steward`'s schedule guards still read as if a January Gold were the plan.
+  - **A rig gap for the harness work (`[X-PREREQ-INFRA]`):** `bench/scripts/run-bench.sh` defaults `MAX_REQUESTS` to 1 000 000, below the 1 080 001 requests of BENCH-03's 2 h soak. That holds per worker, but breaks the "above the run's total" rule.
 
 ### 2026-11-20 16:15 CET — the toolchain wave, 1.6: the igor-php 0.11.0 trial
 
