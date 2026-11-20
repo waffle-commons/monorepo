@@ -85,6 +85,26 @@ aliases: []
   - Re-checked that day before writing it: `contracts/src` holds 195 PHP files in 35 namespaces; `mixed` on 26 lines in 17 files, the six named symbols included; zero TODO/FIXME; no deprecation marker in any component's `src`; both `[FRZ-02]` candidates still present; no `BC-POLICY.md`; 24 console command names, read from the source (the plan's reader had counted 25); `.igor-version` 0.10.1; TruffleHog v3.99.7; `async`'s coverage floor 100.00 %; no gate report under `async/`.
 - **The skills the agents read (0.5):** in progress.
 
+### 2026-11-20 16:15 CET — the toolchain wave, 1.6: the igor-php 0.11.0 trial
+
+- **Request:** the maintainer's "run the igor trial".
+- **A defect in the plan's recipe, found before it ran:**
+  - The bootstrapper (`vendor/bin/igor-php`, one identical file in every target) takes its version from the `IGOR_VERSION` environment variable, or else from the Composer-installed `igor-php/igor-php` (`v0.10.1` in every lock). It never reads the `.version` file that `igor.sh`, `wfl dod` and CI write.
+  - `igor.sh` and `wfl dod` do not pass `IGOR_VERSION` into `docker exec`. The planned `IGOR_VERSION=0.11.0 igor.sh --docker -s` would have re-downloaded 0.10.1 and failed its version check on every target, measuring nothing. CI is unaffected: its step sets `IGOR_VERSION` in the environment.
+  - Each version has its own folder (`resources/bin/<x-y-z>_linux_amd64/`), so the planned deletion of the binaries was not needed. Nothing was deleted, and 0.10.1's binaries, which `wfl dod` uses, are untouched.
+- **The binary:** `igor-php_0.11.0_linux_amd64.tar.gz` from the v0.11.0 release (2026-11-14), downloaded into an empty folder.
+  - Its SHA-256, `c799c028…66c5`, matches the release's `checksums.txt`. The release publishes no signature or build attestation.
+  - The extracted binary (SHA-256 `c4775369…52dd`) was copied into each target's `resources/bin/0-11-0_linux_amd64/`, so the bootstrapper ran exactly that file and downloaded nothing.
+- **The method:** the audit `igor.sh` runs (`vendor/bin/igor-php .` from each target's root, with its own `igor.json`), in `waffle-dev` only, with `docker exec -e IGOR_VERSION=<v>`. First a 0.10.1 baseline, then 0.11.0.
+  - Before each audit, `--version` had to print exactly `igor-php version <v>`: 54 of 54 did.
+  - 27 targets: the 28 that declare igor-php, minus `component-template`, which has no `vendor/` (as with 0.10.1).
+  - Run 16:15–16:18 CET: 0.10.1 in 2 min 3 s, 0.11.0 in 48 s.
+- **The result: identical in all 27 targets.**
+  - Both versions: 657 service files, 652 OK, 0 KO, 5 WARN (`cache` 1, `config` 1, `http-client` 1, `http` 2; WARN passes). Every audit exited 0.
+  - The only text that changed is the hint printed with those WARNs, reworded in 0.11.0. Its new rules (`StaleDependency`, #116) raise nothing.
+- **Raw evidence** (local, git-ignored): `project_system/Audits/Beta8/igor-0.11.0-trial/`, with `RESULT.md`, `summary.tsv` and the 54 logs.
+- **Next:** the maintainer's decision (D7): adopt 0.11.0, with every pin moving in one sweep inside 1.1 and 1.3, or keep 0.10.1 for beta8.
+
 ## 1. Technical changelog (what changed)
 
 _Filled as the items land._
