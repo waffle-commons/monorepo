@@ -24,8 +24,8 @@ aliases: []
 
 ### 2026-11-20 — the kickoff
 
-- **About 15:10 CET:** the maintainer accepted the kickoff plan's day-0 recommendations and gave "proceed" for its first wave. The decisions and their reasons are in `Roadmap_Beta8.md`. The plan itself stays local (`project_system/Notes/beta8-kickoff/`, git-ignored).
-- **About 15:50 CET**, the maintainer: "You can start the beta8 step by step. Keep detailed tracks of this release, it must be bulletproof as it is the contract freeze."
+- **About 15:14 CET** (the first command after it ran at 15:14): the maintainer accepted the kickoff plan's day-0 recommendations and gave "proceed" for its first wave. The decisions and their reasons are in `Roadmap_Beta8.md`. The plan itself stays local (`project_system/Notes/beta8-kickoff/`, git-ignored).
+- **Shortly before the cut** (15:57 CET), the maintainer: "You can start the beta8 step by step. Keep detailed tracks of this release, it must be bulletproof as it is the contract freeze."
 
 ### 2026-11-20 15:57 CET — day 0: the branch cut
 
@@ -115,9 +115,9 @@ aliases: []
 - **Raw evidence** (local, git-ignored): `project_system/Audits/Beta8/igor-0.11.0-trial/`, with `RESULT.md`, `summary.tsv` and the 54 logs.
 - **Next:** the maintainer's decision (D7): adopt 0.11.0, with every pin moving in one sweep inside 1.1 and 1.3, or keep 0.10.1 for beta8.
 
-### 2026-11-20 16:40–17:30 CET — the toolchain wave, 1.1: one CI sweep
+### 2026-11-20 16:25–16:45 CET — the toolchain wave, 1.1: one CI sweep
 
-- **Decisions** (the maintainer, about 16:40): adopt igor-php 0.11.0 (D7), and fix `igor.sh` and `wfl dod` so they pass `IGOR_VERSION` into Docker.
+- **Decisions** (the maintainer, about 16:25): adopt igor-php 0.11.0 (D7), and fix `igor.sh` and `wfl dod` so they pass `IGOR_VERSION` into Docker.
 - **The change,** made once in `component-template`:
   - **TruffleHog v3.100.0, with the action's `version:` input.** The action runs the image `ghcr.io/trufflesecurity/trufflehog:<version>`, `latest` by default, so pinning the action alone would not pin the scanner. The `3.100.0` tag was checked to exist.
   - **igor-php 0.11.0, pinned for the whole igor job.** Only the step that checked the version had the variable. The step that ran the audit fell back to `composer.lock`, so CI audited with the lock's version. `umbrella-ci` had the same gap.
