@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import type { RepoInfo, SessionInfo } from '../types'
+import type { CockpitSession, RepoInfo } from '../types'
 import { bar, level, linesOf, modelLabel, tokens } from '../hooks/view'
 import type { Line } from '../hooks/view'
 
-const SESSION: SessionInfo = {
+const SESSION: CockpitSession = {
   model: 'claude-opus-5-5',
   effort: 'max',
   contextPercent: 85,
@@ -38,7 +38,7 @@ describe('linesOf', () => {
   })
 
   test('before the first response: a dash, no cache, no limits', () => {
-    const fresh: SessionInfo = { ...SESSION, contextPercent: null, cacheInput: 0, cacheRead: 0, costUsd: null, startedAt: null }
+    const fresh: CockpitSession = { ...SESSION, contextPercent: null, cacheInput: 0, cacheRead: 0, costUsd: null, startedAt: null }
     const lines = linesOf({ session: fresh, repo: null, waffle: null, now: 0, hint: '? for shortcuts' })
     expect(text(lines[1])).toBe('ctx —')
     expect(text(lines[2])).toBe('⧗ 0 │ no command, background shell, monitor or subagent')

@@ -110,7 +110,7 @@ export type SessionLimit = {
 }
 
 /** What the session reports about itself: model, effort, context, cost, limits, cache. */
-export type SessionInfo = {
+export type CockpitSession = {
   /** The model id, e.g. `claude-opus-5-5`; empty until known. */
   model: string
   /** The effort level of the last main-loop request; empty until known or when the model has none. */
@@ -203,11 +203,16 @@ export type Job = {
   events: number
 }
 
+/*
+ * Inside `declare module 'claude-code'`, a bare type name resolves to the host's export of that name
+ * first. Our types therefore never share a name with one: Claude Code 2.1.329 added its own
+ * `SessionInfo`, which took the place of ours here until ours became `CockpitSession`.
+ */
 declare module 'claude-code' {
   interface PluginState {
     'waffle-cockpit': {
       status: CockpitStatus | null
-      session: SessionInfo | null
+      session: CockpitSession | null
       repo: RepoInfo | null
       dod: DodView | null
       jobs: Job[]
