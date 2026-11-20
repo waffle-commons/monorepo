@@ -145,6 +145,35 @@ aliases: []
   - The maintainer's repository-settings part, after each repo's release PR (D9).
   - `wfl dod queue` in the 1.3 sweep, then its fix-check.
 
+### 2026-11-20 16:46–17:23 CET — the toolchain wave, 1.2 and 1.3: S-B1-07 and the relock pass
+
+- **S-B1-07 (LOW, S):** its fix, per its ticket, in two halves.
+  - **The CI half** (16:50): one step in the build job of the 26 component workflows, made in `component-template` and copied as in 1.1, and in `umbrella-ci`. Commits: queue `1bdb076`, serializer `92d8a5e` and the 24 other component repos; umbrella `534b183`.
+  - **The composer.json half:** in the relock pass below, contracts first (`5121389`).
+  - **The regression check:** a new `wfl ci:check` rule. On the unchanged files it reports 57 findings (30 composer.json, 27 workflows); after the CI half, 30; after the relock, no drift.
+- **The relock pass (1.3):**
+  - PHPUnit 12.5.45, psalm 6.20.13 and igor-php `^0.11.0` in every repo that uses them, and `cacheResult` out of the 29 `phpunit.xml` files (the PHPUnit 12.5 default; 13.4.8 deprecates it).
+  - One local commit per dependency per repo: 140 commits.
+  - psalm is held at 6.20.13 with Composer's `--with`: `^6.20` alone would take 6.21.0, which D7 set aside.
+  - Every update runs with `--no-scripts`, because skeleton's post-update hook runs its create-project setup.
+  - **Before each commit:** the target version is locked, no `waffle-commons/*` entry moves, and only the expected files change. A step that failed any check was not committed.
+  - **The guards stopped four repos at their first step, and none of them was a defect:**
+    - skeleton's lock is git-ignored, so its updates stay local and only `composer.json` and `phpunit.xml` are committed.
+    - workspace, academy/labs and academy/sandbox take `waffle-commons/*` from path repositories, whose path reference moves with every lock write; their versions and sources did not move. Each was finished under a guard that allows exactly that.
+  - **Times:** 37 s for contracts (the test run), 940 s for the other 29 repos, 65 s for the follow-up. The median per step: PHPUnit 11 s, psalm 15 s, igor 7 s.
+- **The first measured DoD sweep:** `wfl dod` on the 25 libraries, skeleton and workspace.
+  - 27 of 27 PASS, in 365 s (9 to 28 s each). skeleton and workspace passed again after their relock.
+  - A full sweep costs about 6 minutes, so gating every repo after each fix is cheap. The plan's binding constraints stay the agent windows, the machines and the 72 h clock, and P1–P2 keep their dates on that basis.
+- **After the relock:**
+  - `wfl ci:check`: no drift. `igor.sh`: 27 OK.
+  - academy labs' answer key, `composer verify`: OK (54 tests, 122 assertions) on PHPUnit 12.5.45. The sandbox's `composer mago` is clean.
+  - `wfl academy:test` exits 2: it is the students' TDD suite, failing until the labs are solved.
+- **Gitlinks:** academy `c5dc1e9` (labs `4231519`, sandbox `52a375b`); umbrella `b0515f4` (29 gitlinks, each equal to its repo's HEAD).
+- **Evidence** (local, git-ignored): `project_system/Audits/Beta8/wave1-relock/`, with every step's time and commit, every composer run and DoD log, and the scripts as run.
+- **Next:**
+  - 1.4 (S-B1-08), with the maintainer's review of the new `SECURITY.md`; 1.5 (Predis); 1.7 (`Psr\` in `igor.json`).
+  - Then the fix-checks of S-B1-02, -07 and -08.
+
 ## 1. Technical changelog (what changed)
 
 _Filled as the items land._
