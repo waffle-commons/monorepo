@@ -23,16 +23,20 @@ v1", any planning that needs the canonical direction.
   Outbound Resilience).
 - **`project_system/Roadmaps/`** — `Roadmap_v1_Master` (the release train) + per-release
   `Roadmap_Beta0…Beta8`, `Roadmap_RC1`, `Roadmap_v1_Gold`, `Roadmap_Post_v1`. The beta7 carry-overs
-  (`[CARRY-01..09]`) live in `Roadmap_Beta7.md` under "Kickoff state & carry-overs".
-- **`project_system/Logs/`** — `Releases/Log_<Release>.md` and `Retrospectives/Retro_<Release>.md`,
-  written on release day (the next ones: `Log_Beta7.md`, `Retro_Beta7.md`).
+  (`[CARRY-01..10]`) live in `Roadmap_Beta7.md` under "Kickoff state & carry-overs".
+- **`project_system/Logs/`** — `Releases/Log_<Release>.md` and `Retrospectives/Retro_<Release>.md`.
+  Beta8's are `Log_Beta8.md`, kept step by step from the kickoff on (the maintainer asked for detailed
+  tracks of this release on 2026-11-20), and `Retro_Beta8.md`, written on release day.
 - **Train (post-BBL pivot, 2026-07):** beta4 (security/stability, shipped) → beta5
   (AOT/pooling/async/telemetry/WebAuthn, shipped) → beta6 (**stabilization & audit**: multi-engine
-  audits, Diátaxis docs, EcoShield POC, K6 — shipped) → beta7 (**production surface**, current:
-  `queue`/`openapi`/`serializer`/`testing`, NET, OPS) → beta8 (freeze) → `1.0.0-RC1`
-  (EcoShield-Gateway 4-week soak) → `1.0.0` Gold. Dates (one-month slip, 2026-09-06): beta6 Sep 2026 ·
-  beta7 Nov (5 November target, 2026-10-21) · beta8 Dec (~3 Dec) · RC1 Dec (~12 Dec) · Gold late Jan 2027 (re-dated 2026-10-21). Only beta6 lands before the API Platform
-  Conference (Lille, Sep 17–18 2026), which drove the original train.
+  audits, Diátaxis docs, EcoShield POC, K6 — shipped) → beta7 (**production surface**:
+  `queue`/`openapi`/`serializer`/`testing`, NET, OPS — shipped) → beta8 (**the freeze**, current since
+  the 2026-11-20 kickoff) → `1.0.0-RC1` (EcoShield-Gateway 4-week soak) → `1.0.0` Gold.
+  Dates: beta6 Sep 2026 · beta7 Nov 2026 · beta8 tag not before ~8 December 2026, the date set at the
+  audit's triage (~26–28 November), planning on the central case, ~21 December · RC1 and Gold move by
+  the same amount (central case: RC1 ~30 December, Gold ~mid-February 2027). `Roadmap_v1_Master.md`'s
+  train table and `AGENTS.md` §5b keep ~3 December until one umbrella commit records the set date. Only
+  beta6 lands before the API Platform Conference (Lille, Sep 17–18 2026), which drove the original train.
   EcoShield-Gateway (not Sentinel) is the v1 validation dogfood.
 
 ## Git boundary

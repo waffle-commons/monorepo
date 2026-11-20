@@ -30,7 +30,7 @@ A half-implemented authentication scheme never ships in v1. Record each verdict 
 
 ## 2. Contracts BC review (`[FRZ-01]`)
 - **Scope:** every interface, class, enum, attribute, DTO, exception and constant in `contracts/src` —
-  158 files in 28 namespaces on 2026-09-30, plus whatever beta7 adds. Each symbol is **confirmed**
+  195 PHP files in 35 top-level namespaces, counted on 2026-11-20. Each symbol is **confirmed**
   (frozen for v1.x) or **fixed now**.
 - **Per symbol:**
   - final naming;
@@ -76,13 +76,15 @@ One sweep across all components:
 - console command names as `domain:action`;
 - error response shapes.
 
-The command names shipped today form the baseline:
-- `cache:clear`, `container:compile`, `data:warmup`, `db:migrate`;
-- `make:{command,controller,dto,entity,event-pair,http-client,middleware,repository,voter}`;
-- `route:compile`, `route:list`, `security:audit`.
+The baseline is the 24 command names of the beta7 release, counted in the components' `src` on 2026-11-20:
+- `cache:clear`, `container:compile`, `data:warmup`;
+- `db:migrate`, `db:rollback`, `db:status`;
+- `make:{command,controller,dto,entity,event-pair,http-client,middleware,migration,repository,voter}`;
+- `queue:work`, `route:compile`, `route:list`;
+- `security:audit`, `security:compare-audit`, `igor:audit`;
+- `openapi:generate`, `serializer:compile`.
 
-Beta7 adds `queue:work`, `openapi:generate` and the migration commands (their names are still open —
-`[[k8s-ops]]`). An inconsistency found after v1 is permanent.
+An inconsistency found after v1 is permanent.
 
 ## 5. After the freeze (beta8 tag → Gold)
 - **Allowed:** bug fixes with regression tests, security fixes, documentation, and deprecation
