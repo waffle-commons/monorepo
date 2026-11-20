@@ -238,6 +238,29 @@ aliases: []
 - **Residual notes** that do not decide the verdict are kept in the local evidence for the maintainer: two downloads that pinned actions make at run time, and three blind spots of the new rules, none of which affects today's workflows.
 - **Wave 1 is complete,** except S-B1-08's fix-check, which waits for private vulnerability reporting. Next comes the first push, on the maintainer's word (D6).
 
+### 2026-11-20 18:16–18:42 CET — Wave 1 residuals: Composer and the Codecov CLI as fixed releases, the rules' blind spots closed
+
+- The maintainer took the recommendations: "go with your recommendations, push and open the PRs". The sweep runs first, so the PRs' CI tests the final workflows.
+- **Composer 2.11.2, checked against its SHA-256,** in the 26 component workflows and umbrella-ci (`tools: composer:2.11.2@sha256:dd158c0a…d028`).
+  - setup-php, read at the pinned SHA (`src/tools.ts`, `add_tools.sh`), verifies a tool only in the form `tool:X.Y.Z@sha256:<hash>`. A mismatch on Composer fails the job, because setup-php turns `fail_fast` on for Composer.
+  - The hash is the same from getcomposer.org and from the GitHub release asset's digest.
+  - 2.11.2 rather than 2.10.3: it fixes GHSA-jhfp-4ppm-crmm and GHSA-w6hj-6587-3jh5 (high, both affect 2.10.3). CI's `composer:v2` already resolved to the latest 2.x, so CI never ran an affected version; the pin fixes the version and adds the check.
+- **The Codecov CLI v11.3.2,** set with codecov-action's `version:` input, which defaulted to `latest`.
+- **`wfl ci:check`:**
+  - **New rules:** `composer` (Composer as `X.Y.Z@sha256:<hash>`, one value in every workflow) and `codecov` (a fixed CLI release). `igor hash` now compares against `.igor-sha256`, a new umbrella file, and `images` also reads job-level `container:` strings and `docker run` / `docker pull` lines.
+  - **`--online`** checks, over the network:
+    - the 7 pinned action SHAs against their version tags (`git ls-remote`, tags peeled);
+    - `.igor-sha256` against igor's `checksums.txt`, and the Composer hash against getcomposer.org;
+    - the TruffleHog image digest on ghcr.io, and the Codecov CLI release.
+  - It calls curl, because the python.org build on macOS ships no trust store.
+- **The regression checks:**
+  - On the unchanged workflows: 264 findings (237 composer, 27 codecov). After the change: no drift, offline and online.
+  - A wrong `.igor-sha256` fails both modes. A planted `container: ubuntu:24.04` and `docker run alpine:3.20` give one finding each; a `docker pull` by digest passes.
+  - All 29 workflows parse as YAML, and the 24 library workflows other than telemetry's two are byte-identical to the template.
+- **Commits:** 26 component repos (component-template `32c3514`, queue `c92e95e`, serializer `cc2c3c0`; each library's CHANGELOG CI line follows), umbrella `a32589e` (the rules, `.igor-sha256`, umbrella-ci) and `24a0287` (26 gitlinks).
+- **Not in this sweep, for the maintainer:** the Docker images still pin `composer:2.10.3`: the skeleton, workspace and bench Dockerfiles, and `skeleton/create-project.sh`. That version is affected by the two high advisories above and by GHSA-fm2w-xgf2-f9fh (medium).
+- **Evidence** (local, git-ignored): `project_system/Audits/Beta8/wave1-ci-hardening/`.
+
 ## 1. Technical changelog (what changed)
 
 _Filled as the items land._
