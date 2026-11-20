@@ -232,6 +232,12 @@ aliases: []
 - **The fix-check runs again,** with both agents, on `queue@6c63c43`.
 - **Evidence** (local, git-ignored): `project_system/Audits/Beta8/wave1-s-b1-02-part2/`.
 
+### 2026-11-20 18:10–18:14 CET — S-B1-02 checked again: HOLDS
+
+- **Both agents answer HOLDS** on `queue@6c63c43`, so S-B1-02 (MEDIUM, M) is recorded: `wfl audit:fixed 0.1.0-beta8 S-B1-02 queue@6c63c43… --run pilot`. The pilot ledger has 2 of 31 fixed (S-B1-02, S-B1-07).
+- **Residual notes** that do not decide the verdict are kept in the local evidence for the maintainer: two downloads that pinned actions make at run time, and three blind spots of the new rules, none of which affects today's workflows.
+- **Wave 1 is complete,** except S-B1-08's fix-check, which waits for private vulnerability reporting. Next comes the first push, on the maintainer's word (D6).
+
 ## 1. Technical changelog (what changed)
 
 _Filled as the items land._
