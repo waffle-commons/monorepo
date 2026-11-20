@@ -174,6 +174,30 @@ aliases: []
   - 1.4 (S-B1-08), with the maintainer's review of the new `SECURITY.md`; 1.5 (Predis); 1.7 (`Psr\` in `igor.json`).
   - Then the fix-checks of S-B1-02, -07 and -08.
 
+### 2026-11-20 17:25–17:34 CET — the toolchain wave, 1.7 and 1.5
+
+- **1.7, `Psr\` back among igor's safe namespaces:**
+  - igor's defaults are `Symfony\`, `Doctrine\`, `Psr\`, `Twig\`, `ApiPlatform\` and `IgorPhp\IgorBundle\` (igor 0.11.0's README). Every Waffle `igor.json` sets `safe_namespaces`, which replaces that list, so `Psr\` was gone. It is back in all 28; contracts had an empty list.
+  - auth retires the three PSR-16 method marks that `Psr\` covers: `OidcDiscovery::discover`, `ClientCredentialsProvider::accessToken` and `JwksKeyResolver::keys`.
+  - **Checked in two steps:** with the marks removed and `Psr\` absent, igor reports 3 KO ("Mutation detected on an injected dependency"); with `Psr\` restored, 0 KO. `wfl dod auth`: PASS (coverage 99.54 %, its floor).
+  - **Commits:** auth `4bcb6ae` (igor.json) and `0990c34` (the marks), 27 `igor.json` commits, umbrella `b25e145`. `igor.sh`: 27 OK.
+  - **Noticed:** auth's pre-commit hook printed "no staged PHP files" for a commit that staged three PHP files, so the hook seems not to see PHP staged inside a submodule. Mago was proven clean on the same tree by `wfl dod auth`. To examine with the tooling items (5.10).
+- **1.5, Predis `^3.7.1` in cache:**
+  - The deferred major (D7), not a security fix. `composer.json` and the lock change, and only Predis moves: v2.4.1 → v3.7.1.
+  - The container's `composer show` listed 3.7.0 as the newest, from stale cached metadata. Packagist and GitHub both have 3.7.1 (released 2026-11-03), and the update took it.
+  - **Checked:** `wfl dod cache` PASS (coverage 95.57 %, floor 95.52 %).
+    - cache's unit tests run on a Predis stub, so `RedisCache` was also exercised through `CacheFactory`, on Predis 3.7.1, against the dev Redis.
+    - 9 of 9 checks passed: SET, GET, EXISTS, SETEX, MGET, DEL, SCAN and expiry.
+  - **workspace** was relocked through cache, its path repository: Predis 3.7.1, with the path references refreshed. `wfl dod workspace`: PASS.
+  - **For the release PR:** the `breaking` label, and a line in the upgrade guide (`[DOC-01]`, not written yet), since apps that pin predis ^2 will conflict. skeleton relocks on release day, because it resolves cache from Packagist; the gateway relocks at its re-lock.
+  - **Commits:** cache `1c13a27`, workspace `0adbec1`, umbrella `f7faac7`.
+- **Evidence** (local, git-ignored): `project_system/Audits/Beta8/wave1-igor-psr/` and `wave1-predis/`.
+- **Left in Wave 1:**
+  - 1.4 (S-B1-08): its `SECURITY.md` text is with the maintainer.
+  - The `## [Unreleased]` CHANGELOG entries in every repo. The legend asks each repo's first beta8 commit to open one; Wave 1's commits did not, so one pass adds them.
+  - The fix-checks of S-B1-02, -07 and -08.
+  - The first push, on the maintainer's word (D6).
+
 ## 1. Technical changelog (what changed)
 
 _Filled as the items land._
