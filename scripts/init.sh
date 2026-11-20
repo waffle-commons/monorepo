@@ -179,7 +179,7 @@ else
   waited=0 limit="${WFL_INIT_HEALTH_TIMEOUT:-900}"
   info "waiting for $CONTAINER to report healthy (a fresh clone installs workspace's vendor first)…"
   while :; do
-    st="$(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$CONTAINER" 2>/dev/null || printf 'absent')"
+    st="$(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' "$CONTAINER" 2>/dev/null)" || st='absent'
     [ "$st" = "running healthy" ] && break
     if [ "${st%% *}" != "running" ] && [ "${st%% *}" != "created" ] || [ "$waited" -ge "$limit" ]; then
       printf -- '--- %s is %s after %ss; its log (last 40 lines) ---\n' "$CONTAINER" "$st" "$waited" >&2
@@ -229,7 +229,7 @@ else
       # stopped mid-install (every later exec then fails the same way).
       printf -- '--- %s (last 20 lines) ---\n' "${failed[0]}" >&2
       tail -n 20 "$logdir/${failed[0]}.log" >&2
-      state="$(docker inspect -f '{{.State.Status}} exit={{.State.ExitCode}}' "$CONTAINER" 2>/dev/null || printf 'absent')"
+      state="$(docker inspect -f '{{.State.Status}} exit={{.State.ExitCode}}' "$CONTAINER" 2>/dev/null)" || state='absent'
       if [ "${state%% *}" != "running" ]; then
         printf -- '--- %s is %s; its log (last 40 lines) ---\n' "$CONTAINER" "$state" >&2
         docker logs --tail 40 "$CONTAINER" >&2 2>&1 || true

@@ -30,7 +30,7 @@ row() {
   local label="$1" dir="$2" gitlink="$3"
   local branch dirty up ahead_main behind_main ahead_up behind_up link_state
   [ "$FETCH" -eq 1 ] && git -C "$dir" fetch --quiet origin 2>/dev/null
-  branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null || echo '?')"
+  branch="$(git -C "$dir" rev-parse --abbrev-ref HEAD 2>/dev/null)" || branch='?'
   [ "$branch" = "HEAD" ] && branch="${C_RED}DETACHED${C_RST}"
   dirty="$(git -C "$dir" status --porcelain 2>/dev/null | wc -l | tr -d ' ')"
   if git -C "$dir" rev-parse --verify --quiet origin/main >/dev/null; then

@@ -103,7 +103,7 @@ if [ -z "$COMPS" ]; then
   exit 0
 fi
 
-state="$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || echo absent)"
+state="$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null)" || state=absent
 if [ "$state" != "running" ]; then
   printf '\033[0;31m✗ container %s not running (%s). Start with "wfl up" or bypass with SKIP_MAGO=1.\033[0m\n' "$CONTAINER" "$state" >&2
   exit 1
