@@ -223,6 +223,15 @@ aliases: []
 - **S-B1-08** waits for private vulnerability reporting, which is part of its fix (D9).
 - **Evidence** (local, git-ignored): `project_system/Audits/Beta8/wave1-fix-checks/`, and the verdict files in `project_system/Audits/Beta8/pilot/verdicts/`.
 
+### 2026-11-20 18:03–18:10 CET — S-B1-02 (MEDIUM, M): its fix completed, then checked again
+
+- The maintainer took the recommendation: "go with your recommendation for S-B1-02".
+- **The second part of the fix,** made in component-template and copied as before: queue `6c63c43`, serializer `d4b7a82` and the 24 other component repos.
+- **Umbrella:** `9de2a0a` (the tightened `wfl ci:check` rules; umbrella-ci and fresh-install follow) and `6fa85a8` (26 gitlinks).
+- **The regression check:** the tightened rules report 292 findings on the workflows as they were before this part, and no drift after it. All 29 workflows parse as YAML.
+- **The fix-check runs again,** with both agents, on `queue@6c63c43`.
+- **Evidence** (local, git-ignored): `project_system/Audits/Beta8/wave1-s-b1-02-part2/`.
+
 ## 1. Technical changelog (what changed)
 
 _Filled as the items land._
