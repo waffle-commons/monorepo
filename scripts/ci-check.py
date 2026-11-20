@@ -23,6 +23,9 @@ and, for the umbrella:
               top-level read-only `permissions:` block (S-B1-02)
   trufflehog  TruffleHog's `version:` input equals the version its pinned `uses:` names (the
               action otherwise runs the `latest` image)
+  php floor   every composer.json of the ecosystem requires php ^8.5.12 or later, and the
+              component CI (template, libraries, umbrella-ci) asserts PHP_VERSION_ID >= 80512
+              before it installs anything (S-B1-07)
   filter      umbrella-ci's paths filter lists every library component
   actions     umbrella workflows use the same action versions as the template. The umbrella
               has no Dependabot config on purpose: its fork ruleset blocks branch creation
@@ -152,6 +155,19 @@ if len(igor_hashes) > 1:
 for wf in COMPONENT_WORKFLOWS:
     if not re.search(r"^permissions:\n  contents: read\n", read(wf), re.MULTILINE):
         problems.append((wf, "permissions", "no top-level read-only permissions block"))
+
+# The PHP floor: no release before 8.5.12 installs or runs (S-B1-07).
+PHP_FLOOR = (8, 5, 12)
+composer_repos = [TEMPLATE] + libraries + [r for r in ("skeleton", "workspace", "academy/labs", "academy/sandbox")
+                                           if exists(f"{r}/composer.json")]
+for r in composer_repos:
+    php = json.loads(read(f"{r}/composer.json")).get("require", {}).get("php", "")
+    floor = re.fullmatch(r"\^(\d+)\.(\d+)\.(\d+)", php)
+    if not floor or tuple(int(part) for part in floor.groups()) < PHP_FLOOR:
+        problems.append((f"{r}/composer.json", "php floor", f"require.php is {php!r}, needs ^8.5.12 or later"))
+for wf in COMPONENT_WORKFLOWS + [".github/workflows/umbrella-ci.yml"]:
+    if "PHP_VERSION_ID >= 80512" not in read(wf):
+        problems.append((wf, "php floor", "CI does not assert PHP_VERSION_ID >= 80512"))
 
 # umbrella-ci must gate every library component.
 umbrella_ci = read(".github/workflows/umbrella-ci.yml")
