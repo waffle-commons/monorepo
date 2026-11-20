@@ -62,17 +62,19 @@ _ensure_compose() {
   [ -f "$COMPOSE_FILE" ] || die "compose file missing: $COMPOSE_FILE (did 'wfl init' run? is the 'workspace' submodule checked out?)"
 }
 
-_container_state() {
-  docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || printf 'absent'
+# A container's state, or `absent`. `docker inspect` prints an empty line before it fails
+# on a missing container, so the fallback replaces its output instead of following it.
+_state_of() {
+  local s
+  s="$(docker inspect -f '{{.State.Status}}' "$1" 2>/dev/null)" || s='absent'
+  printf '%s' "$s"
 }
 
-_legacy_state() {
-  docker inspect -f '{{.State.Status}}' "$CONTAINER_LEGACY" 2>/dev/null || printf 'absent'
-}
+_container_state() { _state_of "$CONTAINER"; }
 
-_redis_state() {
-  docker inspect -f '{{.State.Status}}' "$CONTAINER_REDIS" 2>/dev/null || printf 'absent'
-}
+_legacy_state() { _state_of "$CONTAINER_LEGACY"; }
+
+_redis_state() { _state_of "$CONTAINER_REDIS"; }
 
 _ensure_running() {
   local s; s="$(_container_state)"

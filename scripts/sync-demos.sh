@@ -37,7 +37,7 @@ die()  { printf '%s✗ %s%s\n' "$C_RED" "$*" "$C_RST" >&2; exit 1; }
 command -v rsync >/dev/null 2>&1 || die "rsync not found on host"
 
 _container_running() {
-  [ "$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || printf 'absent')" = "running" ]
+  [ "$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null)" = "running" ]
 }
 
 # workspace is symlinked → always fresh; just report it.

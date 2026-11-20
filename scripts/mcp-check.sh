@@ -110,7 +110,7 @@ fi
 if [ -z "$token" ]; then
   _fail "GitHub token" "none — export GITHUB_TOKEN or run 'gh auth login'"
 else
-  code="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" https://api.github.com/user 2>/dev/null || echo 000)"
+  code="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" https://api.github.com/user 2>/dev/null)" || code=000
   case "$code" in
     200) _ok "GitHub token" "accepted by the API (from $token_src)" ;;
     401) _fail "GitHub token" "rejected (401) — from $token_src; refresh it (gh auth login)" ;;

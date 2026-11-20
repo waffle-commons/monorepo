@@ -64,7 +64,7 @@ fi
 [ -d "$REPO_ROOT/$COMP" ] || die "component directory missing: $REPO_ROOT/$COMP"
 
 # Container must be running.
-state="$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || printf 'absent')"
+state="$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null)" || state='absent'
 [ "$state" = "running" ] || die "container '$CONTAINER' not running (state: $state). Try: wfl up"
 
 WORKDIR="/waffle-commons/$COMP"

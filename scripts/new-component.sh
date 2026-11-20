@@ -84,7 +84,7 @@ info "configure-component.sh $PASCAL $KEBAB…"
   || die "configure-component.sh failed"
 
 # --- 5. composer install (in container) ----------------------------------
-if [ "$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || printf 'absent')" = "running" ]; then
+if [ "$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null)" = "running" ]; then
   info "composer install (in $CONTAINER)…"
   docker exec -w "/waffle-commons/$KEBAB" "$CONTAINER" composer install --no-interaction \
     || warn "composer install failed — fix dependencies, then run: wfl dod $KEBAB"

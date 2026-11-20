@@ -59,7 +59,7 @@ container_state="absent"
 if command -v docker >/dev/null 2>&1; then
   if docker info >/dev/null 2>&1; then
     _ok "docker" "daemon reachable"
-    container_state="$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null || printf 'absent')"
+    container_state="$(docker inspect -f '{{.State.Status}}' "$CONTAINER" 2>/dev/null)" || container_state='absent'
     if docker compose version >/dev/null 2>&1; then
       _ok "docker compose" "$(docker compose version --short 2>/dev/null)"
     else
